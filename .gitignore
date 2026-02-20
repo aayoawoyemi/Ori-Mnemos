@@ -16,3 +16,12 @@ research/transcripts/
 # Local cache and personal scratch
 .npm-cache/
 memory/personal/
+
+# Private strategy/research content
+brain/
+memory/
+research/
+CLAUDE.md
+PLAN.md
+ROADMAP.md
+tests/
