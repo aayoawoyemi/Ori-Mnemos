@@ -1,0 +1,22 @@
+# ori.config.yaml - vault configuration for Ori Mnemos
+
+vault:
+  version: "0.1"
+
+templates:
+  default: templates/note.md
+  by_type:
+    map: templates/map.md
+    moc: templates/map.md
+    source: templates/source.md
+    observation: templates/observation.md
+
+vitality:
+  decay:
+    idea: 90
+    decision: 30
+    learning: 30
+    insight: 30
+    blocker: 14
+    opportunity: 30
+  base: 1.0

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+*.js.map
+*.d.ts.map
+coverage/
+
+# Local Claude settings
+.claude/settings.local.json
+
+# Session-specific memory (not for repo)
+memory/sessions/
+
+# Transcript raw files (large, not needed in repo)
+research/transcripts/
+
+# Local cache and personal scratch
+.npm-cache/
+memory/personal/

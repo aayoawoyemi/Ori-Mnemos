@@ -1,0 +1,47 @@
+{
+  "name": "ori-memory",
+  "version": "0.1.0",
+  "description": "The Git of AI memory - open source, markdown-native framework for persistent, shared agent memory without a database",
+  "keywords": ["ai", "agent", "memory", "markdown", "cli", "knowledge-graph"],
+  "homepage": "https://github.com/aayoawoyemi/OriMnemos",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aayoawoyemi/OriMnemos.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Aayo Awoyemi",
+  "type": "module",
+  "bin": {
+    "ori": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "scaffold",
+    "adapters"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run --environment node",
+    "test:watch": "vitest --environment node",
+    "lint": "tsc --noEmit",
+    "smoke:bin": "node dist/index.js --version",
+    "pack:check": "npm pack --dry-run --cache .npm-cache",
+    "check:v01:test": "npm run test",
+    "check:v01": "npm run lint && npm run build && npm run smoke:bin && npm run pack:check"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "glob": "^11.0.0",
+    "yaml": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
