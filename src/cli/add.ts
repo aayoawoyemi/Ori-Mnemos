@@ -4,6 +4,7 @@ import { findVaultRoot, getVaultPaths } from "../core/vault.js";
 import { loadConfig, resolveTemplatePath } from "../core/config.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../core/frontmatter.js";
 import { runValidate } from "./validate.js";
+import { runPromote } from "./promote.js";
 
 export type AddOptions = {
   startDir: string;
@@ -75,6 +76,32 @@ export async function runAdd(options: AddOptions): Promise<AddResult> {
   const warnings = [...validation.warnings];
   if (!frontmatter.description) {
     warnings.push("Description is empty");
+  }
+
+  // Auto-ingest: promote immediately if config.promote.auto is true
+  const autoPromote = config.promote?.auto ?? false;
+
+  if (autoPromote) {
+    try {
+      const promoteResult = await runPromote({
+        startDir: options.startDir,
+        noteName: filename,
+      });
+      if (promoteResult.success && promoteResult.data.promoted.length > 0) {
+        const promoted = promoteResult.data.promoted[0];
+        warnings.push(
+          ...promoted.warnings,
+          ...promoted.changes.map((c) => `auto-promote: ${c}`)
+        );
+        return {
+          success: true,
+          data: { path: promoted.to, autoPromoted: true },
+          warnings,
+        };
+      }
+    } catch {
+      warnings.push("Auto-promote failed, note remains in inbox");
+    }
   }
 
   return {

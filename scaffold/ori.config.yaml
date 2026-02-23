@@ -20,3 +20,16 @@ vitality:
     blocker: 14
     opportunity: 30
   base: 1.0
+
+promote:
+  auto: true               # ori add auto-promotes to notes/
+  require_llm: false       # true = only auto-promote when LLM available
+  min_confidence: 0.6      # below this, skip auto-promotion and warn
+  project_keywords: {}     # project_name: [keyword, keyword, ...]
+  project_map_routing: {}  # project_name: map_note_title
+  default_area: "index"    # fallback area when no project match
+
+llm:
+  provider: null           # null | "anthropic"
+  model: null
+  api_key_env: null        # env var name containing API key

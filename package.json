@@ -1,6 +1,6 @@
 {
   "name": "ori-memory",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The Git of AI memory - open source, markdown-native framework for persistent, shared agent memory without a database",
   "keywords": ["ai", "agent", "memory", "markdown", "cli", "knowledge-graph"],
   "homepage": "https://github.com/aayoawoyemi/OriMnemos",

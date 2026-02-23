@@ -11,6 +11,8 @@ import {
 } from "./cli/query.js";
 import { runValidate } from "./cli/validate.js";
 import { runAdd } from "./cli/add.js";
+import { runPromote } from "./cli/promote.js";
+import { runArchive } from "./cli/archive.js";
 import { runBridgeClaudeCode, runBridgeClaudeCodeGlobal } from "./cli/bridge.js";
 import { runServeMcp } from "./cli/serve.js";
 
@@ -21,7 +23,7 @@ program
   .description(
     "Ori Mnemos - markdown-native cognitive harness for persistent agent memory"
   )
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("init")
@@ -87,6 +89,55 @@ program
   .option("-t, --type <type>", "note type", "insight")
   .action(async (title: string, options: { type: string }) => {
     const result = await runAdd({ startDir: process.cwd(), title, type: options.type });
+    console.log(JSON.stringify(result));
+  });
+
+program
+  .command("promote")
+  .argument("[note]", "inbox note filename or slug")
+  .option("--all", "promote all inbox notes")
+  .option("--dry-run", "preview without making changes")
+  .option("--no-auto", "skip LLM enhancement even if configured")
+  .option("-t, --type <type>", "override type classification")
+  .option("-d, --description <desc>", "override description")
+  .option("-l, --links <links...>", "additional wiki-links")
+  .option("-p, --project <projects...>", "project tags")
+  .action(
+    async (
+      note: string | undefined,
+      options: {
+        all?: boolean;
+        dryRun?: boolean;
+        noAuto?: boolean;
+        type?: string;
+        description?: string;
+        links?: string[];
+        project?: string[];
+      }
+    ) => {
+      const result = await runPromote({
+        startDir: process.cwd(),
+        noteName: note,
+        all: options.all,
+        dryRun: options.dryRun,
+        noAuto: options.noAuto,
+        type: options.type,
+        description: options.description,
+        links: options.links,
+        project: options.project,
+      });
+      console.log(JSON.stringify(result));
+    }
+  );
+
+program
+  .command("archive")
+  .option("--dry-run", "preview without making changes")
+  .action(async (options: { dryRun?: boolean }) => {
+    const result = await runArchive({
+      startDir: process.cwd(),
+      dryRun: options.dryRun,
+    });
     console.log(JSON.stringify(result));
   });
 

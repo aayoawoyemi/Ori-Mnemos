@@ -4,7 +4,7 @@ Memory infrastructure for AI agents.
 
 Ori is an open source, markdown-native system that gives agents persistent, shared, human-readable memory without a database.
 
-v0.1.0 - TypeScript CLI + MCP server + Claude Code bridge.
+v0.2.0 - TypeScript CLI + MCP server + Claude Code bridge.
 
 ## The Problem
 
@@ -29,7 +29,7 @@ Ori treats memory as first-class infrastructure.
 - Agent-native: designed for autonomous loops, not manual note apps.
 - Human-legible: inspectable, editable, versionable.
 - No lock-in: works with git + filesystem; no required cloud/database.
-- Deterministic v0.1: no LLM dependency for core operations.
+- Deterministic core: all operations work without an LLM. Enhancement is opt-in.
 
 ## Installation
 
@@ -87,6 +87,8 @@ ori query cross-project
 - `ori health`
 - `ori query <orphans|dangling|backlinks|cross-project> [note]`
 - `ori add <title> [--type <type>]`
+- `ori promote [note] [--dry-run] [--type] [--description] [--links] [--project]`
+- `ori archive [--dry-run]`
 - `ori validate <notePath>`
 - `ori bridge claude-code [--global]`
 - `ori serve --mcp`
@@ -144,6 +146,7 @@ Tools:
 - `ori_add`
 - `ori_validate`
 - `ori_health`
+- `ori_promote`
 
 Response envelope:
 
@@ -169,7 +172,7 @@ vault/
 |   +-- observations/
 ```
 
-## v0.1 Scope
+## v0.2 Scope
 
 Included:
 
@@ -177,14 +180,16 @@ Included:
 - Template-based schema validation
 - Graph queries (orphans, dangling, backlinks, cross-project)
 - Health diagnostics with vitality fade detection
-- Inbox-only capture path (`ori add`)
-- Claude bridge (project + global)
+- Inbox capture path (`ori add`) with optional auto-promotion
+- Promotion pipeline: heuristic classification, link detection, graph-based suggestions, footer injection (`ori promote`)
+- Archive workflow for old/isolated notes (`ori archive`)
+- LLM-enhanced promotion via Anthropic API (opt-in; Anthropic is the only supported provider in v0.2)
+- Claude Code bridge (project + global)
 - MCP transport and tool surface
 
 Not yet included:
 
-- LLM pipeline from inbox to notes
-- Automated forgetting/archive workflow
+- Additional LLM providers beyond Anthropic
 - Multi-runtime bridge generators beyond Claude Code
 - Hosted sync/distribution layer
 

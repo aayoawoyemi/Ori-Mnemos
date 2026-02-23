@@ -53,6 +53,6 @@ if (!hasVaultRoot(process.cwd())) {
   process.exit(0);
 }
 
-const result = spawnSync("ori", ["add", title, "--type", "insight"], { stdio: "inherit" });
+const result = spawnSync("ori", ["add", title, "--type", "insight"], { stdio: "inherit", shell: true });
 if (result.error) process.exit(0);
 process.exit(result.status ?? 0);

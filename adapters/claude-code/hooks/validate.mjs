@@ -51,6 +51,6 @@ if (!hasVaultRoot(process.cwd())) {
   process.exit(0);
 }
 
-const result = spawnSync("ori", ["validate", filePath], { stdio: "inherit" });
+const result = spawnSync("ori", ["validate", filePath], { stdio: "inherit", shell: true });
 if (result.error) process.exit(0);
 process.exit(result.status ?? 0);

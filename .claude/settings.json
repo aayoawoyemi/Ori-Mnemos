@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/orient.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/validate.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/capture.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

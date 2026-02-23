@@ -6,6 +6,8 @@ coverage/
 
 # Local Claude settings
 .claude/settings.local.json
+# Symlinks only — real hooks live in adapters/claude-code/hooks/
+.claude/hooks/
 
 # Session-specific memory (not for repo)
 memory/sessions/

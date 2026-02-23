@@ -8,6 +8,7 @@ import {
 import { runAdd } from "./add.js";
 import { runValidate } from "./validate.js";
 import { runHealth } from "./health.js";
+import { runPromote } from "./promote.js";
 
 const TOOL_LIST = [
   {
@@ -54,6 +55,46 @@ const TOOL_LIST = [
     name: "ori_health",
     description: "Full diagnostic",
     inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "ori_promote",
+    description:
+      "Promote an inbox note to notes/ with classification, linking, and area assignment. " +
+      "YOU are the intelligence layer — read the note, decide its type, write a description, " +
+      "identify links to existing notes, and pass your decisions as overrides. " +
+      "Heuristics run as fallback for anything you don't specify.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "inbox note filename or path",
+        },
+        type: {
+          type: "string",
+          description:
+            "Your classification: idea | decision | learning | insight | blocker | opportunity",
+        },
+        description: {
+          type: "string",
+          description:
+            "One sentence adding context beyond the title (max 200 chars)",
+        },
+        links: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Existing note titles this note should link to (use ori_status or ori_query to discover)",
+        },
+        project: {
+          type: "array",
+          items: { type: "string" },
+          description: "Project tags that apply to this note",
+        },
+        dry_run: { type: "boolean", description: "Preview changes without writing" },
+      },
+      required: ["path"],
+    },
   },
 ];
 
@@ -138,6 +179,22 @@ async function handleToolsCall(params: Record<string, unknown> | undefined) {
       return runValidate({ notePath: input.path });
     case "ori_health":
       return runHealth(process.cwd());
+    case "ori_promote":
+      if (typeof input.path !== "string") {
+        return { success: false, data: {}, warnings: ["path required"] };
+      }
+      return runPromote({
+        startDir: process.cwd(),
+        noteName: input.path,
+        dryRun: input.dry_run === true,
+        type: typeof input.type === "string" ? input.type : undefined,
+        description:
+          typeof input.description === "string" ? input.description : undefined,
+        links: Array.isArray(input.links) ? input.links as string[] : undefined,
+        project: Array.isArray(input.project)
+          ? input.project as string[]
+          : undefined,
+      });
     default:
       return { success: false, data: {}, warnings: ["unknown tool"] };
   }
@@ -163,7 +220,7 @@ export async function handleJsonRpcRequest(
     return jsonRpcResult(request.id, {
       protocolVersion: "2024-11-05",
       capabilities: { tools: {} },
-      serverInfo: { name: "ori-memory", version: "0.1.0" },
+      serverInfo: { name: "ori-memory", version: "0.2.0" },
     });
   }
 
