@@ -7,14 +7,25 @@
     "ai",
     "agent",
     "memory",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "knowledge-graph",
+    "semantic-search",
+    "vector-search",
     "markdown",
     "cli",
-    "knowledge-graph"
+    "persistent-memory",
+    "agent-memory",
+    "llm",
+    "embeddings",
+    "pagerank",
+    "identity"
   ],
-  "homepage": "https://github.com/aayoawoyemi/OriMnemos",
+  "homepage": "https://github.com/aayoawoyemi/Ori-Mnemos",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aayoawoyemi/OriMnemos.git"
+    "url": "https://github.com/aayoawoyemi/Ori-Mnemos.git"
   },
   "license": "Apache-2.0",
   "author": "Aayo Awoyemi",
