@@ -46,6 +46,16 @@ export type PromoteResult = {
 
 const AUTO_APPLY_THRESHOLD = 0.8;
 
+const TEMPLATE_PLACEHOLDER = /\{Content\s*[-—]/;
+
+/**
+ * Check if a note body still contains the unfilled template placeholder.
+ * Used as a quality gate to prevent promoting empty stubs.
+ */
+export function isTemplatePlaceholder(body: string): boolean {
+  return TEMPLATE_PLACEHOLDER.test(body);
+}
+
 /**
  * Parse an existing footer section from the body.
  * Looks for "## <heading>" or "<heading>:" followed by lines starting with "- ".

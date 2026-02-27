@@ -10,6 +10,7 @@ export type AddOptions = {
   startDir: string;
   title: string;
   type?: string;
+  content?: string;
 };
 
 export type AddResult = {
@@ -17,6 +18,21 @@ export type AddResult = {
   data: Record<string, unknown>;
   warnings: string[];
 };
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validateTitle(title: string): { valid: boolean; reason?: string } {
+  const trimmed = title.trim();
+  if (!trimmed) return { valid: false, reason: "Title is empty" };
+  if (UUID_PATTERN.test(trimmed))
+    return { valid: false, reason: "Title looks like a UUID, not a prose claim" };
+  if (!trimmed.includes(" "))
+    return { valid: false, reason: "Title must be multi-word (prose-as-title)" };
+  if (trimmed.length < 10)
+    return { valid: false, reason: "Title too short for a meaningful claim" };
+  return { valid: true };
+}
 
 function slugify(title: string): string {
   return title
@@ -27,6 +43,16 @@ function slugify(title: string): string {
 }
 
 export async function runAdd(options: AddOptions): Promise<AddResult> {
+  // Layer 1: Title validation
+  const titleCheck = validateTitle(options.title);
+  if (!titleCheck.valid) {
+    return {
+      success: false,
+      data: { reason: titleCheck.reason },
+      warnings: [titleCheck.reason!],
+    };
+  }
+
   const vaultRoot = await findVaultRoot(options.startDir);
   const paths = getVaultPaths(vaultRoot);
   const config = await loadConfig(paths.config);
@@ -50,8 +76,16 @@ export async function runAdd(options: AddOptions): Promise<AddResult> {
     access_count: 0,
   };
 
+  // Layer 2: Content parameter — replace template placeholder when content provided
   const titleLine = `# ${options.title}`;
-  const body = templateBody.replace(/# \{[^}]+\}/, titleLine);
+  let body: string;
+  if (options.content) {
+    body = templateBody
+      .replace(/# \{[^}]+\}/, titleLine)
+      .replace(/\{Content[^}]*\}/, options.content);
+  } else {
+    body = templateBody.replace(/# \{[^}]+\}/, titleLine);
+  }
 
   const content = stringifyFrontmatter(frontmatter, body);
   const rawSlug = slugify(options.title);
@@ -78,10 +112,11 @@ export async function runAdd(options: AddOptions): Promise<AddResult> {
     warnings.push("Description is empty");
   }
 
-  // Auto-ingest: promote immediately if config.promote.auto is true
+  // Layer 3: Smart auto-promote — only if note has real content
   const autoPromote = config.promote?.auto ?? false;
+  const hasRealContent = !body.includes("{Content");
 
-  if (autoPromote) {
+  if (autoPromote && hasRealContent) {
     try {
       const promoteResult = await runPromote({
         startDir: options.startDir,
@@ -102,6 +137,10 @@ export async function runAdd(options: AddOptions): Promise<AddResult> {
     } catch {
       warnings.push("Auto-promote failed, note remains in inbox");
     }
+  } else if (autoPromote && !hasRealContent) {
+    warnings.push(
+      "Auto-promote skipped: note has template placeholder body. Add content before promoting."
+    );
   }
 
   return {

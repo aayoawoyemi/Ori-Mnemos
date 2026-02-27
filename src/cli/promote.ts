@@ -5,7 +5,7 @@ import { loadConfig, resolveTemplatePath } from "../core/config.js";
 import { readFrontmatterFile, writeFrontmatterFile } from "../core/frontmatter.js";
 import { buildGraph } from "../core/graph.js";
 import { validateNoteAgainstSchema } from "../core/schema.js";
-import { computePromotion, type PromoteResult } from "../core/promote.js";
+import { computePromotion, isTemplatePlaceholder, type PromoteResult } from "../core/promote.js";
 import type { VaultIndex } from "../core/linkdetect.js";
 import type { ProjectKeywordConfig } from "../core/classify.js";
 export type PromoteOptions = {
@@ -147,6 +147,16 @@ export async function runPromote(
       skipped.push({
         path: inboxPath,
         reason: `Status is "${parsed.data.status}", not "inbox"`,
+      });
+      continue;
+    }
+
+    // Quality gate: reject template placeholder bodies
+    if (isTemplatePlaceholder(parsed.body)) {
+      skipped.push({
+        path: inboxPath,
+        reason:
+          "Note body contains unfilled template placeholder. Add content before promoting.",
       });
       continue;
     }

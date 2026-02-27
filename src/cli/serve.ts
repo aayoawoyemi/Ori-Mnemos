@@ -303,12 +303,19 @@ export async function runServeMcp(startDir: string) {
     {
       title: z.string().describe("Note title (prose-as-title)"),
       type: z.string().optional().describe("Note type (default: insight)"),
+      content: z
+        .string()
+        .optional()
+        .describe(
+          "Note body content. If omitted, creates a template stub that must be filled before promotion."
+        ),
     },
-    async ({ title, type }) => {
+    async ({ title, type, content }) => {
       const result = await runAdd({
         startDir: vaultDir,
         title,
         type: type ?? "insight",
+        content: content ?? undefined,
       });
       return textResult(result);
     }
