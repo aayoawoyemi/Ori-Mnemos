@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.aayoawoyemi/ori-memory",
-  "description": "Persistent memory infrastructure for AI agents. Identity layer, knowledge graph, 3-signal retrieval, and MCP transport — no database, no cloud dependency.",
+  "description": "Persistent memory infrastructure for AI agents. Identity, knowledge graph, and search.",
   "repository": {
     "url": "https://github.com/aayoawoyemi/Ori-Mnemos",
     "source": "github"
