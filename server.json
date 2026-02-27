@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.aayoawoyemi/ori-memory",
-  "description": "Persistent, markdown-native AI agent memory with knowledge graph and MCP transport.",
+  "description": "Persistent memory infrastructure for AI agents. Identity layer, knowledge graph, 3-signal retrieval, and MCP transport — no database, no cloud dependency.",
   "repository": {
-    "url": "https://github.com/aayoawoyemi/OriMnemos",
+    "url": "https://github.com/aayoawoyemi/Ori-Mnemos",
     "source": "github"
   },
-  "version": "0.2.1",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ori-memory",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "transport": {
         "type": "stdio"
       }
