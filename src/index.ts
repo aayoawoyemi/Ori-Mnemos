@@ -8,6 +8,8 @@ import {
   runQueryDangling,
   runQueryOrphans,
   runQueryCrossProject,
+  runQueryImportant,
+  runQueryFading,
 } from "./cli/query.js";
 import { runValidate } from "./cli/validate.js";
 import { runAdd } from "./cli/add.js";
@@ -15,6 +17,9 @@ import { runPromote } from "./cli/promote.js";
 import { runArchive } from "./cli/archive.js";
 import { runBridgeClaudeCode, runBridgeClaudeCodeGlobal } from "./cli/bridge.js";
 import { runServeMcp } from "./cli/serve.js";
+import { runQueryRanked, runQuerySimilar } from "./cli/search.js";
+import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
+import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
 
 const program = new Command();
 
@@ -23,7 +28,7 @@ program
   .description(
     "Ori Mnemos - markdown-native cognitive harness for persistent agent memory"
   )
-  .version("0.2.0");
+  .version("0.3.0");
 
 program
   .command("init")
@@ -49,9 +54,11 @@ program
 
 program
   .command("query")
-  .argument("<kind>", "orphans | dangling | backlinks | cross-project")
-  .argument("[note]", "note title for backlinks")
-  .action(async (kind: string, note?: string) => {
+  .argument("<kind>", "orphans | dangling | backlinks | cross-project | ranked | similar | important | fading")
+  .argument("[note]", "note title for backlinks, or query text for ranked/similar")
+  .option("--limit <n>", "max results", "10")
+  .option("--threshold <n>", "vitality threshold for fading", "0.3")
+  .action(async (kind: string, note: string | undefined, options: { limit?: string; threshold?: string }) => {
     let result;
     switch (kind) {
       case "orphans":
@@ -68,6 +75,24 @@ program
         break;
       case "cross-project":
         result = await runQueryCrossProject(process.cwd());
+        break;
+      case "ranked":
+        if (!note) {
+          throw new Error("ranked requires a query text");
+        }
+        result = await runQueryRanked(process.cwd(), note);
+        break;
+      case "similar":
+        if (!note) {
+          throw new Error("similar requires a query text");
+        }
+        result = await runQuerySimilar(process.cwd(), note);
+        break;
+      case "important":
+        result = await runQueryImportant(process.cwd(), options.limit ? parseInt(options.limit, 10) : undefined);
+        break;
+      case "fading":
+        result = await runQueryFading(process.cwd(), options.threshold ? parseFloat(options.threshold) : undefined);
         break;
       default:
         throw new Error(`Unknown query kind: ${kind}`);
@@ -158,11 +183,49 @@ program
 program
   .command("serve")
   .option("--mcp", "run MCP server")
-  .action(async (options: { mcp?: boolean }) => {
+  .option("--vault <path>", "explicit vault root path")
+  .action(async (options: { mcp?: boolean; vault?: string }) => {
     if (!options.mcp) {
       throw new Error("Only MCP server is supported: use --mcp");
     }
-    await runServeMcp(process.cwd());
+    await runServeMcp(options.vault ?? process.cwd());
+  });
+
+program
+  .command("index")
+  .argument("<action>", "build | status")
+  .option("--force", "rebuild all embeddings")
+  .action(async (action: string, options: { force?: boolean }) => {
+    let result;
+    switch (action) {
+      case "build":
+        result = await runIndexBuild(process.cwd(), options.force);
+        break;
+      case "status":
+        result = await runIndexStatus(process.cwd());
+        break;
+      default:
+        throw new Error(`Unknown index action: ${action}`);
+    }
+    console.log(JSON.stringify(result));
+  });
+
+program
+  .command("graph")
+  .argument("<action>", "metrics | communities")
+  .action(async (action: string) => {
+    let result;
+    switch (action) {
+      case "metrics":
+        result = await runGraphMetrics(process.cwd());
+        break;
+      case "communities":
+        result = await runGraphCommunities(process.cwd());
+        break;
+      default:
+        throw new Error(`Unknown graph action: ${action}`);
+    }
+    console.log(JSON.stringify(result));
   });
 
 program.parseAsync(process.argv).catch((err) => {

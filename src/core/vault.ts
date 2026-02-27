@@ -8,6 +8,8 @@ export type VaultPaths = {
   notes: string;
   inbox: string;
   templates: string;
+  self: string;
+  selfMemory: string;
   ops: string;
   opsSessions: string;
   opsObservations: string;
@@ -22,7 +24,12 @@ export async function isVaultRoot(dir: string): Promise<boolean> {
   }
 }
 
-export async function findVaultRoot(startDir: string): Promise<string> {
+export async function findVaultRoot(startDir: string, override?: string): Promise<string> {
+  if (override) {
+    const resolved = path.resolve(override);
+    if (await isVaultRoot(resolved)) return resolved;
+    throw new Error(`Specified vault path is not a vault: ${resolved}`);
+  }
   let current = path.resolve(startDir);
   // Walk up to filesystem root
   while (true) {
@@ -45,6 +52,8 @@ export function getVaultPaths(root: string): VaultPaths {
     notes: path.join(root, "notes"),
     inbox: path.join(root, "inbox"),
     templates: path.join(root, "templates"),
+    self: path.join(root, "self"),
+    selfMemory: path.join(root, "self", "memory"),
     ops: path.join(root, "ops"),
     opsSessions: path.join(root, "ops", "sessions"),
     opsObservations: path.join(root, "ops", "observations"),

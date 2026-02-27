@@ -9,24 +9,23 @@ const ORI_HOOK_CMD_MARKER = "hooks/ori/";
 const CLAUDE_SNIPPET = `# Ori Mnemos - Claude Code Bridge
 
 ## Session Rhythm
-Every session: Orient -> Retrieve -> Work -> Persist
+Every session: Orient -> Work -> Persist
 
 ### Orient (always first)
-- Run \`ori status\`
-- Scan vault structure before reading any note
+- Ori injects identity via MCP instructions automatically
+- Call \`ori_orient\` for session briefing (daily + goals + reminders + vault status)
+- Use \`ori_orient brief=false\` for full context including identity and methodology
+- Read \`ori://identity\` or \`ori://goals\` resources for specific context
 
-### Retrieve
-- Run \`ori query\` before creating new notes
-- Use progressive disclosure: titles -> descriptions -> full reads
-
-### Capture
-- NEVER write to notes/ directly
-- Use \`ori add\` to write to inbox/
-
-### Verify
-- Run \`ori validate\` on any note you create
+### Work
+- Use \`ori_query_ranked\` to find related notes before creating new ones
+- Use \`ori add\` to capture insights to inbox/
+- NEVER write to notes/ directly — use \`ori add\` then \`ori_promote\`
 
 ### Persist
+- Use \`ori_update\` file=daily to mark completed items
+- Use \`ori_update\` file=goals to update active threads
+- Run \`ori validate\` on notes you create
 - Keep notes atomic and link to maps
 `;
 

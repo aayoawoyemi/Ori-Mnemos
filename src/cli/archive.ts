@@ -40,7 +40,12 @@ export function shouldArchive(
 ): boolean {
   if (frontmatter.status === "archived") return false;
 
-  const lastAccessed = frontmatter.last_accessed;
+  const lastAccessed =
+    typeof frontmatter.last_accessed === "string"
+      ? frontmatter.last_accessed
+      : typeof frontmatter.created === "string"
+        ? frontmatter.created
+        : null;
   if (typeof lastAccessed !== "string") return false;
 
   const accessDate = new Date(lastAccessed);
@@ -75,9 +80,11 @@ export async function runArchive(
 
     if (!shouldArchive(parsed.data, incomingLinks, now)) continue;
 
-    const days = Math.round(
-      daysBetween(new Date(parsed.data.last_accessed as string), now)
-    );
+    const accessDateStr =
+      typeof parsed.data.last_accessed === "string"
+        ? parsed.data.last_accessed
+        : (parsed.data.created as string);
+    const days = Math.round(daysBetween(new Date(accessDateStr), now));
     const reason =
       ["completed", "superseded"].includes(parsed.data.status as string)
         ? `terminal status (${parsed.data.status}) + ${days}d since access`

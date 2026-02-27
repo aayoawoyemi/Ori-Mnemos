@@ -27,3 +27,12 @@ CLAUDE.md
 PLAN.md
 ROADMAP.md
 tests/
+.npmrc
+
+# Registry tokens (sensitive)
+.mcpregistry_github_token
+.mcpregistry_registry_token
+mcp-publisher.exe
+
+# Benchmarks (local)
+bench/

@@ -45,10 +45,16 @@ export async function runHealth(startDir: string): Promise<HealthResult> {
       schemaViolations.push({ note, errors: validation.errors });
     }
 
-    const lastAccessedRaw =
+    const dataObj =
       parsed.data && typeof parsed.data === "object"
-        ? (parsed.data as Record<string, unknown>)["last_accessed"]
+        ? (parsed.data as Record<string, unknown>)
         : null;
+    const lastAccessedRaw =
+      typeof dataObj?.["last_accessed"] === "string"
+        ? dataObj["last_accessed"]
+        : typeof dataObj?.["created"] === "string"
+          ? dataObj["created"]
+          : null;
     if (typeof lastAccessedRaw === "string") {
       const last = new Date(lastAccessedRaw);
       if (!isNaN(last.getTime())) {

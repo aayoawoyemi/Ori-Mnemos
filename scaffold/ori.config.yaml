@@ -8,10 +8,10 @@ templates:
   by_type:
     map: templates/map.md
     moc: templates/map.md
-    source: templates/source.md
-    observation: templates/observation.md
 
 vitality:
+  model: "actr"
+  actr_decay: 0.5
   decay:
     idea: 90
     decision: 30
@@ -20,6 +20,15 @@ vitality:
     blocker: 14
     opportunity: 30
   base: 1.0
+  metabolic_rates:
+    self: 0.1
+    notes: 1.0
+    ops: 3.0
+  structural_boost_per_link: 0.1
+  structural_boost_cap: 10
+  revival_decay_rate: 0.2
+  revival_window_days: 14
+  access_saturation_k: 10
 
 promote:
   auto: true               # ori add auto-promotes to notes/
@@ -30,6 +39,46 @@ promote:
   default_area: "index"    # fallback area when no project match
 
 llm:
-  provider: null           # null | "anthropic"
-  model: null
+  provider: null           # "anthropic" | "openai" (OpenAI-compatible)
+  model: null              # e.g. "claude-sonnet-4-20250514", "gpt-4o", "qwen2.5"
   api_key_env: null        # env var name containing API key
+  base_url: null           # API base URL (null = provider default)
+  # Examples:
+  #   Anthropic:  provider: "anthropic", model: "claude-sonnet-4-20250514", api_key_env: "ANTHROPIC_API_KEY"
+  #   OpenAI:     provider: "openai", model: "gpt-4o", api_key_env: "OPENAI_API_KEY"
+  #   Ollama:     provider: "openai", model: "llama3", base_url: "http://localhost:11434/v1"
+  #   LM Studio:  provider: "openai", model: "local-model", base_url: "http://localhost:1234/v1"
+  #   Kimi K2:    provider: "openai", model: "kimi-k2", api_key_env: "MOONSHOT_API_KEY", base_url: "https://api.moonshot.cn/v1"
+
+graph:
+  pagerank_alpha: 0.85
+  bridge_vitality_floor: 0.5
+  hub_degree_multiplier: 2.0
+
+engine:
+  embedding_model: "Xenova/all-MiniLM-L6-v2"
+  embedding_dims: 384
+  piecewise_bins: 8
+  community_dims: 16
+  db_path: ".ori/embeddings.db"
+
+retrieval:
+  default_limit: 10
+  candidate_multiplier: 5
+  rrf_k: 60
+  signal_weights:
+    composite: 2.0
+    keyword: 1.0
+    graph: 1.5
+  exploration_budget: 0.10
+
+bm25:
+  k1: 1.2
+  b: 0.75
+  title_boost: 3.0
+  description_boost: 2.0
+
+ips:
+  enabled: true
+  epsilon: 0.01
+  log_path: "ops/access.jsonl"

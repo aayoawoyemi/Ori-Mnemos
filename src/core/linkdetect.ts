@@ -1,3 +1,8 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+import type { EngineConfig } from "./config.js";
+import { initDB, loadVectors, cosine } from "./engine.js";
 import type { LinkGraph } from "./graph.js";
 
 export type DetectedLink = {
@@ -13,7 +18,8 @@ export type LinkSuggestion = {
     | "title-match"
     | "tag-overlap"
     | "project-overlap"
-    | "shared-neighborhood";
+    | "shared-neighborhood"
+    | "semantic-similarity";
   confidence: number;
 };
 
@@ -224,4 +230,63 @@ export function suggestLinks(
   return Array.from(suggestions.values()).sort(
     (a, b) => b.confidence - a.confidence
   );
+}
+
+/**
+ * Extend suggestLinks with a 5th signal: semantic similarity.
+ * Loads the embedding index (if it exists) and computes cosine similarity
+ * between the current note's title vector and all other notes.
+ * Falls back gracefully to base suggestions when the index is unavailable.
+ */
+export function suggestLinksWithSemantic(
+  noteTitle: string,
+  frontmatter: Record<string, unknown>,
+  body: string,
+  vaultIndex: VaultIndex,
+  vaultRoot: string,
+  engineConfig: EngineConfig,
+): LinkSuggestion[] {
+  // 1. Get base suggestions from existing heuristics
+  const suggestions = suggestLinks(frontmatter, body, vaultIndex);
+  const existingTitles = new Set(suggestions.map((s) => s.title));
+
+  // 2. Try semantic similarity from the embedding index
+  const dbPath = path.resolve(vaultRoot, engineConfig.db_path);
+  if (!existsSync(dbPath)) return suggestions;
+
+  try {
+    const db = initDB(dbPath);
+    const vectors = loadVectors(db);
+    db.close();
+
+    const noteVec = vectors.get(noteTitle);
+    if (!noteVec) return suggestions;
+
+    // Compute cosine similarity of title vectors against all other notes
+    const similarities: Array<{ title: string; similarity: number }> = [];
+    for (const [title, stored] of vectors) {
+      if (title === noteTitle) continue;
+      if (existingTitles.has(title)) continue; // already suggested
+      const sim = cosine(noteVec.titleVec, stored.titleVec);
+      if (sim > 0.5) {
+        similarities.push({ title, similarity: sim });
+      }
+    }
+
+    // Sort by similarity descending, take top 5
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    for (const { title, similarity } of similarities.slice(0, 5)) {
+      suggestions.push({
+        title,
+        reason: "semantic-similarity",
+        confidence: Math.min(0.95, similarity), // cap confidence
+      });
+    }
+  } catch {
+    // Graceful fallback — semantic search is optional
+  }
+
+  // Re-sort all suggestions by confidence
+  suggestions.sort((a, b) => b.confidence - a.confidence);
+  return suggestions;
 }

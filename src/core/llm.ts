@@ -17,12 +17,14 @@ export type LlmConfig = {
   provider: string | null;
   model: string | null;
   api_key_env: string | null;
+  base_url: string | null;
 };
 
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
   provider: null,
   model: null,
   api_key_env: null,
+  base_url: null,
 };
 
 export interface LlmProvider {
@@ -67,6 +69,14 @@ export async function createProvider(config: LlmConfig): Promise<LlmProvider> {
       return new AnthropicProvider(
         apiKey,
         config.model ?? "claude-sonnet-4-20250514"
+      );
+    }
+    case "openai": {
+      const { OpenAICompatProvider } = await import("../providers/openai-compat.js");
+      return new OpenAICompatProvider(
+        apiKey,
+        config.model ?? "gpt-4o",
+        config.base_url
       );
     }
     default:

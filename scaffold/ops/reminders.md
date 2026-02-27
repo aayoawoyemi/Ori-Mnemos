@@ -1,3 +1,4 @@
 # Reminders
 
-- [ ] 2026-02-19 Example reminder
+<!-- Format: - [ ] YYYY-MM-DD: Description -->
+<!-- Completed: - [x] YYYY-MM-DD: Description (done YYYY-MM-DD) -->

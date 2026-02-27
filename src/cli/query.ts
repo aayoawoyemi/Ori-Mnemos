@@ -3,6 +3,9 @@ import { promises as fs, type Dirent } from "node:fs";
 import { findVaultRoot, getVaultPaths, listNoteTitles } from "../core/vault.js";
 import { buildGraph, findBacklinks, findDanglingLinks, findOrphans } from "../core/graph.js";
 import { parseFrontmatter } from "../core/frontmatter.js";
+import { computeGraphMetrics } from "../core/importance.js";
+import { rankByImportance, rankByFading } from "../core/ranking.js";
+import { computeVitalityFull } from "../core/vitality.js";
 
 export type QueryResult = {
   success: boolean;
@@ -83,6 +86,77 @@ export async function runQueryCrossProject(startDir: string): Promise<QueryResul
   return {
     success: true,
     data: { notes: results },
+    warnings: [],
+  };
+}
+
+export async function runQueryImportant(
+  startDir: string,
+  limit?: number
+): Promise<QueryResult> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const { notes } = getVaultPaths(vaultRoot);
+  const allNotes = await listNoteTitles(notes);
+  const graph = await buildGraph(notes);
+  const metrics = computeGraphMetrics(graph);
+  const results = rankByImportance(allNotes, metrics.pagerank, limit ?? 10);
+
+  return {
+    success: true,
+    data: { results },
+    warnings: [],
+  };
+}
+
+export async function runQueryFading(
+  startDir: string,
+  threshold?: number,
+  limit?: number
+): Promise<QueryResult> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const { notes: notesDir } = getVaultPaths(vaultRoot);
+  const allNotes = await listNoteTitles(notesDir);
+  const graph = await buildGraph(notesDir);
+  const metrics = computeGraphMetrics(graph);
+
+  const vitalityScores = new Map<string, number>();
+
+  for (const title of allNotes) {
+    const filePath = path.join(notesDir, `${title}.md`);
+    let accessCount = 0;
+    let created = new Date().toISOString().slice(0, 10);
+
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      const parsed = parseFrontmatter(content);
+      if (parsed.data) {
+        const fm = parsed.data as Record<string, unknown>;
+        if (typeof fm.access_count === "number") accessCount = fm.access_count;
+        if (typeof fm.created === "string") created = fm.created;
+      }
+    } catch {
+      // If file can't be read, use defaults
+    }
+
+    const inDegree = graph.incoming.get(title)?.size ?? 0;
+
+    const vitality = computeVitalityFull({
+      accessCount,
+      created,
+      noteTitle: title,
+      inDegree,
+      bridges: metrics.bridges,
+    });
+
+    vitalityScores.set(title, vitality);
+  }
+
+  const all = rankByFading(allNotes, vitalityScores, threshold ?? 0.3);
+  const results = limit != null ? all.slice(0, limit) : all;
+
+  return {
+    success: true,
+    data: { results },
     warnings: [],
   };
 }

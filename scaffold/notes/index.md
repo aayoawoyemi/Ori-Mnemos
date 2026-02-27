@@ -1,19 +1,16 @@
 ---
-description: Entry point map for this vault
+description: Entry point for your agent's memory graph
 type: moc
 ---
 
-# index
+# Memory Index
 
-Use this map as the root entry point. Link all major project maps here.
+Your agent's persistent memory starts here.
 
-## Project Maps
-- [[project map]]
+## Getting Started
+1. `ori add "your first memory"` — capture something
+2. `ori query ranked "search term"` — find related memories
+3. `ori health` — check vault health
 
-## Recent Additions
-- [[new note]]
-
----
-
-Areas:
-- [[index]]
+## Key Notes
+(Linked as the graph grows)

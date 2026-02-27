@@ -1,8 +1,16 @@
 {
   "name": "ori-memory",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "mcpName": "io.github.aayoawoyemi/ori-memory",
   "description": "The Git of AI memory - open source, markdown-native framework for persistent, shared agent memory without a database",
-  "keywords": ["ai", "agent", "memory", "markdown", "cli", "knowledge-graph"],
+  "keywords": [
+    "ai",
+    "agent",
+    "memory",
+    "markdown",
+    "cli",
+    "knowledge-graph"
+  ],
   "homepage": "https://github.com/aayoawoyemi/OriMnemos",
   "repository": {
     "type": "git",
@@ -31,9 +39,16 @@
     "check:v01": "npm run lint && npm run build && npm run smoke:bin && npm run pack:check"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.6.2",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "glob": "^11.0.0",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-metrics": "^2.4.0",
     "yaml": "^2.4.0"
   },
   "devDependencies": {
