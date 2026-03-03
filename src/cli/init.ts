@@ -41,12 +41,20 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 
   await copyDir(scaffoldRoot, target, result);
 
-  // Ensure top-level marker exists
+  // Ensure .ori marker exists (as a directory — engine stores embeddings.db here)
   const paths = getVaultPaths(target);
   try {
-    await fs.access(paths.marker);
+    const stat = await fs.stat(paths.marker);
+    if (!stat.isDirectory()) {
+      // Migrate: .ori was a file in older versions, now it's a directory
+      await fs.unlink(paths.marker);
+      await fs.mkdir(paths.marker, { recursive: true });
+      result.created.push(paths.marker);
+    } else {
+      result.skipped.push(paths.marker);
+    }
   } catch {
-    await fs.writeFile(paths.marker, "");
+    await fs.mkdir(paths.marker, { recursive: true });
     result.created.push(paths.marker);
   }
 

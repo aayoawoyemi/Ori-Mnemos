@@ -24,6 +24,28 @@ This is not a note-taking app. It is infrastructure — the layer between an age
 
 ---
 
+## Token Economics
+
+Without retrieval, every question an agent asks requires dumping the entire vault into context. With Ori, the agent gets the 10 most relevant notes — and the cost stays flat no matter how large the vault grows.
+
+| Vault Size | Without Ori (raw dump) | With Ori (single query) | Savings |
+|:----------:|:----------------------:|:-----------------------:|:-------:|
+| 50 notes | 10,100 tokens | 850 tokens | **91%** |
+| 200 notes | 40,400 tokens | 850 tokens | **98%** |
+| 500 notes | 101,000 tokens | 850 tokens | **99.2%** |
+| 1,000 notes | 202,000 tokens | 850 tokens | **99.6%** |
+| 5,000 notes | 1,010,000 tokens | 850 tokens | **99.9%** |
+
+At 1,000 notes, a single raw dump burns **202K tokens** — before the model even thinks about the answer. Ten questions in a session? That's **2 million tokens** just for retrieval. With Ori, the same ten questions cost **8,500 tokens total**.
+
+A typical session (orient + 10 queries + 2 note captures) costs **~$0.10** with Ori. Without it: **~$6.00+**.
+
+> Query cost is constant. Vault growth is irrelevant. That's the point.
+
+*Benchmarked with Claude Sonnet 4 pricing ($3/$15 per MTok). Methodology and raw data in [`bench/`](./bench/).*
+
+---
+
 ## Architecture
 
 ```

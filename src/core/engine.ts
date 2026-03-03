@@ -122,6 +122,7 @@ export async function embedText(
     cachedPipeline = await (hfPipeline as any)(
       "feature-extraction",
       config.embedding_model,
+      { dtype: "fp32" },
     );
     cachedModelName = config.embedding_model;
   }
