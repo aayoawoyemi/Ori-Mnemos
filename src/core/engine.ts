@@ -62,6 +62,11 @@ export function initDB(dbPath: string): InstanceType<typeof Database> {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE IF NOT EXISTS boosts (
+      title TEXT PRIMARY KEY,
+      boost REAL DEFAULT 0,
+      updated TEXT
+    );
   `);
 
   return db;

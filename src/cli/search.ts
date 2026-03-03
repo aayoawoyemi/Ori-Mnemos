@@ -16,12 +16,11 @@ import {
   personalizedPageRank,
   buildGraphologyGraph,
 } from "../core/importance.js";
-import type { NoteIndex } from "../core/importance.js";
-import { computeVitalityFull } from "../core/vitality.js";
 import { fuseScoreWeightedRRF } from "../core/fusion.js";
 import { injectExploration, logAccess } from "../core/tracking.js";
 import type { ScoredNote } from "../core/ranking.js";
-import { parseFrontmatter } from "../core/frontmatter.js";
+import { buildNoteIndex, computeAllVitality } from "../core/noteindex.js";
+import { loadBoosts, applyActivationBoosts, computeActivationSpread } from "../core/activation.js";
 
 export type SearchResult = {
   success: boolean;
@@ -43,6 +42,7 @@ export async function runQueryRanked(
   startDir: string,
   query: string,
   limit?: number,
+  excludeArchived?: boolean,
 ): Promise<SearchResult> {
   const warnings: string[] = [];
 
@@ -61,19 +61,7 @@ export async function runQueryRanked(
   const noteIndex = await buildNoteIndex(paths.notes, allTitles);
   const graphMetrics = computeGraphMetrics(linkGraph, noteIndex);
 
-  // 4. Compute vitality for all notes
-  const vitalityScores = await computeAllVitality(
-    paths.notes,
-    allTitles,
-    linkGraph,
-    graphMetrics.bridges,
-    config,
-  );
-
-  // 5. Classify query intent
-  const classified = classifyIntent(query, allTitles);
-
-  // 6. Ensure embedding index exists
+  // 4. Ensure embedding index exists and open DB (single connection for entire function)
   const dbPath = path.resolve(vaultRoot, config.engine.db_path);
   let dbExists = true;
   try {
@@ -96,14 +84,25 @@ export async function runQueryRanked(
     db.close();
     warnings.push("Embedding index is empty — building now");
     await buildIndex(vaultRoot, config.engine);
-    // Re-open after build
-    const db2 = initDB(dbPath);
-    var storedVectors = loadVectors(db2);
-    db2.close();
-  } else {
-    var storedVectors = loadVectors(db);
-    db.close();
   }
+
+  // Re-open (or keep open) — single DB handle for reads + writes
+  const mainDb = rowCount === 0 ? initDB(dbPath) : db;
+  const storedVectors = loadVectors(mainDb);
+
+  // 5. Load activation boosts and compute vitality
+  const boostScores = config.activation?.enabled !== false ? loadBoosts(mainDb) : undefined;
+  const vitalityScores = await computeAllVitality(
+    paths.notes,
+    allTitles,
+    linkGraph,
+    graphMetrics.bridges,
+    config,
+    boostScores,
+  );
+
+  // 6. Classify query intent
+  const classified = classifyIntent(query, allTitles);
 
   // 8. Signal 1: composite vector search
   const compositeResults = await searchComposite({
@@ -142,15 +141,23 @@ export async function runQueryRanked(
     config.retrieval,
   );
 
-  // 12. Trim to limit, then inject exploration
-  const trimmed = fused.slice(0, resultLimit);
+  // 12. Filter archived before trimming — ensures full result count
+  const filtered = excludeArchived !== false
+    ? fused.filter(note => {
+        const fm = noteIndex.frontmatter.get(note.title);
+        return fm?.status !== 'archived';
+      })
+    : fused;
+
+  // 13. Trim to limit, then inject exploration
+  const trimmed = filtered.slice(0, resultLimit);
   const withExploration = injectExploration(
     trimmed,
     allTitles,
     config.retrieval.exploration_budget,
   );
 
-  // 13. Log access event
+  // 14. Log access event
   await logAccess(
     vaultRoot,
     {
@@ -167,6 +174,28 @@ export async function runQueryRanked(
     },
     config.ips,
   );
+
+  // 15. Spreading activation: propagate boosts to neighbors of top results
+  if (config.activation?.enabled !== false) {
+    const allBoosts = new Map<string, number>();
+    for (const result of withExploration.slice(0, 3)) {
+      const spread = computeActivationSpread(
+        result.title,
+        result.score,
+        linkGraph,
+        config.activation,
+      );
+      for (const [title, boost] of spread.propagated) {
+        allBoosts.set(title, (allBoosts.get(title) ?? 0) + boost);
+      }
+    }
+    if (allBoosts.size > 0) {
+      applyActivationBoosts(mainDb, allBoosts);
+    }
+  }
+
+  // 16. Close DB
+  mainDb.close();
 
   return {
     success: true,
@@ -187,6 +216,7 @@ export async function runQuerySimilar(
   startDir: string,
   query: string,
   limit?: number,
+  excludeArchived?: boolean,
 ): Promise<SearchResult> {
   const warnings: string[] = [];
 
@@ -244,16 +274,28 @@ export async function runQuerySimilar(
     db.close();
   }
 
-  // 5. Composite search only
-  const results = await searchComposite({
+  // 5. Composite search only (fetch extra candidates if filtering archived)
+  const compositeLimit = excludeArchived !== false
+    ? resultLimit * config.retrieval.candidate_multiplier
+    : resultLimit;
+  const compositeResults = await searchComposite({
     queryText: query,
     intent: classified,
     storedVectors: vectors,
     graphMetrics,
     vitalityScores,
-    limit: resultLimit,
+    limit: compositeLimit,
     config: config.engine,
   });
+
+  // 6. Filter archived before trimming
+  const filtered = excludeArchived !== false
+    ? compositeResults.filter(note => {
+        const fm = noteIndex.frontmatter.get(note.title);
+        return fm?.status !== 'archived';
+      })
+    : compositeResults;
+  const results = filtered.slice(0, resultLimit);
 
   return {
     success: true,
@@ -267,84 +309,3 @@ export async function runQuerySimilar(
   };
 }
 
-// ---------------------------------------------------------------------------
-//  Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Build a NoteIndex (frontmatter map) for all notes in a directory.
- */
-async function buildNoteIndex(
-  notesDir: string,
-  titles: string[],
-): Promise<NoteIndex> {
-  const frontmatter = new Map<string, Record<string, unknown>>();
-
-  for (const title of titles) {
-    const filePath = path.join(notesDir, `${title}.md`);
-    try {
-      const content = await fs.readFile(filePath, "utf8");
-      const { data } = parseFrontmatter(content);
-      if (data) {
-        frontmatter.set(title, data);
-      }
-    } catch {
-      // skip unreadable files
-    }
-  }
-
-  return { frontmatter };
-}
-
-/**
- * Compute vitality scores for all notes using the full ACT-R model.
- */
-async function computeAllVitality(
-  notesDir: string,
-  titles: string[],
-  linkGraph: import("../core/graph.js").LinkGraph,
-  bridges: Set<string>,
-  config: import("../core/config.js").OriConfig,
-): Promise<Map<string, number>> {
-  const scores = new Map<string, number>();
-  const now = new Date();
-
-  for (const title of titles) {
-    const filePath = path.join(notesDir, `${title}.md`);
-    let accessCount = 0;
-    let created = now.toISOString();
-
-    try {
-      const content = await fs.readFile(filePath, "utf8");
-      const { data } = parseFrontmatter(content);
-      if (data) {
-        if (typeof data.access_count === "number") {
-          accessCount = data.access_count;
-        }
-        if (typeof data.created === "string") {
-          created = data.created;
-        }
-      }
-    } catch {
-      // use defaults
-    }
-
-    const inDegree = linkGraph.incoming.get(title)?.size ?? 0;
-
-    const vitality = computeVitalityFull({
-      accessCount,
-      created,
-      noteTitle: title,
-      inDegree,
-      bridges,
-      metabolicRate: config.vitality.metabolic_rates?.notes ?? 1.0,
-      actrDecay: config.vitality.actr_decay ?? 0.5,
-      accessSaturationK: config.vitality.access_saturation_k ?? 10,
-      bridgeFloor: config.graph.bridge_vitality_floor,
-    });
-
-    scores.set(title, vitality);
-  }
-
-  return scores;
-}

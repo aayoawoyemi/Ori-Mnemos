@@ -84,6 +84,7 @@ export type VitalityFullParams = {
   actrDecay?: number;     // default 0.5
   accessSaturationK?: number; // default 10
   bridgeFloor?: number;   // default 0.5
+  activationBoost?: number; // spreading activation boost from neighbor access
 };
 
 /**
@@ -131,11 +132,50 @@ export function computeVitalityFull(params: VitalityFullParams): number {
   const revival = computeRevivalBoost(daysSinceNewConnection);
   vitality = vitality + revival * 0.2; // Revival adds up to 20% boost
 
-  // 5. Bridge protection floor
+  // 5. Spreading activation boost (from neighbor access)
+  vitality = vitality + (params.activationBoost ?? 0);
+
+  // 6. Bridge protection floor
   if (bridges.has(noteTitle)) {
     vitality = Math.max(vitality, bridgeFloor);
   }
 
-  // 6. Clamp to [0, 1]
+  // 7. Clamp to [0, 1]
   return Math.max(0, Math.min(1, vitality));
+}
+
+// ---------------------------------------------------------------------------
+// Zone Classification
+// ---------------------------------------------------------------------------
+
+export type VitalityZone = 'active' | 'stale' | 'fading' | 'archived';
+
+export interface ZoneThresholds {
+  active: number;   // >= this = active (default 0.6)
+  stale: number;    // >= this = stale (default 0.3)
+  fading: number;   // >= this = fading (default 0.1)
+  // below fading threshold = archived zone
+}
+
+export const DEFAULT_ZONE_THRESHOLDS: ZoneThresholds = {
+  active: 0.6,
+  stale: 0.3,
+  fading: 0.1,
+};
+
+/**
+ * Classify a note into a vitality zone.
+ * Notes with frontmatter status: "archived" stay archived regardless of score.
+ * Pure classification — no "candidate" logic here, that belongs in prune.
+ */
+export function classifyZone(
+  vitality: number,
+  currentStatus?: string,
+  thresholds: ZoneThresholds = DEFAULT_ZONE_THRESHOLDS,
+): VitalityZone {
+  if (currentStatus === 'archived') return 'archived';
+  if (vitality >= thresholds.active) return 'active';
+  if (vitality >= thresholds.stale) return 'stale';
+  if (vitality >= thresholds.fading) return 'fading';
+  return 'archived';
 }

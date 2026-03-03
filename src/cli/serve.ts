@@ -18,6 +18,7 @@ import { runHealth } from "./health.js";
 import { runPromote } from "./promote.js";
 import { runQueryRanked, runQuerySimilar } from "./search.js";
 import { runIndexBuild } from "./indexcmd.js";
+import { runPrune } from "./prune.js";
 import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
 import { runInit } from "./init.js";
 
@@ -140,7 +141,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
   const instructions = await buildInstructions(paths, autoCreated);
 
   const server = new McpServer(
-    { name: "ori-memory", version: "0.3.2" },
+    { name: "ori-memory", version: "0.3.3" },
     { instructions },
   );
 
@@ -231,6 +232,25 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         // Check first-run even in brief mode so bootstrap path works
         const identity = await safeReadFile(path.join(paths.self, "identity.md"));
         payload.firstRun = isFirstRun(identity);
+      }
+
+      // Quick zone scan — check if boosts table has data (indicates prune has run)
+      // Lightweight: do NOT recompute all vitalities during orient
+      try {
+        const dbPath = path.resolve(vaultDir, ".ori", "embeddings.db");
+        await fs.access(dbPath);
+        const { initDB } = await import("../core/engine.js");
+        const db = initDB(dbPath);
+        const boostCount = (
+          db.prepare("SELECT COUNT(*) as cnt FROM boosts").get() as { cnt: number }
+        ).cnt;
+        db.close();
+        if (boostCount > 0) {
+          payload.activationActive = true;
+          payload.boostCount = boostCount;
+        }
+      } catch {
+        // No DB or no boosts table yet — skip
       }
 
       // Include onboarding steps when first-run detected
@@ -394,13 +414,14 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
   // ori_query_ranked
   server.tool(
     "ori_query_ranked",
-    "Full 3-signal engine retrieval (composite + keyword + graph) with intent classification. Returns ranked notes with signal breakdown.",
+    "Full 3-signal engine retrieval (composite + keyword + graph) with intent classification. Returns ranked notes with signal breakdown. Excludes archived notes by default. Triggers spreading activation.",
     {
       query: z.string().describe("Natural language search query"),
       limit: z.number().optional().describe("Max results (default 10)"),
+      include_archived: z.boolean().optional().describe("Include archived notes (default: false)"),
     },
-    async ({ query, limit }) => {
-      const result = await runQueryRanked(vaultDir, query, limit);
+    async ({ query, limit, include_archived }) => {
+      const result = await runQueryRanked(vaultDir, query, limit, include_archived ? false : true);
       return textResult(result);
     }
   );
@@ -408,13 +429,14 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
   // ori_query_similar
   server.tool(
     "ori_query_similar",
-    "Composite vector search only (semantic + metadata, no keyword/graph). Faster but single-signal.",
+    "Composite vector search only (semantic + metadata, no keyword/graph). Faster but single-signal. Excludes archived notes by default.",
     {
       query: z.string().describe("Natural language search query"),
       limit: z.number().optional().describe("Max results (default 10)"),
+      include_archived: z.boolean().optional().describe("Include archived notes (default: false)"),
     },
-    async ({ query, limit }) => {
-      const result = await runQuerySimilar(vaultDir, query, limit);
+    async ({ query, limit, include_archived }) => {
+      const result = await runQuerySimilar(vaultDir, query, limit, include_archived ? false : true);
       return textResult(result);
     }
   );
@@ -435,13 +457,30 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
   // ori_query_fading (limit bug fixed)
   server.tool(
     "ori_query_fading",
-    "Notes losing vitality — candidates for archival or reconnection.",
+    "Notes losing vitality — candidates for archival or reconnection. Use ori_prune for full topology analysis.",
     {
       threshold: z.number().optional().describe("Vitality threshold (default 0.3)"),
       limit: z.number().optional().describe("Max results (default 20)"),
     },
     async ({ threshold, limit }) => {
       const result = await runQueryFading(vaultDir, threshold, limit);
+      return textResult(result);
+    }
+  );
+
+  // ori_prune
+  server.tool(
+    "ori_prune",
+    "Analyze activation topology and identify archive candidates. " +
+      "Dry-run by default. Set apply=true to archive.",
+    {
+      apply: z.boolean().optional().describe("Actually archive (default: dry-run preview)"),
+    },
+    async ({ apply }) => {
+      const result = await runPrune({
+        startDir: vaultDir,
+        dryRun: apply !== true,
+      });
       return textResult(result);
     }
   );

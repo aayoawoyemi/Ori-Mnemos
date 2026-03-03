@@ -23,6 +23,11 @@ export type VitalityConfig = {
   revival_decay_rate?: number;
   revival_window_days?: number;
   access_saturation_k?: number;
+  zone_thresholds?: {
+    active_floor?: number;   // default 0.6
+    stale_floor?: number;    // default 0.3
+    fading_floor?: number;   // default 0.1
+  };
 };
 
 export type PromoteConfig = {
@@ -73,6 +78,13 @@ export type IPSConfig = {
   log_path: string;
 };
 
+export type ActivationConfig = {
+  enabled: boolean;     // default true
+  damping: number;      // default 0.6
+  max_hops: number;     // default 2
+  min_boost: number;    // default 0.01
+};
+
 export type OriConfig = {
   vault: {
     version: string;
@@ -86,6 +98,7 @@ export type OriConfig = {
   retrieval: RetrievalConfig;
   bm25: BM25Config;
   ips: IPSConfig;
+  activation: ActivationConfig;
 };
 
 const DEFAULT_PROMOTE_CONFIG: PromoteConfig = {
@@ -136,6 +149,13 @@ const DEFAULT_IPS_CONFIG: IPSConfig = {
   log_path: "ops/access.jsonl",
 };
 
+const DEFAULT_ACTIVATION_CONFIG: ActivationConfig = {
+  enabled: true,
+  damping: 0.6,
+  max_hops: 2,
+  min_boost: 0.01,
+};
+
 const DEFAULT_CONFIG: OriConfig = {
   vault: { version: "0.1" },
   templates: {
@@ -153,6 +173,7 @@ const DEFAULT_CONFIG: OriConfig = {
   retrieval: { ...DEFAULT_RETRIEVAL_CONFIG },
   bm25: { ...DEFAULT_BM25_CONFIG },
   ips: { ...DEFAULT_IPS_CONFIG },
+  activation: { ...DEFAULT_ACTIVATION_CONFIG },
 };
 
 export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
@@ -167,6 +188,7 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
   const rawRetrieval = (raw as Record<string, unknown>).retrieval as Partial<RetrievalConfig> | undefined;
   const rawBM25 = (raw as Record<string, unknown>).bm25 as Partial<BM25Config> | undefined;
   const rawIPS = (raw as Record<string, unknown>).ips as Partial<IPSConfig> | undefined;
+  const rawActivation = (raw as Record<string, unknown>).activation as Partial<ActivationConfig> | undefined;
 
   return {
     vault: {
@@ -191,6 +213,17 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
       revival_decay_rate: (raw.vitality as Record<string, unknown> | undefined)?.revival_decay_rate as number | undefined ?? 0.2,
       revival_window_days: (raw.vitality as Record<string, unknown> | undefined)?.revival_window_days as number | undefined ?? 14,
       access_saturation_k: (raw.vitality as Record<string, unknown> | undefined)?.access_saturation_k as number | undefined ?? 10,
+      zone_thresholds: {
+        active_floor: (raw.vitality as Record<string, unknown> | undefined)?.zone_thresholds
+          ? ((raw.vitality as Record<string, unknown>).zone_thresholds as Record<string, unknown>)?.active_floor as number | undefined ?? 0.6
+          : 0.6,
+        stale_floor: (raw.vitality as Record<string, unknown> | undefined)?.zone_thresholds
+          ? ((raw.vitality as Record<string, unknown>).zone_thresholds as Record<string, unknown>)?.stale_floor as number | undefined ?? 0.3
+          : 0.3,
+        fading_floor: (raw.vitality as Record<string, unknown> | undefined)?.zone_thresholds
+          ? ((raw.vitality as Record<string, unknown>).zone_thresholds as Record<string, unknown>)?.fading_floor as number | undefined ?? 0.1
+          : 0.1,
+      },
     },
     llm: {
       provider: rawLlm?.provider ?? DEFAULT_LLM_CONFIG.provider,
@@ -244,6 +277,12 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
       enabled: rawIPS?.enabled ?? DEFAULT_IPS_CONFIG.enabled,
       epsilon: rawIPS?.epsilon ?? DEFAULT_IPS_CONFIG.epsilon,
       log_path: rawIPS?.log_path ?? DEFAULT_IPS_CONFIG.log_path,
+    },
+    activation: {
+      enabled: rawActivation?.enabled ?? DEFAULT_ACTIVATION_CONFIG.enabled,
+      damping: rawActivation?.damping ?? DEFAULT_ACTIVATION_CONFIG.damping,
+      max_hops: rawActivation?.max_hops ?? DEFAULT_ACTIVATION_CONFIG.max_hops,
+      min_boost: rawActivation?.min_boost ?? DEFAULT_ACTIVATION_CONFIG.min_boost,
     },
   };
 }

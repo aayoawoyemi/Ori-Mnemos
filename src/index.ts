@@ -20,6 +20,7 @@ import { runServeMcp } from "./cli/serve.js";
 import { runQueryRanked, runQuerySimilar } from "./cli/search.js";
 import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
 import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
+import { runPrune } from "./cli/prune.js";
 
 const program = new Command();
 
@@ -28,7 +29,7 @@ program
   .description(
     "Ori Mnemos - markdown-native cognitive harness for persistent agent memory"
   )
-  .version("0.3.2");
+  .version("0.3.3");
 
 program
   .command("init")
@@ -225,6 +226,19 @@ program
       default:
         throw new Error(`Unknown graph action: ${action}`);
     }
+    console.log(JSON.stringify(result));
+  });
+
+program
+  .command("prune")
+  .option("--apply", "actually archive candidates (default: dry-run)")
+  .option("--verbose", "show full activation topology")
+  .action(async (options: { apply?: boolean; verbose?: boolean }) => {
+    const result = await runPrune({
+      startDir: process.cwd(),
+      dryRun: !options.apply,
+      verbose: options.verbose,
+    });
     console.log(JSON.stringify(result));
   });
 
