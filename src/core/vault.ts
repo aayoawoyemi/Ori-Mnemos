@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export type VaultPaths = {
@@ -24,24 +25,51 @@ export async function isVaultRoot(dir: string): Promise<boolean> {
   }
 }
 
-export async function findVaultRoot(startDir: string, override?: string): Promise<string> {
+export type VaultRootResult = {
+  path: string;
+  source: "project" | "global";
+};
+
+export function getGlobalVaultPath(): string {
+  return path.join(os.homedir(), ".ori-memory");
+}
+
+export async function findVaultRootWithSource(
+  startDir?: string,
+  override?: string,
+): Promise<VaultRootResult> {
+  // 1. Explicit override — validate or throw
   if (override) {
     const resolved = path.resolve(override);
-    if (await isVaultRoot(resolved)) return resolved;
-    throw new Error(`Specified vault path is not a vault: ${resolved}`);
+    if (await isVaultRoot(resolved)) return { path: resolved, source: "project" };
+    throw new Error(
+      `Vault not found at specified path: ${resolved}. Run 'ori init ${resolved}' to create one.`,
+    );
   }
-  let current = path.resolve(startDir);
-  // Walk up to filesystem root
+
+  // 2. Walk up from startDir looking for .ori
+  let current = path.resolve(startDir ?? process.cwd());
   while (true) {
-    if (await isVaultRoot(current)) {
-      return current;
-    }
+    if (await isVaultRoot(current)) return { path: current, source: "project" };
     const parent = path.dirname(current);
-    if (parent === current) {
-      throw new Error("No .ori marker found in parent directories");
-    }
+    if (parent === current) break; // reached filesystem root
     current = parent;
   }
+
+  // 3. Check global vault
+  const globalPath = getGlobalVaultPath();
+  if (await isVaultRoot(globalPath)) return { path: globalPath, source: "global" };
+
+  // 4. No vault anywhere — throw
+  throw new Error(
+    "No .ori marker found. Run 'ori init' to create a vault, or connect via MCP to auto-create one.",
+  );
+}
+
+// Wrapper — all existing callers unchanged (returns string)
+export async function findVaultRoot(startDir: string, override?: string): Promise<string> {
+  const result = await findVaultRootWithSource(startDir, override);
+  return result.path;
 }
 
 export function getVaultPaths(root: string): VaultPaths {

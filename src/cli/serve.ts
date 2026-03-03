@@ -18,7 +18,8 @@ import { runHealth } from "./health.js";
 import { runPromote } from "./promote.js";
 import { runQueryRanked, runQuerySimilar } from "./search.js";
 import { runIndexBuild } from "./indexcmd.js";
-import { getVaultPaths, type VaultPaths } from "../core/vault.js";
+import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
+import { runInit } from "./init.js";
 
 let vaultDir: string;
 
@@ -62,11 +63,18 @@ function isFirstRun(identityContent: string): boolean {
   return content.length === 0;
 }
 
-async function buildInstructions(paths: VaultPaths): Promise<string> {
+async function buildInstructions(paths: VaultPaths, autoCreated = false): Promise<string> {
   const identity = await safeReadFile(path.join(paths.self, "identity.md"));
+
+  const prefix = autoCreated
+    ? `No vault found — created a global vault at ${getGlobalVaultPath()}.\n` +
+      "This is your default memory space. Run 'ori init' in any project folder " +
+      "to create a project-specific vault instead.\n\n"
+    : "";
 
   if (isFirstRun(identity)) {
     return (
+      prefix +
       "You have persistent memory managed by Ori Mnemos — the Git of AI memory. Memory is sovereignty.\n\n" +
       "This is a NEW vault. Run the onboarding flow:\n\n" +
       "1. AGENT NAME: Ask what they want to name their agent. Default is 'Ori'. " +
@@ -93,6 +101,7 @@ async function buildInstructions(paths: VaultPaths): Promise<string> {
 
   const summary = stripFrontmatter(identity).slice(0, 1000);
   return (
+    prefix +
     "You have persistent memory managed by Ori Mnemos. " +
     "Call ori_orient at session start to load your daily status and active goals. " +
     "Never start cold — always orient first.\n\n" +
@@ -112,13 +121,26 @@ const UPDATABLE_FILES: Record<string, (p: VaultPaths) => string> = {
 
 // --- MCP Server ---
 
-export async function runServeMcp(startDir: string) {
-  vaultDir = startDir;
+export async function runServeMcp(startDir: string, vaultOverride?: string) {
+  let autoCreated = false;
+
+  try {
+    const result = await findVaultRootWithSource(startDir, vaultOverride);
+    vaultDir = result.path;
+  } catch (err) {
+    // Auto-create global vault ONLY if no explicit --vault was specified
+    if (vaultOverride) throw err;
+    const globalPath = getGlobalVaultPath();
+    await runInit({ targetDir: globalPath });
+    vaultDir = globalPath;
+    autoCreated = true;
+  }
+
   const paths = getVaultPaths(vaultDir);
-  const instructions = await buildInstructions(paths);
+  const instructions = await buildInstructions(paths, autoCreated);
 
   const server = new McpServer(
-    { name: "ori-memory", version: "0.3.0" },
+    { name: "ori-memory", version: "0.3.2" },
     { instructions },
   );
 

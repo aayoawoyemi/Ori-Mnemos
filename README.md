@@ -229,6 +229,24 @@ Start a session. The agent receives its identity automatically and begins onboar
 
 ---
 
+## Where Your Vault Lives
+
+Ori works like git — run `ori init` in the folder you want to track.
+
+**Global vault (default).** The first time an agent connects via MCP and no vault exists, Ori creates one at `~/.ori-memory/`. This is your default memory space — one vault for everything.
+
+**Project vault.** Run `ori init` in any project folder to create a local vault. Ori automatically uses the nearest vault — project vaults override the global vault.
+
+**Lookup order.** Ori walks up from the current directory looking for a `.ori` marker (just like git looks for `.git`). If none found, it falls back to the global vault.
+
+| Setup | Command | Use When |
+|-------|---------|----------|
+| Global (default) | Just connect — auto-created on first MCP session | One agent, general use |
+| Per-project | `ori init` in project dir | Separate memory per project |
+| Explicit path | `ori serve --mcp --vault /path` | VPS, multi-vault |
+
+---
+
 ## MCP Integration
 
 Ori exposes a full memory surface over the Model Context Protocol. Any MCP-compatible runtime can connect — Claude Code, Cursor, Windsurf, Cline, custom agent loops, headless agents on a VPS.

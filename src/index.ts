@@ -28,7 +28,7 @@ program
   .description(
     "Ori Mnemos - markdown-native cognitive harness for persistent agent memory"
   )
-  .version("0.3.0");
+  .version("0.3.2");
 
 program
   .command("init")
@@ -188,7 +188,7 @@ program
     if (!options.mcp) {
       throw new Error("Only MCP server is supported: use --mcp");
     }
-    await runServeMcp(options.vault ?? process.cwd());
+    await runServeMcp(process.cwd(), options.vault);
   });
 
 program
