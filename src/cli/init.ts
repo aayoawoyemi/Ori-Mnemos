@@ -2,6 +2,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getVaultPaths } from "../core/vault.js";
+import { readState, isOnboarded } from "../core/state.js";
+import { runBootSequence } from "./boot.js";
 
 export type InitOptions = {
   targetDir: string;
@@ -56,6 +58,23 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   } catch {
     await fs.mkdir(paths.marker, { recursive: true });
     result.created.push(paths.marker);
+  }
+
+  return result;
+}
+
+export async function runInitInteractive(options: InitOptions & { json?: boolean }): Promise<InitResult> {
+  const result = await runInit(options);
+
+  // Silent JSON for agents, pipes, CI, or explicit --json
+  if (options.json || !process.stdout.isTTY) {
+    return result;
+  }
+
+  const target = path.resolve(options.targetDir);
+  const state = await readState(target);
+  if (!isOnboarded(state)) {
+    await runBootSequence(result, target);
   }
 
   return result;

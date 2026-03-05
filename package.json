@@ -64,12 +64,14 @@
     "check:v01": "npm run lint && npm run build && npm run smoke:bin && npm run pack:check"
   },
   "dependencies": {
+    "@clack/prompts": "^1.1.0",
     "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "figlet": "^1.10.0",
     "glob": "^11.0.0",
     "graphology": "^0.26.0",
     "graphology-communities-louvain": "^2.0.2",
@@ -77,6 +79,7 @@
     "yaml": "^2.4.0"
   },
   "devDependencies": {
+    "@types/figlet": "^1.7.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

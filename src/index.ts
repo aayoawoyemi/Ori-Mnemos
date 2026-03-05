@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { runInit } from "./cli/init.js";
+import { runInit, runInitInteractive } from "./cli/init.js";
 import { runStatus } from "./cli/status.js";
 import { runHealth } from "./cli/health.js";
 import {
@@ -34,9 +34,12 @@ program
 program
   .command("init")
   .argument("[dir]", "target directory", ".")
-  .action(async (dir: string) => {
-    const result = await runInit({ targetDir: dir });
-    console.log(JSON.stringify({ success: true, data: result, warnings: [] }));
+  .option("--json", "output JSON only (skip interactive)")
+  .action(async (dir: string, options: { json?: boolean }) => {
+    const result = await runInitInteractive({ targetDir: dir, json: options.json });
+    if (options.json || !process.stdout.isTTY) {
+      console.log(JSON.stringify({ success: true, data: result, warnings: [] }));
+    }
   });
 
 program
