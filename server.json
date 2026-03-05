@@ -8,12 +8,12 @@
     "url": "https://github.com/aayoawoyemi/Ori-Mnemos",
     "source": "github"
   },
-  "version": "0.3.3",
+  "version": "0.3.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ori-memory",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "transport": {
         "type": "stdio"
       }
