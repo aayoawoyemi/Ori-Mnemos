@@ -2,7 +2,7 @@
   "name": "ori-memory",
   "version": "0.3.3",
   "mcpName": "io.github.aayoawoyemi/ori-memory",
-  "description": "The Git of AI memory - open source, markdown-native framework for persistent, shared agent memory without a database",
+  "description": "Persistent memory for AI agents — local-first, markdown-native, no cloud. Knowledge graph + three-signal retrieval (semantic + BM25 + PageRank). Agents wake up knowing who they are across sessions. MCP server for Claude, Cursor, Windsurf, Cline.",
   "keywords": [
     "ai",
     "agent",
@@ -20,7 +20,21 @@
     "llm",
     "embeddings",
     "pagerank",
-    "identity"
+    "identity",
+    "claude",
+    "cursor",
+    "windsurf",
+    "cline",
+    "local-first",
+    "offline",
+    "rag",
+    "context",
+    "long-term-memory",
+    "cross-session",
+    "vault",
+    "sqlite",
+    "knowledge-management",
+    "note-taking"
   ],
   "homepage": "https://github.com/aayoawoyemi/Ori-Mnemos",
   "repository": {

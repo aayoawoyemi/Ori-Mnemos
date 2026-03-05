@@ -1,0 +1,14 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      vault:
+        type: string
+        description: "Path to the vault directory (optional, defaults to ~/.ori)"
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: ["-y", "ori-memory", "serve", "--mcp", ...(config.vault ? ["--vault", config.vault] : [])]
+    })
+exampleConfig: {}
