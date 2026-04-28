@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/aayoawoyemi-ori-mnemos-badge.png)](https://mseep.ai/app/aayoawoyemi-ori-mnemos)
+
 # Ori Mnemos
 
 **Open-source persistent memory infrastructure for AI agents.**
