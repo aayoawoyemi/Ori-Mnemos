@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { writeState } from "../core/state.js";
 import { runInit, type InitResult } from "./init.js";
+// screen.ts is available for future interactive TUI modes
+// import { enterParchment, exitParchment } from "./screen.js";
 
 // Colors: antique gold for title, warm parchment for elephant
 const gold = chalk.ansi256(178);
@@ -224,6 +226,7 @@ export async function runBootSequence(initResult: InitResult, targetDir: string)
   if (path.resolve(targetDir) !== resolvedVault) {
     await writeState(targetDir, { onboarded: true, version: getVersion() });
   }
+
 }
 
 function getVersion(): string {

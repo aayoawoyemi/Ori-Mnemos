@@ -3,6 +3,10 @@ import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
 import yaml from "yaml";
 import {
+  installWindowsTerminalProfile,
+  uninstallWindowsTerminalProfile,
+} from "../core/windows-terminal.js";
+import {
   buildGenericInstallOutput,
   getClaudeGlobalPaths,
   getClaudeProjectPaths,
@@ -591,6 +595,7 @@ export async function runBridgeClaudeCode(startDir: string, request: Omit<Bridge
     settingsMutation = await mergeIntoSettingsFile(paths.settingsPath, {}, true);
     mcpMutation = await mergeIntoMcpFile(paths.mcpPath, plan, true);
     instructionsMutation = await uninstallClaudeInstructions(paths.instructionsPath);
+    await uninstallWindowsTerminalProfile();
   } else {
     await copyHooks(adaptersDir, paths.hooksDir);
     settingsMutation = await mergeIntoSettingsFile(
@@ -603,6 +608,16 @@ export async function runBridgeClaudeCode(startDir: string, request: Omit<Bridge
 
   const mutation = summarizeMutations([settingsMutation, mcpMutation, instructionsMutation]);
 
+  // Install Windows Terminal profile with Ori icon (non-fatal, Windows only)
+  const wtResult = request.uninstall
+    ? await uninstallWindowsTerminalProfile()
+    : await installWindowsTerminalProfile();
+
+  const warnings = [...plan.warnings];
+  if (wtResult.error) {
+    warnings.push(`Windows Terminal profile: ${wtResult.error}`);
+  }
+
   return {
     success: true,
     data: {
@@ -613,8 +628,9 @@ export async function runBridgeClaudeCode(startDir: string, request: Omit<Bridge
       settingsPath: paths.settingsPath,
       mcpPath: paths.mcpPath,
       instructionsPath: paths.instructionsPath,
+      windowsTerminal: wtResult,
     },
-    warnings: plan.warnings,
+    warnings,
   };
 }
 
