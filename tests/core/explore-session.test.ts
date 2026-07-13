@@ -14,6 +14,7 @@ import {
   expandExploration,
   concludeExploration,
   computeFrontier,
+  extendBudget,
   type ExploreSessionDeps,
   type ExploreSessionState,
 } from "../../src/core/explore-session.js";
@@ -130,9 +131,9 @@ describe("startExploration", () => {
     expect(frontier.length).toBeGreaterThan(0);
   });
 
-  it("uses config max_recursion_depth as default budget", async () => {
+  it("defaults to the roomier navigated budget (5), not autopilot's depth", async () => {
     const { session } = await startExploration("origin question", makeDeps());
-    expect(session.budgetRemaining).toBe(CONFIG.max_recursion_depth);
+    expect(session.budgetRemaining).toBe(5);
   });
 
   it("accepts an explicit budget", async () => {
@@ -171,7 +172,7 @@ describe("expandExploration", () => {
     expect(session.nodes).toHaveLength(2);
     expect(session.nodes[1].kind).toBe("subQuestion");
     for (const n of newNotes) expect(before.has(n.title)).toBe(false);
-    expect(session.budgetRemaining).toBe(CONFIG.max_recursion_depth - 1);
+    expect(session.budgetRemaining).toBe(4); // navigated default 5, minus this expand
   });
 
   it("expands by branch, deriving the query from the branch node", async () => {
@@ -236,12 +237,30 @@ describe("expandExploration", () => {
     ).rejects.toThrow(/unknown branch/);
   });
 
-  it("enforces the budget", async () => {
+  it("soft-exhausts the budget: expand at zero is a flagged no-op, not an error", async () => {
     state.budgetRemaining = 1;
     await expandExploration(state, { subQuestion: "storage decision" }, deps);
-    await expect(
-      expandExploration(state, { subQuestion: "storage decision" }, deps),
-    ).rejects.toThrow(/no budget/);
+    const r = await expandExploration(state, { subQuestion: "storage decision" }, deps);
+    expect(r.budgetExhausted).toBe(true);
+    expect(r.newNotes).toHaveLength(0);
+    expect(r.session.nodes).toHaveLength(2); // no node added
+    expect(r.session.concluded).toBe(false); // session survives
+  });
+
+  it("extendBudget grants more expansions and expand works again", async () => {
+    state.budgetRemaining = 0;
+    const r0 = await expandExploration(state, { subQuestion: "storage decision" }, deps);
+    expect(r0.budgetExhausted).toBe(true);
+    const remaining = extendBudget(state, 2);
+    expect(remaining).toBe(2);
+    const r1 = await expandExploration(state, { subQuestion: "storage decision" }, deps);
+    expect(r1.budgetExhausted ?? false).toBe(false);
+    expect(r1.session.nodes).toHaveLength(2);
+  });
+
+  it("extendBudget refuses concluded sessions", async () => {
+    concludeExploration(state, { answered: false });
+    expect(() => extendBudget(state, 3)).toThrow(/concluded/);
   });
 
   it("refuses to expand a concluded session", async () => {

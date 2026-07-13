@@ -24,7 +24,7 @@ import { runQueryRanked, runQuerySimilar, runQueryWarmthAudit } from "./cli/sear
 import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
 import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
 import { runPrune } from "./cli/prune.js";
-import { runExplore, runExploreStartCli, runExploreExpandCli, runExploreConcludeCli } from "./cli/explore.js";
+import { runExplore, runExploreStartCli, runExploreExpandCli, runExploreConcludeCli, runExploreExtendCli } from "./cli/explore.js";
 
 const program = new Command();
 
@@ -472,14 +472,21 @@ program
   .option("--ask <question>", "expand with your own sub-question")
   .option("--branch <nodeId>", "deepen a tree node (e.g. n2)")
   .option("--neighbors <title>", "graph-step to unvisited neighbors of a note")
+  .option("--extend <n>", "grant more budget to this session first")
   .option("--json", "raw JSON output")
-  .action(async (id: string, options: { ask?: string; branch?: string; neighbors?: string; json?: boolean }) => {
+  .action(async (id: string, options: { ask?: string; branch?: string; neighbors?: string; extend?: string; json?: boolean }) => {
+    if (options.extend) {
+      const ext = await runExploreExtendCli(process.cwd(), id, parseInt(options.extend, 10));
+      if (!ext.success) { console.log(JSON.stringify(ext)); return; }
+      console.log(`budget extended: ${(ext.data as { budget_remaining: number }).budget_remaining} remaining`);
+      if (!options.ask && !options.branch && !options.neighbors) return;
+    }
     let direction: { subQuestion: string } | { branch: string } | { neighbors: string };
     if (options.ask) direction = { subQuestion: options.ask };
     else if (options.branch) direction = { branch: options.branch };
     else if (options.neighbors) direction = { neighbors: options.neighbors };
     else {
-      console.log(JSON.stringify({ success: false, warnings: ["provide exactly one of --ask, --branch, --neighbors"] }));
+      console.log(JSON.stringify({ success: false, warnings: ["provide exactly one of --ask, --branch, --neighbors (or --extend alone)"] }));
       return;
     }
     const result = await runExploreExpandCli(process.cwd(), id, direction);
@@ -515,6 +522,10 @@ function printNavigated(result: { success: boolean; data: Record<string, unknown
     new_notes: string[];
     frontier: Array<{ option: number; direction: Record<string, string>; reason: string }>;
   };
+  const exhausted = (d as unknown as { budget_exhausted?: boolean }).budget_exhausted;
+  if (exhausted) {
+    console.log(`budget exhausted — nothing expanded. Conclude, or grant more: ori explore-expand ${d.exploration_id} --extend 3 ...`);
+  }
   console.log(`exploration: ${d.exploration_id}   budget left: ${d.budget_remaining}`);
   console.log("");
   for (const n of d.tree) {

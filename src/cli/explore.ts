@@ -403,6 +403,7 @@ import {
   startExploration,
   expandExploration,
   concludeExploration,
+  extendBudget,
   type ExploreSessionDeps,
   type ExploreSessionState,
   type ExpandDirection,
@@ -676,6 +677,41 @@ function serializeNavigated(r: NavigatedExploreResult): Record<string, unknown> 
       })),
     })),
     new_notes: r.newNotes.map((x) => x.title),
+    budget_exhausted: r.budgetExhausted ?? false,
     frontier: r.frontier.map((f, i) => ({ option: i + 1, direction: f.direction, reason: f.reason })),
   };
+}
+
+/** MCP: extend an in-memory session's budget. */
+export function runExploreExtend(explorationId: string, extra: number): NavigatedResult {
+  const entry = sessions.get(explorationId);
+  if (!entry) {
+    return { success: false, data: {}, warnings: [`unknown exploration_id: ${explorationId}`] };
+  }
+  try {
+    const remaining = extendBudget(entry.state, extra);
+    return { success: true, data: { exploration_id: explorationId, budget_remaining: remaining }, warnings: [] };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  }
+}
+
+/** CLI: extend a file-backed session's budget. */
+export async function runExploreExtendCli(
+  startDir: string,
+  explorationId: string,
+  extra: number,
+): Promise<NavigatedResult> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const state = await loadSessionState(vaultRoot, explorationId);
+  if (!state) {
+    return { success: false, data: {}, warnings: [`unknown exploration_id: ${explorationId}`] };
+  }
+  try {
+    const remaining = extendBudget(state, extra);
+    await saveSessionState(vaultRoot, state);
+    return { success: true, data: { exploration_id: explorationId, budget_remaining: remaining }, warnings: [] };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  }
 }

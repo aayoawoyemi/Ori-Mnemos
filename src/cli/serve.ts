@@ -20,7 +20,7 @@ import { runValidate } from "./validate.js";
 import { runHealth } from "./health.js";
 import { runPromote } from "./promote.js";
 import { runQueryRanked, runQuerySimilar, runQueryWarmth } from "./search.js";
-import { runExplore, runExploreStart, runExploreExpand, runExploreConclude } from "./explore.js";
+import { runExplore, runExploreStart, runExploreExpand, runExploreConclude, runExploreExtend } from "./explore.js";
 import { runIndexBuild } from "./indexcmd.js";
 import { runPrune } from "./prune.js";
 import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
@@ -846,8 +846,13 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
       sub_question: z.string().optional().describe("Your own sub-question to search"),
       branch: z.string().optional().describe("Tree node id to deepen (e.g. n2)"),
       neighbors: z.string().optional().describe("Note title whose unvisited graph neighbors to step to"),
+      extend_budget: z.number().optional().describe("Grant this many extra expansions first (ask your user before extending repeatedly)"),
     },
-    async ({ exploration_id, sub_question, branch, neighbors }) => {
+    async ({ exploration_id, sub_question, branch, neighbors, extend_budget }) => {
+      if (extend_budget) {
+        const ext = runExploreExtend(exploration_id, extend_budget);
+        if (!ext.success) return textResult(ext);
+      }
       let direction: { subQuestion: string } | { branch: string } | { neighbors: string };
       if (sub_question) direction = { subQuestion: sub_question };
       else if (branch) direction = { branch };

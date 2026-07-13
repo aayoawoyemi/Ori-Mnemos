@@ -61,6 +61,8 @@ export interface NavigatedExploreResult {
   frontier: FrontierOption[];
   /** Notes added by the most recent operation only (the diff). */
   newNotes: ExploreNote[];
+  /** True when an expand was refused because the budget hit zero — a nudge, not a wall. */
+  budgetExhausted?: boolean;
 }
 
 export interface ExploreSessionDeps {
@@ -183,11 +185,15 @@ export async function startExploration(
     exhausted: false,
   };
 
+  // Navigated default is intentionally roomier than autopilot's
+  // max_recursion_depth: each step here is a deliberate caller decision
+  // (pull, not push), so runaway risk is low; 5 gives a real journey.
+  const NAVIGATED_DEFAULT_BUDGET = 5;
   const state: ExploreSessionState = {
     id: makeId(),
     query,
     createdAt: new Date().toISOString(),
-    budgetRemaining: budget ?? deps.config.max_recursion_depth,
+    budgetRemaining: budget ?? Math.max(NAVIGATED_DEFAULT_BUDGET, deps.config.max_recursion_depth),
     visited: pass0.results.map((r) => r.title),
     nodes: [root],
     paths: pass0.paths,
@@ -213,7 +219,14 @@ export async function expandExploration(
     throw new Error(`exploration ${state.id} is concluded`);
   }
   if (state.budgetRemaining <= 0) {
-    throw new Error(`exploration ${state.id} has no budget remaining`);
+    // Budget exhaustion is a STATE, not an error. The session survives:
+    // conclude it, or extend the budget and keep going.
+    return {
+      session: state,
+      frontier: computeFrontier(state, deps),
+      newNotes: [],
+      budgetExhausted: true,
+    };
   }
 
   const visited = new Set(state.visited);
@@ -339,6 +352,17 @@ export interface ConcludeSummary {
  * into Q-values / co-occurrence via the existing reward wiring. The
  * navigator's actual path IS the reward signal.
  */
+/**
+ * Grant more expansions to an open session. Budget is a behavioral nudge
+ * (scarcity keeps navigation deliberate), not a wall — the operator or a
+ * navigator that asked its user may always extend.
+ */
+export function extendBudget(state: ExploreSessionState, extra: number): number {
+  if (state.concluded) throw new Error(`exploration ${state.id} is concluded`);
+  state.budgetRemaining += Math.max(1, Math.floor(extra));
+  return state.budgetRemaining;
+}
+
 export interface ConcludeValidation {
   /** usedNotes that matched visited notes (these carry the learning signal). */
   accepted: string[];
