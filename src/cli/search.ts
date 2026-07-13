@@ -20,7 +20,7 @@ import {
 import { fuseScoreWeightedRRF, normalizeSignalWeights } from "../core/fusion.js";
 import { injectExploration, logAccess } from "../core/tracking.js";
 import type { ScoredNote } from "../core/ranking.js";
-import { buildNoteIndex, computeAllVitality, recordNoteAccess } from "../core/noteindex.js";
+import { buildNoteIndex, computeAllVitality } from "../core/noteindex.js";
 import { loadBoosts, applyActivationBoosts, computeActivationSpread } from "../core/activation.js";
 import { WarmthService, type WarmthSignal } from "../core/warmth.js";
 import {
@@ -490,12 +490,6 @@ export async function runQueryRanked(
     trimmed,
     allTitles,
     config.retrieval.exploration_budget,
-  );
-
-  // 13b. Record access in frontmatter — feeds the ACT-R vitality model (#17)
-  await recordNoteAccess(
-    paths.notes,
-    withExploration.map((r) => r.title),
   );
 
   // 14. Log access event

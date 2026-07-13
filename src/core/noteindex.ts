@@ -7,11 +7,7 @@ import { promises as fs } from "node:fs";
 import type { NoteIndex } from "./importance.js";
 import type { LinkGraph } from "./graph.js";
 import type { OriConfig } from "./config.js";
-import {
-  parseFrontmatter,
-  readFrontmatterFile,
-  writeFrontmatterFile,
-} from "./frontmatter.js";
+import { parseFrontmatter } from "./frontmatter.js";
 import { computeVitalityFull } from "./vitality.js";
 
 /**
@@ -93,40 +89,4 @@ export async function computeAllVitality(
   }
 
   return scores;
-}
-
-/**
- * Record a retrieval access for each note: increment access_count and
- * refresh last_accessed in frontmatter. Best-effort — notes without
- * frontmatter, with parse errors, or unwritable files are skipped.
- *
- * This is the write-side of the ACT-R vitality model (#17): without it,
- * computeAllVitality reads access_count that nothing ever updates, so
- * every note decays at the same rate regardless of use. Frontmatter is
- * used (not the boosts table) so the signal survives DB rebuilds.
- *
- * Note: access_count is not part of the embedding content hash
- * (title/description/body), so these writes do not trigger re-embedding.
- */
-export async function recordNoteAccess(
-  notesDir: string,
-  titles: string[],
-): Promise<void> {
-  const today = new Date().toISOString().split("T")[0];
-  for (const title of titles) {
-    const filePath = path.join(notesDir, `${title}.md`);
-    try {
-      const { data, body, errors } = await readFrontmatterFile(filePath);
-      if (!data || errors.length > 0) continue;
-      const current =
-        typeof data.access_count === "number" && Number.isFinite(data.access_count)
-          ? data.access_count
-          : 0;
-      data.access_count = current + 1;
-      data.last_accessed = today;
-      await writeFrontmatterFile(filePath, data, body);
-    } catch {
-      // best-effort: skip unreadable/unwritable notes
-    }
-  }
 }
