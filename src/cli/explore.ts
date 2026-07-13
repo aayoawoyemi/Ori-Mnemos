@@ -35,7 +35,7 @@ import {
   type RecursiveExploreOutput,
 } from "../core/explore.js";
 import { createProvider, NullProvider } from "../core/llm.js";
-import { getDecayedQ } from "../core/qvalue.js";
+import { getDecayedQ, initQValueTables } from "../core/qvalue.js";
 import type { LlmProvider } from "../core/llm.js";
 import { isExploreAuditEnabled, logExploreAudit, type ExploreAuditEvent, type ExploreAuditNote } from "../core/explore-audit.js";
 
@@ -391,5 +391,196 @@ export async function runExplore(
       }),
     },
     warnings,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Navigated Recursion (v0.5.1) — session-based, caller-steered       */
+/* ------------------------------------------------------------------ */
+
+import {
+  startExploration,
+  expandExploration,
+  concludeExploration,
+  type ExploreSessionDeps,
+  type ExploreSessionState,
+  type ExpandDirection,
+  type NavigatedExploreResult,
+  type ConcludeSummary,
+} from "../core/explore-session.js";
+
+export type NavigatedResult = {
+  success: boolean;
+  data: Record<string, unknown>;
+  warnings: string[];
+};
+
+/**
+ * Build ExploreSessionDeps from a vault. Mirrors runExplore's setup
+ * (steps 1-12) but returns the pieces instead of running a pass, so the
+ * navigator drives all passes.
+ */
+export async function buildSessionDeps(
+  startDir: string,
+  externalDb?: Database.Database,
+): Promise<{ deps: ExploreSessionDeps; warnings: string[]; closeDb: () => void }> {
+  const warnings: string[] = [];
+
+  const vaultRoot = await findVaultRoot(startDir);
+  const paths = getVaultPaths(vaultRoot);
+  const config = await loadConfig(paths.config);
+  const exploreConfig = { ...config.explore };
+
+  const graph = await buildGraph(paths.notes);
+  const allTitles = await listNoteTitles(paths.notes);
+  const noteIndex = await buildNoteIndex(paths.notes, allTitles);
+  const graphMetrics = computeGraphMetrics(graph, noteIndex);
+
+  const dbPath = path.resolve(vaultRoot, config.engine.db_path);
+  const ownDb = !externalDb;
+  let mainDb: Database.Database;
+  if (externalDb) {
+    mainDb = externalDb;
+  } else {
+    let dbExists = true;
+    try { await fs.access(dbPath); } catch { dbExists = false; }
+    if (!dbExists) {
+      warnings.push("Embedding index not found — building now");
+      await buildIndex(vaultRoot, config.engine);
+    }
+    mainDb = initDB(dbPath);
+  }
+
+  initQValueTables(mainDb);
+  const storedVectors = loadVectors(mainDb);
+  const boostScores = config.activation?.enabled !== false ? loadBoosts(mainDb) : undefined;
+  const vitalityScores = await computeAllVitality(
+    paths.notes, allTitles, graph, graphMetrics.bridges, config, boostScores,
+  );
+
+  // Warmth signals are query-agnostic seeds here; per-query warmth comes via reseed
+  const warmthSignals = new Map<string, number>();
+
+  const bm25Index = await buildBM25IndexFromVault(vaultRoot, config.bm25);
+
+  const reseed = async (subQuery: string): Promise<ScoredNote[]> => {
+    const subClassified = classifyIntent(subQuery, allTitles);
+    const subCL = exploreConfig.seed_count * config.retrieval.candidate_multiplier;
+    const subComp = await searchComposite({
+      queryText: subQuery, intent: subClassified, storedVectors, graphMetrics,
+      vitalityScores, limit: subCL, config: config.engine,
+    });
+    const subKw = searchBM25(subQuery, bm25Index, config.bm25, subCL);
+
+    // Per-query warmth: refresh the shared map so PPR seeding + frontier see it
+    if (config.warmth.enabled) {
+      try {
+        const warmthService = new WarmthService();
+        const signals = await warmthService.scan(
+          subQuery, storedVectors, graph, config.engine, config.warmth,
+          { limit: config.warmth.max_results },
+        );
+        for (const s of signals) {
+          const prev = warmthSignals.get(s.title) ?? 0;
+          if (s.score > prev) warmthSignals.set(s.title, s.score);
+        }
+      } catch { /* warmth unavailable — non-fatal */ }
+    }
+
+    const subSig: SignalResults = { composite: subComp, keyword: subKw, graph: [], warmth: [] };
+    return fuseScoreWeightedRRF(subSig, config.retrieval).slice(0, exploreConfig.seed_count);
+  };
+
+  const deps: ExploreSessionDeps = {
+    linkGraph: graph,
+    notesDir: paths.notes,
+    warmthSignals,
+    config: exploreConfig,
+    qValueLookup: (title: string) => getDecayedQ(mainDb, title),
+    allTitles,
+    reseed,
+  };
+
+  return { deps, warnings, closeDb: () => { if (ownDb) mainDb.close(); } };
+}
+
+/** In-memory session store (used by MCP server; CLI uses file persistence). */
+const sessions = new Map<string, { state: ExploreSessionState; deps: ExploreSessionDeps; closeDb: () => void }>();
+
+export async function runExploreStart(
+  startDir: string,
+  query: string,
+  budget?: number,
+  externalDb?: Database.Database,
+): Promise<NavigatedResult> {
+  try {
+    const { deps, warnings, closeDb } = await buildSessionDeps(startDir, externalDb);
+    // Seed warmth for the root query before pass 0
+    await deps.reseed(query).then(() => undefined).catch(() => undefined);
+    const result = await startExploration(query, deps, budget);
+    sessions.set(result.session.id, { state: result.session, deps, closeDb });
+    return { success: true, data: serializeNavigated(result), warnings };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  }
+}
+
+export async function runExploreExpand(
+  explorationId: string,
+  direction: ExpandDirection,
+): Promise<NavigatedResult> {
+  const entry = sessions.get(explorationId);
+  if (!entry) {
+    return {
+      success: false, data: {},
+      warnings: [`unknown exploration_id: ${explorationId} — sessions are in-memory and per-server`],
+    };
+  }
+  try {
+    const result = await expandExploration(entry.state, direction, entry.deps);
+    return { success: true, data: serializeNavigated(result), warnings: [] };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  }
+}
+
+export function runExploreConclude(
+  explorationId: string,
+  outcome: { answered: boolean; usedNotes?: string[] },
+): { success: boolean; data: ConcludeSummary | Record<string, never>; warnings: string[] } {
+  const entry = sessions.get(explorationId);
+  if (!entry) {
+    return { success: false, data: {}, warnings: [`unknown exploration_id: ${explorationId}`] };
+  }
+  const summary = concludeExploration(entry.state, outcome);
+  entry.closeDb();
+  sessions.delete(explorationId);
+  return { success: true, data: summary, warnings: [] };
+}
+
+function serializeNavigated(r: NavigatedExploreResult): Record<string, unknown> {
+  return {
+    exploration_id: r.session.id,
+    query: r.session.query,
+    budget_remaining: r.session.budgetRemaining,
+    concluded: r.session.concluded,
+    tree: r.session.nodes.map((n) => ({
+      id: n.id,
+      parent: n.parentId,
+      kind: n.kind,
+      label: n.label,
+      depth: n.depth,
+      new_notes: n.newNotes,
+      dead_end: n.deadEnd,
+      notes: n.notes.map((x) => ({
+        title: x.title,
+        score: Number(x.score.toFixed(4)),
+        warmth: x.warmthScore,
+        source: x.source,
+        description: x.snippet?.description ?? null,
+      })),
+    })),
+    new_notes: r.newNotes.map((x) => x.title),
+    frontier: r.frontier.map((f, i) => ({ option: i + 1, direction: f.direction, reason: f.reason })),
   };
 }

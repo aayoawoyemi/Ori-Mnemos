@@ -59,6 +59,9 @@ describe("tools listing", () => {
     expect(toolNames).toEqual([
       "ori_add",
       "ori_explore",
+      "ori_explore_conclude",
+      "ori_explore_expand",
+      "ori_explore_start",
       "ori_health",
       "ori_index_build",
       "ori_orient",

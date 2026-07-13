@@ -20,7 +20,7 @@ import { runValidate } from "./validate.js";
 import { runHealth } from "./health.js";
 import { runPromote } from "./promote.js";
 import { runQueryRanked, runQuerySimilar, runQueryWarmth } from "./search.js";
-import { runExplore } from "./explore.js";
+import { runExplore, runExploreStart, runExploreExpand, runExploreConclude } from "./explore.js";
 import { runIndexBuild } from "./indexcmd.js";
 import { runPrune } from "./prune.js";
 import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
@@ -812,6 +812,83 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         }
       }
 
+      return textResult(result);
+    }
+  );
+
+  // ori_explore_start — Navigated Recursion (v0.5.1): open a steerable session
+  server.tool(
+    "ori_explore_start",
+    "Open a NAVIGATED exploration session (pass 0 only). Returns the decomposition tree, " +
+      "a frontier of candidate directions (options, not decisions), and an exploration_id. " +
+      "YOU are the navigator: read the tree, judge whether the notes answer the question, " +
+      "then steer with ori_explore_expand or finish with ori_explore_conclude. " +
+      "Dead-end nodes mean the vault does not know — that is information, report it honestly.",
+    {
+      query: z.string().describe("Natural language question to explore"),
+      budget: z.number().optional().describe("Max expansions allowed (default: config max_recursion_depth)"),
+    },
+    async ({ query, budget }) => {
+      const result = await runExploreStart(vaultDir, query, budget ?? undefined, intelligenceDb ?? undefined);
+      return textResult(result);
+    }
+  );
+
+  // ori_explore_expand — steer the exploration
+  server.tool(
+    "ori_explore_expand",
+    "Steer an open exploration session one step. Direction is exactly one of: " +
+      "sub_question (ask your own refined question), branch (deepen a tree node by id), " +
+      "or neighbors (graph-step to unvisited neighbors of a found note). " +
+      "Returns the updated tree, the NEW notes only (diff), and a fresh frontier. Consumes one budget unit.",
+    {
+      exploration_id: z.string().describe("Session id from ori_explore_start"),
+      sub_question: z.string().optional().describe("Your own sub-question to search"),
+      branch: z.string().optional().describe("Tree node id to deepen (e.g. n2)"),
+      neighbors: z.string().optional().describe("Note title whose unvisited graph neighbors to step to"),
+    },
+    async ({ exploration_id, sub_question, branch, neighbors }) => {
+      let direction: { subQuestion: string } | { branch: string } | { neighbors: string };
+      if (sub_question) direction = { subQuestion: sub_question };
+      else if (branch) direction = { branch };
+      else if (neighbors) direction = { neighbors };
+      else {
+        return textResult({
+          success: false, data: {},
+          warnings: ["provide exactly one of: sub_question, branch, neighbors"],
+        });
+      }
+      const result = await runExploreExpand(exploration_id, direction);
+      return textResult(result);
+    }
+  );
+
+  // ori_explore_conclude — close the loop, flush learning signals
+  server.tool(
+    "ori_explore_conclude",
+    "Close a navigated exploration. Tell Ori whether the question was answered and which " +
+      "notes you actually used — your traversal path becomes the learning signal " +
+      "(Q-values and co-occurrence edges strengthen along the route you took).",
+    {
+      exploration_id: z.string().describe("Session id from ori_explore_start"),
+      answered: z.boolean().describe("Did the exploration answer the question?"),
+      used_notes: z.array(z.string()).optional().describe("Titles of notes that contributed to the answer"),
+    },
+    async ({ exploration_id, answered, used_notes }) => {
+      const result = runExploreConclude(exploration_id, { answered, usedNotes: used_notes ?? [] });
+      // Flush learning signals from the navigator's actual path
+      if (result.success && intelligenceDb && "usedNotes" in result.data) {
+        const used = result.data.usedNotes;
+        for (const [rank, title] of used.entries()) {
+          const reward = (result.data.answered ? 0.15 : 0.03) / Math.log2(rank + 2);
+          updateQ(intelligenceDb, title, reward, sessionId);
+        }
+        for (let i = 0; i < used.length; i++) {
+          for (let j = i + 1; j < used.length; j++) {
+            recordCoRetrieval(intelligenceDb, used[i], used[j]);
+          }
+        }
+      }
       return textResult(result);
     }
   );
