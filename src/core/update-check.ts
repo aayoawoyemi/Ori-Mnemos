@@ -2,8 +2,9 @@
  * Lightweight update checker. Queries the npm registry for the latest
  * published version of ori-memory and caches the result for 24 hours.
  */
-
 import { promises as fs } from "node:fs";
+import { VERSION } from "./version.js";
+
 import path from "node:path";
 import https from "node:https";
 
@@ -12,7 +13,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REQUEST_TIMEOUT_MS = 3000; // don't block orient if npm is slow
 
 // Current installed version
-const CURRENT_VERSION = "0.4.0";
+const CURRENT_VERSION = VERSION;
 
 export interface UpdateInfo {
   current: string;

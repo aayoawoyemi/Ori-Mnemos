@@ -1,5 +1,7 @@
 import chalk from "chalk";
+import { VERSION } from "../core/version.js";
 import figlet from "figlet";
+
 import * as p from "@clack/prompts";
 import os from "node:os";
 import path from "node:path";
@@ -269,7 +271,5 @@ export async function runBootSequence(initResult: InitResult, targetDir: string)
 }
 
 function getVersion(): string {
-  // Best effort — read from package.json at runtime would require fs
-  // Just hardcode the current version; state.version is informational
-  return "0.4.0";
+  return VERSION;
 }

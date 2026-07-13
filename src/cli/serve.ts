@@ -1,5 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { VERSION } from "../core/version.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
 import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -237,7 +239,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
   });
 
   const server = new McpServer(
-    { name: "ori-memory", version: "0.4.0" },
+    { name: "ori-memory", version: VERSION },
     { instructions },
   );
 

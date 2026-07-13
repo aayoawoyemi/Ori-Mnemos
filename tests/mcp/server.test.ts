@@ -6,7 +6,9 @@
  * and tears everything down.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { VERSION } from "../../src/core/version.js";
 import { promises as fs } from "node:fs";
+
 import path from "node:path";
 import { createMcpTestContext, callTool, type McpTestContext } from "./harness.js";
 
@@ -28,7 +30,7 @@ describe("server initialization", () => {
   it("reports correct server name and version", () => {
     const info = ctx.client.getServerVersion();
     expect(info?.name).toBe("ori-memory");
-    expect(info?.version).toBe("0.4.0");
+    expect(info?.version).toBe(VERSION);
   });
 
   it("provides instructions string", () => {

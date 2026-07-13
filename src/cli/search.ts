@@ -20,7 +20,7 @@ import {
 import { fuseScoreWeightedRRF, normalizeSignalWeights } from "../core/fusion.js";
 import { injectExploration, logAccess } from "../core/tracking.js";
 import type { ScoredNote } from "../core/ranking.js";
-import { buildNoteIndex, computeAllVitality } from "../core/noteindex.js";
+import { buildNoteIndex, computeAllVitality, recordNoteAccess } from "../core/noteindex.js";
 import { loadBoosts, applyActivationBoosts, computeActivationSpread } from "../core/activation.js";
 import { WarmthService, type WarmthSignal } from "../core/warmth.js";
 import {
@@ -49,7 +49,6 @@ import {
   applyHubDampening,
   applyResolutionBoost,
 } from "../core/dampening.js";
-import { readFrontmatterFile, writeFrontmatterFile } from "../core/frontmatter.js";
 
 type WarmthRankShift = {
   title: string;
@@ -526,17 +525,11 @@ export async function runQueryRanked(
     await logWarmthAudit(vaultRoot, auditEvent);
   }
 
-  // 15. Update access metadata in frontmatter for retrieved notes
-  const today = new Date().toISOString().split("T")[0];
-  await Promise.allSettled(withExploration.map(async (result) => {
-    const notePath = path.join(paths.notes, `${result.title}.md`);
-    const { data, body } = await readFrontmatterFile(notePath);
-    if (data) {
-      data.access_count = (typeof data.access_count === "number" ? data.access_count : 0) + 1;
-      data.last_accessed = today;
-      await writeFrontmatterFile(notePath, data, body);
-    }
-  }));
+  // 15. Update access metadata in frontmatter for retrieved notes (#17, @maichler)
+  await recordNoteAccess(
+    paths.notes,
+    withExploration.map((r) => r.title),
+  );
 
   // 16. Spreading activation: propagate boosts to neighbors of top results
   if (config.activation?.enabled !== false) {

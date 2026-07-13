@@ -7,7 +7,11 @@ import { promises as fs } from "node:fs";
 import type { NoteIndex } from "./importance.js";
 import type { LinkGraph } from "./graph.js";
 import type { OriConfig } from "./config.js";
-import { parseFrontmatter } from "./frontmatter.js";
+import {
+  parseFrontmatter,
+  readFrontmatterFile,
+  writeFrontmatterFile,
+} from "./frontmatter.js";
 import { computeVitalityFull } from "./vitality.js";
 
 /**
@@ -89,4 +93,30 @@ export async function computeAllVitality(
   }
 
   return scores;
+}
+
+/**
+ * Record a retrieval access for each note: increment access_count and
+ * refresh last_accessed in frontmatter, so the ACT-R vitality model has
+ * a real usage signal (#17, fixed by @maichler in #33; extracted here
+ * post-merge for reuse and testability). Best-effort: unreadable or
+ * frontmatter-less notes are skipped without failing the batch.
+ */
+export async function recordNoteAccess(
+  notesDir: string,
+  titles: string[],
+): Promise<void> {
+  const today = new Date().toISOString().split("T")[0];
+  await Promise.allSettled(
+    titles.map(async (title) => {
+      const notePath = path.join(notesDir, `${title}.md`);
+      const { data, body } = await readFrontmatterFile(notePath);
+      if (data) {
+        data.access_count =
+          (typeof data.access_count === "number" ? data.access_count : 0) + 1;
+        data.last_accessed = today;
+        await writeFrontmatterFile(notePath, data, body);
+      }
+    }),
+  );
 }
