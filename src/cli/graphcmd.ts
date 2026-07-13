@@ -1,10 +1,7 @@
-import path from "node:path";
-import { promises as fs } from "node:fs";
 import { findVaultRoot, getVaultPaths, listNoteTitles } from "../core/vault.js";
 import { buildGraph } from "../core/graph.js";
 import { computeGraphMetrics } from "../core/importance.js";
-import type { NoteIndex } from "../core/importance.js";
-import { parseFrontmatter } from "../core/frontmatter.js";
+import { buildNoteIndex } from "../core/noteindex.js";
 
 export type GraphMetricsResult = {
   success: boolean;
@@ -17,31 +14,6 @@ export type GraphCommunitiesResult = {
   data: Record<string, unknown>;
   warnings: string[];
 };
-
-/**
- * Build a NoteIndex for cross-project bridge detection.
- */
-async function buildNoteIndex(
-  notesDir: string,
-  titles: string[],
-): Promise<NoteIndex> {
-  const frontmatter = new Map<string, Record<string, unknown>>();
-
-  for (const title of titles) {
-    const filePath = path.join(notesDir, `${title}.md`);
-    try {
-      const content = await fs.readFile(filePath, "utf8");
-      const { data } = parseFrontmatter(content);
-      if (data) {
-        frontmatter.set(title, data);
-      }
-    } catch {
-      // skip unreadable files
-    }
-  }
-
-  return { frontmatter };
-}
 
 /**
  * Compute and return graph-level metrics: node/edge counts, community count,
