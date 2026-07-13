@@ -49,6 +49,7 @@ import {
   applyHubDampening,
   applyResolutionBoost,
 } from "../core/dampening.js";
+import { readFrontmatterFile, writeFrontmatterFile } from "../core/frontmatter.js";
 
 type WarmthRankShift = {
   title: string;
@@ -525,7 +526,19 @@ export async function runQueryRanked(
     await logWarmthAudit(vaultRoot, auditEvent);
   }
 
-  // 15. Spreading activation: propagate boosts to neighbors of top results
+  // 15. Update access metadata in frontmatter for retrieved notes
+  const today = new Date().toISOString().split("T")[0];
+  await Promise.allSettled(withExploration.map(async (result) => {
+    const notePath = path.join(paths.notes, `${result.title}.md`);
+    const { data, body } = await readFrontmatterFile(notePath);
+    if (data) {
+      data.access_count = (typeof data.access_count === "number" ? data.access_count : 0) + 1;
+      data.last_accessed = today;
+      await writeFrontmatterFile(notePath, data, body);
+    }
+  }));
+
+  // 16. Spreading activation: propagate boosts to neighbors of top results
   if (config.activation?.enabled !== false) {
     const allBoosts = new Map<string, number>();
     for (const result of withExploration.slice(0, 3)) {
@@ -544,7 +557,7 @@ export async function runQueryRanked(
     }
   }
 
-  // 16. Close DB only if we opened it ourselves
+  // 17. Close DB only if we opened it ourselves
   if (ownDb) {
     mainDb.close();
   }
