@@ -24,7 +24,7 @@ import { runQueryRanked, runQuerySimilar, runQueryWarmthAudit } from "./cli/sear
 import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
 import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
 import { runPrune } from "./cli/prune.js";
-import { runExplore } from "./cli/explore.js";
+import { runExplore, runExploreStartCli, runExploreExpandCli, runExploreConcludeCli } from "./cli/explore.js";
 
 const program = new Command();
 
@@ -447,6 +447,99 @@ program
     );
     console.log(JSON.stringify(result));
   });
+
+
+program
+  .command("explore-start")
+  .description("Open a navigated exploration session — you are the navigator")
+  .argument("<query>", "natural language question to explore")
+  .option("--budget <n>", "max expansions allowed (default: config)")
+  .option("--json", "raw JSON output")
+  .action(async (query: string, options: { budget?: string; json?: boolean }) => {
+    const result = await runExploreStartCli(
+      process.cwd(),
+      query,
+      options.budget ? parseInt(options.budget, 10) : undefined,
+    );
+    if (options.json) { console.log(JSON.stringify(result)); return; }
+    printNavigated(result);
+  });
+
+program
+  .command("explore-expand")
+  .description("Steer an open exploration one step (one of --ask/--branch/--neighbors)")
+  .argument("<exploration_id>", "session id from explore-start")
+  .option("--ask <question>", "expand with your own sub-question")
+  .option("--branch <nodeId>", "deepen a tree node (e.g. n2)")
+  .option("--neighbors <title>", "graph-step to unvisited neighbors of a note")
+  .option("--json", "raw JSON output")
+  .action(async (id: string, options: { ask?: string; branch?: string; neighbors?: string; json?: boolean }) => {
+    let direction: { subQuestion: string } | { branch: string } | { neighbors: string };
+    if (options.ask) direction = { subQuestion: options.ask };
+    else if (options.branch) direction = { branch: options.branch };
+    else if (options.neighbors) direction = { neighbors: options.neighbors };
+    else {
+      console.log(JSON.stringify({ success: false, warnings: ["provide exactly one of --ask, --branch, --neighbors"] }));
+      return;
+    }
+    const result = await runExploreExpandCli(process.cwd(), id, direction);
+    if (options.json) { console.log(JSON.stringify(result)); return; }
+    printNavigated(result);
+  });
+
+program
+  .command("explore-conclude")
+  .description("Close an exploration; the notes you used become the learning signal")
+  .argument("<exploration_id>", "session id from explore-start")
+  .option("--answered", "the exploration answered the question")
+  .option("--used <titles>", "comma-separated note titles that contributed")
+  .option("--json", "raw JSON output")
+  .action(async (id: string, options: { answered?: boolean; used?: string; json?: boolean }) => {
+    const result = await runExploreConcludeCli(process.cwd(), id, {
+      answered: options.answered ?? false,
+      usedNotes: options.used ? options.used.split(",").map((s) => s.trim()) : [],
+    });
+    console.log(JSON.stringify(result, null, options.json ? 0 : 2));
+  });
+
+/** Render a navigated session: tree, then numbered frontier. */
+function printNavigated(result: { success: boolean; data: Record<string, unknown>; warnings: string[] }): void {
+  if (!result.success) {
+    console.log(JSON.stringify(result));
+    return;
+  }
+  const d = result.data as {
+    exploration_id: string;
+    budget_remaining: number;
+    tree: Array<{ id: string; parent: string | null; kind: string; label: string; depth: number; new_notes: number; dead_end: boolean; exhausted: boolean; notes: Array<{ title: string; score: number; warmth: number | null }> }>;
+    new_notes: string[];
+    frontier: Array<{ option: number; direction: Record<string, string>; reason: string }>;
+  };
+  console.log(`exploration: ${d.exploration_id}   budget left: ${d.budget_remaining}`);
+  console.log("");
+  for (const n of d.tree) {
+    const indent = "  ".repeat(n.depth);
+    const mark = n.dead_end ? " [DEAD END — vault doesn't know]" : n.exhausted ? " [exhausted — nothing new]" : "";
+    console.log(`${indent}${n.id} (${n.kind}) ${n.label}${mark}`);
+    for (const note of n.notes.slice(0, 8)) {
+      const warm = note.warmth !== null && note.warmth !== undefined ? ` warm=${Number(note.warmth).toFixed(2)}` : "";
+      console.log(`${indent}   - ${note.title} (${Number(note.score).toFixed(3)}${warm})`);
+    }
+    if (n.notes.length > 8) console.log(`${indent}   ... +${n.notes.length - 8} more`);
+  }
+  if (d.new_notes.length > 0) {
+    console.log(`\nnew this step: ${d.new_notes.join(", ")}`);
+  }
+  console.log("\nfrontier (your options):");
+  if (d.frontier.length === 0) console.log("   (none — expand with --ask, or conclude)");
+  for (const f of d.frontier) {
+    const dir = "subQuestion" in f.direction ? `--ask "${f.direction.subQuestion}"`
+      : "branch" in f.direction ? `--branch ${f.direction.branch}`
+      : `--neighbors "${f.direction.neighbors}"`;
+    console.log(`   ${f.option}. ${dir}   # ${f.reason}`);
+  }
+  console.log(`\nnext: ori explore-expand ${d.exploration_id} <direction>   |   ori explore-conclude ${d.exploration_id} --answered --used "titles"`);
+}
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(String(err));

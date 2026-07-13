@@ -235,6 +235,7 @@ export async function runExplore(
   flatResults = flatResults.slice(0, resultLimit);
 
   // 12. Q-value lookup (real values if DB available)
+  initQValueTables(mainDb); // fresh vaults have no note_q yet (#same fix as navigated path)
   const qValueLookup = (title: string) => getDecayedQ(mainDb, title);
 
   // 13. Determine recursive mode
@@ -506,6 +507,99 @@ export async function buildSessionDeps(
 
 /** In-memory session store (used by MCP server; CLI uses file persistence). */
 const sessions = new Map<string, { state: ExploreSessionState; deps: ExploreSessionDeps; closeDb: () => void }>();
+
+/* ------------------------------------------------------------------ */
+/*  File-backed sessions — manual steering across CLI invocations      */
+/* ------------------------------------------------------------------ */
+
+function sessionFilePath(vaultRoot: string, id: string): string {
+  return path.join(vaultRoot, ".ori", "explore-sessions", `${id}.json`);
+}
+
+async function saveSessionState(vaultRoot: string, state: ExploreSessionState): Promise<void> {
+  const file = sessionFilePath(vaultRoot, state.id);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(state), "utf8");
+}
+
+async function loadSessionState(vaultRoot: string, id: string): Promise<ExploreSessionState | null> {
+  try {
+    const raw = await fs.readFile(sessionFilePath(vaultRoot, id), "utf8");
+    return JSON.parse(raw) as ExploreSessionState;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteSessionState(vaultRoot: string, id: string): Promise<void> {
+  try { await fs.rm(sessionFilePath(vaultRoot, id)); } catch { /* already gone */ }
+}
+
+/**
+ * CLI: start a navigated exploration, persist the session to
+ * .ori/explore-sessions/, print tree + numbered frontier.
+ */
+export async function runExploreStartCli(
+  startDir: string,
+  query: string,
+  budget?: number,
+): Promise<NavigatedResult> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const { deps, warnings, closeDb } = await buildSessionDeps(startDir);
+  try {
+    await deps.reseed(query).then(() => undefined).catch(() => undefined);
+    const result = await startExploration(query, deps, budget);
+    await saveSessionState(vaultRoot, result.session);
+    return { success: true, data: serializeNavigated(result), warnings };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  } finally {
+    closeDb();
+  }
+}
+
+/**
+ * CLI: load a persisted session, apply one expansion, persist it back.
+ */
+export async function runExploreExpandCli(
+  startDir: string,
+  explorationId: string,
+  direction: ExpandDirection,
+): Promise<NavigatedResult> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const state = await loadSessionState(vaultRoot, explorationId);
+  if (!state) {
+    return { success: false, data: {}, warnings: [`unknown exploration_id: ${explorationId} — no session file in .ori/explore-sessions/`] };
+  }
+  const { deps, warnings, closeDb } = await buildSessionDeps(startDir);
+  try {
+    const result = await expandExploration(state, direction, deps);
+    await saveSessionState(vaultRoot, result.session);
+    return { success: true, data: serializeNavigated(result), warnings };
+  } catch (err) {
+    return { success: false, data: {}, warnings: [String(err)] };
+  } finally {
+    closeDb();
+  }
+}
+
+/**
+ * CLI: conclude a persisted session and remove its file.
+ */
+export async function runExploreConcludeCli(
+  startDir: string,
+  explorationId: string,
+  outcome: { answered: boolean; usedNotes?: string[] },
+): Promise<{ success: boolean; data: ConcludeSummary | Record<string, never>; warnings: string[] }> {
+  const vaultRoot = await findVaultRoot(startDir);
+  const state = await loadSessionState(vaultRoot, explorationId);
+  if (!state) {
+    return { success: false, data: {}, warnings: [`unknown exploration_id: ${explorationId}`] };
+  }
+  const summary = concludeExploration(state, outcome);
+  await deleteSessionState(vaultRoot, explorationId);
+  return { success: true, data: summary, warnings: [] };
+}
 
 export async function runExploreStart(
   startDir: string,
