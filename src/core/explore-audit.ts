@@ -93,15 +93,3 @@ export async function loadExploreAudit(
   return events;
 }
 
-export async function queryExploreAudit(
-  vaultRoot: string,
-  options?: { query?: string; limit?: number },
-): Promise<ExploreAuditEvent[]> {
-  const events = await loadExploreAudit(vaultRoot);
-  const needle = options?.query?.trim().toLowerCase();
-  const filtered = needle
-    ? events.filter((event) => event.query.toLowerCase().includes(needle))
-    : events;
-  const limit = options?.limit ?? 10;
-  return filtered.slice(-limit).reverse();
-}

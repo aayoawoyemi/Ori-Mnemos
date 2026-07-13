@@ -47,9 +47,3 @@ export function exitParchment(): void {
   process.removeListener("exit", cleanup);
 }
 
-/**
- * Whether parchment mode is currently active.
- */
-export function isParchmentActive(): boolean {
-  return active;
-}

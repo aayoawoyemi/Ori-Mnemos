@@ -32,7 +32,6 @@ import {
   exploreRecursive,
   type ExploreNote,
   type ExplorePath,
-  type RecursiveExploreOutput,
 } from "../core/explore.js";
 import { createProvider, NullProvider } from "../core/llm.js";
 import { getDecayedQ, initQValueTables } from "../core/qvalue.js";

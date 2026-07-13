@@ -167,7 +167,7 @@ export async function embedText(
 export function buildKnowledgeEnrichedText(
   title: string,
   frontmatter: Record<string, unknown>,
-  body: string,
+  _body: string,
   linkGraph: LinkGraph,
 ): string {
   const noteType =

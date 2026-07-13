@@ -32,7 +32,6 @@ import { initQValueTables, batchUpdateQ, updateQ } from "../core/qvalue.js";
 import { SessionRewardAccumulator } from "../core/reward.js";
 import {
   initCoOccurrenceTables,
-  extractCoOccurrencePairs,
   recordCoRetrieval,
   recomputeAllNPMI,
   runHomeostasis,

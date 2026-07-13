@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { VERSION } from "./core/version.js";
 import { readFileSync } from "node:fs";
 
-import { runInit, runInitInteractive } from "./cli/init.js";
+import { runInitInteractive } from "./cli/init.js";
 import { runStatus } from "./cli/status.js";
 import { runHealth } from "./cli/health.js";
 import {

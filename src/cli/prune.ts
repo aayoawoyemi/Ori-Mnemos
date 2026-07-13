@@ -67,7 +67,7 @@ export interface PruneResult {
 // ---------------------------------------------------------------------------
 
 export async function runPrune(options: PruneOptions): Promise<PruneResult> {
-  const { startDir, dryRun = true, verbose = false } = options;
+  const { startDir, dryRun = true } = options;
   const warnings: string[] = [];
 
   // 1. Vault setup

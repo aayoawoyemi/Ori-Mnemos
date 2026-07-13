@@ -54,7 +54,7 @@ export function extractKeyTerms(text: string): Set<string> {
 export function applyGravityDampening(
   results: ScoredNote[],
   query: string,
-  noteTitles: Map<string, string>, // noteId -> title (for term overlap check)
+  _noteTitles: Map<string, string>, // noteId -> title (kept for API stability)
   threshold: number = 0.3,
 ): ScoredNote[] {
   const queryTerms = extractKeyTerms(query);

@@ -115,7 +115,7 @@ function generateTitle(): string {
   return figlet.textSync("ORI MNEMOS", { font: "Standard" });
 }
 
-export async function runBootSequence(initResult: InitResult, targetDir: string): Promise<void> {
+export async function runBootSequence(_initResult: InitResult, targetDir: string): Promise<void> {
   // Clear screen
   process.stdout.write("\x1b[2J\x1b[H");
 
