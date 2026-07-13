@@ -55,9 +55,13 @@ tests/core/*
 !tests/core/vault.test.ts
 !tests/core/vault-path.test.ts
 !tests/core/promote-llm.test.ts
+!tests/core/access-tracking.test.ts
+!tests/core/explore-session.test.ts
 !tests/mcp/
 tests/mcp/*
 !tests/mcp/server.test.ts
+!tests/mcp/navigated-explore.test.ts
+!tests/mcp/harness.ts
 .npmrc
 
 # Registry tokens (sensitive)
