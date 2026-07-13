@@ -72,6 +72,17 @@ export type BM25Config = {
   description_boost: number;
 };
 
+export type RerankConfig = {
+  /** Off by default: the cross-encoder model (~90MB) downloads on first use. */
+  enabled: boolean;
+  /** HF text-classification cross-encoder id. */
+  model: string;
+  /** Rerank the top_k candidates; the rest keep their order below. */
+  top_k: number;
+  /** 0..1 — weight of cross-encoder score vs normalized pipeline score. */
+  blend: number;
+};
+
 export type IPSConfig = {
   enabled: boolean;
   epsilon: number;
@@ -132,6 +143,7 @@ export type OriConfig = {
   engine: EngineConfig;
   retrieval: RetrievalConfig;
   bm25: BM25Config;
+  rerank: RerankConfig;
   ips: IPSConfig;
   activation: ActivationConfig;
   warmth: WarmthConfig;
@@ -178,6 +190,13 @@ const DEFAULT_BM25_CONFIG: BM25Config = {
   b: 0.75,
   title_boost: 3.0,
   description_boost: 2.0,
+};
+
+const DEFAULT_RERANK_CONFIG: RerankConfig = {
+  enabled: false,
+  model: "Xenova/ms-marco-MiniLM-L-6-v2",
+  top_k: 10,
+  blend: 0.6,
 };
 
 const DEFAULT_IPS_CONFIG: IPSConfig = {
@@ -243,6 +262,7 @@ const DEFAULT_CONFIG: OriConfig = {
   engine: { ...DEFAULT_ENGINE_CONFIG },
   retrieval: { ...DEFAULT_RETRIEVAL_CONFIG },
   bm25: { ...DEFAULT_BM25_CONFIG },
+  rerank: { ...DEFAULT_RERANK_CONFIG },
   ips: { ...DEFAULT_IPS_CONFIG },
   activation: { ...DEFAULT_ACTIVATION_CONFIG },
   warmth: { ...DEFAULT_WARMTH_CONFIG },
@@ -260,6 +280,7 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
   const rawEngine = (raw as Record<string, unknown>).engine as Partial<EngineConfig> | undefined;
   const rawRetrieval = (raw as Record<string, unknown>).retrieval as Partial<RetrievalConfig> | undefined;
   const rawBM25 = (raw as Record<string, unknown>).bm25 as Partial<BM25Config> | undefined;
+  const rawRerank = (raw as Record<string, unknown>).rerank as Partial<RerankConfig> | undefined;
   const rawIPS = (raw as Record<string, unknown>).ips as Partial<IPSConfig> | undefined;
   const rawActivation = (raw as Record<string, unknown>).activation as Partial<ActivationConfig> | undefined;
   const rawWarmth = (raw as Record<string, unknown>).warmth as Partial<WarmthConfig> | undefined;
@@ -347,6 +368,12 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
       b: rawBM25?.b ?? DEFAULT_BM25_CONFIG.b,
       title_boost: rawBM25?.title_boost ?? DEFAULT_BM25_CONFIG.title_boost,
       description_boost: rawBM25?.description_boost ?? DEFAULT_BM25_CONFIG.description_boost,
+    },
+    rerank: {
+      enabled: rawRerank?.enabled ?? DEFAULT_RERANK_CONFIG.enabled,
+      model: rawRerank?.model ?? DEFAULT_RERANK_CONFIG.model,
+      top_k: rawRerank?.top_k ?? DEFAULT_RERANK_CONFIG.top_k,
+      blend: rawRerank?.blend ?? DEFAULT_RERANK_CONFIG.blend,
     },
     ips: {
       enabled: rawIPS?.enabled ?? DEFAULT_IPS_CONFIG.enabled,

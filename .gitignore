@@ -58,6 +58,7 @@ tests/core/*
 !tests/core/promote-llm.test.ts
 !tests/core/access-tracking.test.ts
 !tests/core/explore-session.test.ts
+!tests/core/crossencoder.test.ts
 !tests/mcp/
 tests/mcp/*
 !tests/mcp/server.test.ts

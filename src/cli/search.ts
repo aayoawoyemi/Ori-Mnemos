@@ -32,6 +32,7 @@ import {
 } from "../core/warmth-audit.js";
 // Retrieval intelligence layers
 import { phaseB } from "../core/rerank.js";
+import { createCrossEncoderScorer, rerankCrossEncoder } from "../core/crossencoder.js";
 import { personalizedPageRankCombined } from "../core/ppr.js";
 import {
   loadStage,
@@ -448,6 +449,30 @@ export async function runQueryRanked(
 
   // Re-sort after dampening
   dampened.sort((a, b) => b.score - a.score);
+
+  // Layer 1.5: cross-encoder reranking (opt-in; arXiv 2511.18177 +59% abs)
+  if (config.rerank.enabled) {
+    trackStage("cross_encoder", dampened);
+    const tx = performance.now();
+    try {
+      const scorer = await createCrossEncoderScorer(config.rerank);
+      dampened = await rerankCrossEncoder(
+        query,
+        dampened,
+        (note) => {
+          const fm = noteIndex.frontmatter.get(note.title);
+          const desc = typeof fm?.description === "string" ? fm.description : "";
+          return desc ? `${note.title}. ${desc}` : note.title;
+        },
+        scorer,
+        config.rerank,
+      );
+    } catch (err) {
+      warnings.push(`cross-encoder rerank unavailable: ${String(err)}`);
+    }
+    pipelineElapsed += performance.now() - tx;
+    trackStageAfter("cross_encoder", dampened);
+  }
 
   // Layer 1: Phase B Q-value reranking
   let ranked = dampened;

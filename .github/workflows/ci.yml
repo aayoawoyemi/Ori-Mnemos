@@ -7,7 +7,11 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +30,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Test
+        run: npx vitest run --reporter=basic
 
       - name: Bin Smoke Test
         run: npm run smoke:bin
