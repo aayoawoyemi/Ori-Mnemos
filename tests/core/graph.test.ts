@@ -62,7 +62,7 @@ describe("buildGraph", () => {
   it("trims whitespace in link targets", async () => {
     await writeNote("note", "Link to [[ spaced target ]].");
     const graph = await buildGraph(notesDir);
-    expect(graph.outgoing.get("note")!.has("spaced target")).toBe(true);
+    expect(graph.outgoing.get("note")!.has("spaced-target")).toBe(true);
   });
 
   it("deduplicates links within the same note", async () => {
@@ -179,5 +179,142 @@ describe("GraphCache", () => {
 
     expect(rebuilt).not.toBe(first);
     expect(rebuilt.outgoing.has("beta")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wikilink normalization (#32) and code-fence stripping (#20)
+// ---------------------------------------------------------------------------
+
+describe("link target normalization (#32)", () => {
+  it("resolves display-title links to filename slugs", async () => {
+    await writeNote("note-one", "Links to [[Note Two]].");
+    await writeNote("note-two", "Plain note.");
+    const graph = await buildGraph(notesDir);
+    expect(graph.outgoing.get("note-one")!.has("note-two")).toBe(true);
+    expect(graph.incoming.get("note-two")!.has("note-one")).toBe(true);
+  });
+
+  it("linked notes are not reported as orphans (repro from #32)", async () => {
+    await writeNote("note-one", "Links to [[Note Two]].");
+    await writeNote("note-two", "Plain note.");
+    const graph = await buildGraph(notesDir);
+    const orphans = findOrphans(graph, ["note-one", "note-two"]);
+    expect(orphans).not.toContain("note-two");
+  });
+
+  it("strips alias from [[Title|display text]] links", async () => {
+    await writeNote("src", "See [[Vikunja GTD Workflow Conventions|the conventions]].");
+    await writeNote("vikunja-gtd-workflow-conventions", "Conventions.");
+    const graph = await buildGraph(notesDir);
+    expect(
+      graph.incoming.get("vikunja-gtd-workflow-conventions")!.has("src"),
+    ).toBe(true);
+  });
+
+  it("strips heading refs from [[Title#heading]] links", async () => {
+    await writeNote("src", "See [[Note Two#setup]].");
+    await writeNote("note-two", "Has headings.");
+    const graph = await buildGraph(notesDir);
+    expect(graph.incoming.get("note-two")!.has("src")).toBe(true);
+  });
+
+  it("slug-form links still resolve", async () => {
+    await writeNote("src", "See [[note-two]].");
+    await writeNote("note-two", "Plain.");
+    const graph = await buildGraph(notesDir);
+    expect(graph.incoming.get("note-two")!.has("src")).toBe(true);
+  });
+});
+
+describe("code fence stripping (#20)", () => {
+  it("ignores bash [[ ]] test syntax inside backtick fences", async () => {
+    await writeNote(
+      "git-hook",
+      [
+        "A note about hooks.",
+        "```sh",
+        'if [[ "$AUTHOR_NAME" != "Lachlan Pitts" ]] || \\',
+        '   [[ "$AUTHOR_EMAIL" != "lachlan.pitts@gmail.com" ]]; then',
+        '  echo "ERROR"',
+        "fi",
+        "```",
+        "Links to [[Real Note]].",
+      ].join("\n"),
+    );
+    await writeNote("real-note", "Target.");
+    const graph = await buildGraph(notesDir);
+    const links = graph.outgoing.get("git-hook")!;
+    expect(links.has("real-note")).toBe(true);
+    expect(links.size).toBe(1);
+    const dangling = findDanglingLinks(graph, ["git-hook", "real-note"]);
+    expect(dangling).toEqual([]);
+  });
+
+  it("ignores array-of-arrays literals inside typescript fences", async () => {
+    await writeNote(
+      "duckdb-example",
+      [
+        "Perspective config:",
+        "```ts",
+        'sort: [["sys_from", "desc"]],',
+        'filter: [["trust_level", ">=", trust_floor]],',
+        "```",
+      ].join("\n"),
+    );
+    const graph = await buildGraph(notesDir);
+    expect(graph.outgoing.get("duckdb-example")!.size).toBe(0);
+  });
+
+  it("supports tilde fences", async () => {
+    await writeNote(
+      "tilde-note",
+      ["~~~", "if [[ -f x ]]; then echo hi; fi", "~~~", "See [[target]]."].join("\n"),
+    );
+    await writeNote("target", "T.");
+    const graph = await buildGraph(notesDir);
+    const links = graph.outgoing.get("tilde-note")!;
+    expect(links.has("target")).toBe(true);
+    expect(links.size).toBe(1);
+  });
+
+  it("requires closing fence run length >= opening (CommonMark 4.5)", async () => {
+    await writeNote(
+      "nested-fence",
+      [
+        "````",
+        "```",
+        "inner [[not-a-link]]",
+        "```",
+        "````",
+        "After fence [[real-target]].",
+      ].join("\n"),
+    );
+    await writeNote("real-target", "T.");
+    const graph = await buildGraph(notesDir);
+    const links = graph.outgoing.get("nested-fence")!;
+    expect(links.has("real-target")).toBe(true);
+    expect(links.has("not-a-link")).toBe(false);
+  });
+
+  it("unterminated fence swallows the rest of the note", async () => {
+    await writeNote(
+      "unterminated",
+      ["```", "code [[not-a-link]] forever"].join("\n"),
+    );
+    const graph = await buildGraph(notesDir);
+    expect(graph.outgoing.get("unterminated")!.size).toBe(0);
+  });
+
+  it("still extracts links from inline-code-free prose around fences", async () => {
+    await writeNote(
+      "mixed",
+      ["Before [[alpha]].", "```", "[[skip]]", "```", "After [[beta]]."].join("\n"),
+    );
+    const graph = await buildGraph(notesDir);
+    const links = graph.outgoing.get("mixed")!;
+    expect(links.has("alpha")).toBe(true);
+    expect(links.has("beta")).toBe(true);
+    expect(links.has("skip")).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { loadConfig, resolveTemplatePath } from "../core/config.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../core/frontmatter.js";
 import { runValidate } from "./validate.js";
 import { runPromote } from "./promote.js";
+import { slugify } from "../core/slug.js";
 
 export type AddOptions = {
   startDir: string;
@@ -34,13 +35,7 @@ function validateTitle(title: string): { valid: boolean; reason?: string } {
   return { valid: true };
 }
 
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
+// slugify moved to core/slug.ts — shared with graph normalization (#32)
 
 export async function runAdd(options: AddOptions): Promise<AddResult> {
   // Layer 1: Title validation
