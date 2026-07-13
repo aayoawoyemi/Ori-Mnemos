@@ -145,7 +145,8 @@ describe("navigated exploration lifecycle", () => {
 
     expect(done.success).toBe(true);
     expect(done.data.answered).toBe(true);
-    expect(done.data.usedNotes).toEqual(["memory architecture decision"]);
+    // validation normalizes display titles to the visited slug form
+    expect(done.data.usedNotes).toEqual(["memory-architecture-decision"]);
 
     // Session is gone now
     const after = (await callTool(ctx.client, "ori_explore_expand", {

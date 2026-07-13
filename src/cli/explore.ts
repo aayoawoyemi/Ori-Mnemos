@@ -572,6 +572,7 @@ function serializeNavigated(r: NavigatedExploreResult): Record<string, unknown> 
       depth: n.depth,
       new_notes: n.newNotes,
       dead_end: n.deadEnd,
+      exhausted: n.exhausted,
       notes: n.notes.map((x) => ({
         title: x.title,
         score: Number(x.score.toFixed(4)),

@@ -15,6 +15,7 @@ import type { LinkGraph } from "./graph.js";
 import type { ScoredNote } from "./ranking.js";
 import { classifyIntent } from "./intent.js";
 import { explore, extractSnippet, type ExploreNote, type ExplorePath } from "./explore.js";
+import { slugify } from "./slug.js";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -33,7 +34,10 @@ export interface ExploreTreeNode {
   depth: number;
   notes: ExploreNote[];
   newNotes: number;
+  /** Retrieval found NOTHING — the vault does not know this. */
   deadEnd: boolean;
+  /** Retrieval found notes, but all were already visited — covered, not unknown. */
+  exhausted: boolean;
 }
 
 export interface FrontierOption {
@@ -149,6 +153,13 @@ export async function startExploration(
 ): Promise<NavigatedExploreResult> {
   const classified = classifyIntent(query, deps.allTitles);
   const seeds = await deps.reseed(query);
+  // Navigated mode keeps pass 0 deliberately narrow (half the flat limit):
+  // the point is a focused working set the navigator expands, not a
+  // greedy sweep that leaves nothing to navigate.
+  const pass0Config = {
+    ...deps.config,
+    default_limit: Math.max(5, Math.floor(deps.config.default_limit / 2)),
+  };
   const pass0 = await explore({
     query,
     classified,
@@ -156,7 +167,7 @@ export async function startExploration(
     notesDir: deps.notesDir,
     warmthSignals: deps.warmthSignals,
     flatResults: seeds,
-    config: deps.config,
+    config: pass0Config,
     qValueLookup: deps.qValueLookup,
   });
 
@@ -169,6 +180,7 @@ export async function startExploration(
     notes: pass0.results,
     newNotes: pass0.results.length,
     deadEnd: pass0.results.length === 0,
+    exhausted: false,
   };
 
   const state: ExploreSessionState = {
@@ -248,7 +260,10 @@ export async function expandExploration(
       depth: (state.nodes.find((n) => n.id === parentId)?.depth ?? 0) + 1,
       notes: result.results,
       newNotes: added.length,
-      deadEnd: added.length === 0,
+      // deadEnd: the vault has nothing for this query at all.
+      // exhausted: it has notes, but the navigator already saw them.
+      deadEnd: result.results.length === 0,
+      exhausted: result.results.length > 0 && added.length === 0,
     };
     state.paths = [...state.paths, ...result.paths];
   } else {
@@ -275,6 +290,9 @@ export async function expandExploration(
         snippet,
       });
     }
+    const totalNeighbors =
+      (deps.linkGraph.outgoing.get(from)?.size ?? 0) +
+      (deps.linkGraph.incoming.get(from)?.size ?? 0);
     added = notes;
     node = {
       id: nextId,
@@ -284,7 +302,10 @@ export async function expandExploration(
       depth: 1,
       notes,
       newNotes: notes.length,
-      deadEnd: notes.length === 0,
+      // deadEnd: the note has no graph neighbors at all.
+      // exhausted: it has neighbors, but all are already visited.
+      deadEnd: totalNeighbors === 0,
+      exhausted: totalNeighbors > 0 && notes.length === 0,
     };
   }
 
@@ -306,8 +327,10 @@ export interface ConcludeSummary {
   passes: number;
   totalNotes: number;
   deadEnds: string[];
-  /** Titles the navigator says answered the question — the learning signal. */
+  /** Validated titles that carry the learning signal (visited this session). */
   usedNotes: string[];
+  /** Claimed-but-never-visited titles — ignored for learning, surfaced for honesty. */
+  rejectedNotes: string[];
   answered: boolean;
 }
 
@@ -316,18 +339,41 @@ export interface ConcludeSummary {
  * into Q-values / co-occurrence via the existing reward wiring. The
  * navigator's actual path IS the reward signal.
  */
+export interface ConcludeValidation {
+  /** usedNotes that matched visited notes (these carry the learning signal). */
+  accepted: string[];
+  /** usedNotes that were never visited in this session — no signal written. */
+  rejected: string[];
+}
+
 export function concludeExploration(
   state: ExploreSessionState,
   outcome: { answered: boolean; usedNotes?: string[] },
 ): ConcludeSummary {
   state.concluded = true;
+
+  // Validate usedNotes against the actually-visited set. Accept exact
+  // matches or slug-normalized matches (navigators may echo display titles).
+  const visitedBySlug = new Map<string, string>();
+  for (const v of state.visited) visitedBySlug.set(slugify(v), v);
+  const accepted: string[] = [];
+  const rejected: string[] = [];
+  for (const raw of outcome.usedNotes ?? []) {
+    const match = state.visited.includes(raw)
+      ? raw
+      : visitedBySlug.get(slugify(raw));
+    if (match) accepted.push(match);
+    else rejected.push(raw);
+  }
+
   return {
     id: state.id,
     query: state.query,
     passes: state.nodes.length - 1,
     totalNotes: state.visited.length,
     deadEnds: state.nodes.filter((n) => n.deadEnd).map((n) => n.label),
-    usedNotes: outcome.usedNotes ?? [],
+    usedNotes: accepted,
+    rejectedNotes: rejected,
     answered: outcome.answered,
   };
 }

@@ -194,13 +194,14 @@ describe("expandExploration", () => {
     expect(node.kind).toBe("neighbors");
     expect(r1.newNotes.map((n) => n.title)).toContain("gamma");
     expect(r1.newNotes.map((n) => n.title)).toContain("alpha");
-    // second step on the same note: everything now visited -> dead end
+    // second step on the same note: neighbors exist but all visited -> exhausted
     const r2 = await expandExploration(r1.session, { neighbors: "beta" }, barren);
     expect(r2.newNotes).toHaveLength(0);
-    expect(r2.session.nodes[2].deadEnd).toBe(true);
+    expect(r2.session.nodes[2].deadEnd).toBe(false);
+    expect(r2.session.nodes[2].exhausted).toBe(true);
   });
 
-  it("marks dead-end nodes when expansion finds nothing new", async () => {
+  it("marks dead-end nodes when the vault has nothing for the query", async () => {
     // warmth-only seeding can rescue an empty reseed (that's a feature) —
     // so a true dead end requires no warmth and no seeds
     const barren = makeDeps({ warmthSignals: new Map() });
@@ -211,6 +212,21 @@ describe("expandExploration", () => {
       barren,
     );
     expect(session.nodes[1].deadEnd).toBe(true);
+    expect(session.nodes[1].exhausted).toBe(false);
+    expect(session.nodes[1].newNotes).toBe(0);
+  });
+
+  it("marks exhausted (not dead end) when notes were found but all already visited", async () => {
+    const deps = makeDeps();
+    const start = await startExploration("origin question", deps, 5);
+    // re-ask the same question: retrieval finds the same notes -> exhausted
+    const { session } = await expandExploration(
+      start.session,
+      { subQuestion: "origin question" },
+      deps,
+    );
+    expect(session.nodes[1].deadEnd).toBe(false);
+    expect(session.nodes[1].exhausted).toBe(true);
     expect(session.nodes[1].newNotes).toBe(0);
   });
 
@@ -278,5 +294,17 @@ describe("concludeExploration", () => {
     expect(summary.usedNotes).toEqual(["alpha"]);
     expect(summary.answered).toBe(true);
     expect(session.concluded).toBe(true);
+  });
+
+  it("validates usedNotes: accepts slug-tolerant matches, rejects never-visited claims", async () => {
+    const deps = makeDeps();
+    const { session } = await startExploration("origin question", deps);
+    const summary = concludeExploration(session, {
+      answered: true,
+      // "Alpha" normalizes to visited "alpha"; "phantom note" was never visited
+      usedNotes: ["Alpha", "phantom note"],
+    });
+    expect(summary.usedNotes).toEqual(["alpha"]);
+    expect(summary.rejectedNotes).toEqual(["phantom note"]);
   });
 });
