@@ -6,7 +6,7 @@ Ori implements human cognition as mathematical models on a knowledge graph. Acti
 
 Persistent memory across sessions, clients, and machines. Zero-infrastructure retrieval that [matches and in several cases strongly outperforms incumbents on benchmarks](#benchmarks) — and you own every byte of your data. Markdown on disk. Wiki-links as graph edges. Git as version control. No database lock-in, no cloud dependency, no vendor capture.
 
-**v0.5.0** · [npm](https://www.npmjs.com/package/ori-memory) · [Paper](https://orimnemos.com/rmh) · Apache-2.0
+**v0.6.0** · [npm](https://www.npmjs.com/package/ori-memory) · [Paper](https://orimnemos.com/rmh) · Apache-2.0
 
 ---
 
@@ -88,6 +88,29 @@ Manual MCP config (works with any client that speaks MCP):
 ```
 
 Start a session. The agent receives its identity automatically and begins onboarding on first run.
+
+---
+
+## What's New
+
+**v0.6.0 — Navigated Recursion.** `ori explore` no longer returns a flat synthesis. The agent sees the decomposition tree — which branches produced results, which hit dead ends — and steers the traversal itself. New session commands: `explore-start`, `explore-expand`, `explore-conclude`. Budget is a nudge, not a wall: soft exhaustion with explicit extension. A cross-encoder reranking stage now sits on top of four-signal fusion. RMH Constraint 2 goes from partial to real.
+
+```
+$ ori explore-start "why did we choose SQLite over postgres"
+
+exploration e7f2 — 3 branches
+├─ [1] storage engine tradeoffs        4 notes, strong signal
+├─ [2] deployment constraints          2 notes
+└─ [3] prior migration decisions       dead end — no notes
+
+next: ori explore-expand e7f2 1   |   ori explore-conclude e7f2 --answered
+```
+
+**v0.5.6 — OpenCode bridge.** Full lifecycle integration: first-run onboarding, auto session capture, note validation, multi-vault support. `ori bridge opencode` — one command.
+
+**v0.5.5 — Ebbinghaus warmth.** Notes accessed once fade fast (half-life ~7 days). Notes accessed across many sessions embed deeply (up to ~28 days). Short-term and long-term memory, structurally distinct.
+
+Full history in the [CHANGELOG](./CHANGELOG.md).
 
 ---
 
@@ -429,6 +452,8 @@ npm test              # 579+ tests
 npm run lint          # Type check
 npm run dev           # Watch mode
 ```
+
+Thanks to [@maichler](https://github.com/maichler) and the rest of the Ori community for their PRs and additions.
 
 ---
 

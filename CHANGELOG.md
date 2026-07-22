@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0] - 2026-07-21
+
+### Navigated Recursion: The Agent Steers the Graph
+
+`ori explore` no longer returns a flat synthesis. The agent sees the decomposition tree — which branches produced results, which hit dead ends — and steers the traversal itself.
+
+- **Navigated exploration sessions** — `explore-start` / `explore-expand` / `explore-conclude` (CLI + MCP tools)
+- **Budget as nudge, not wall** — soft exhaustion with explicit extension instead of hard cutoff
+- **Cross-encoder reranking stage** — joint query–note scoring on top of four-signal fusion, fully local
+- **Dead-end semantics** — narrow pass 0, usedNotes validation, honest branch reporting from journey testing
+- **Codebase normalization** — dead code deleted, no-unused enforced, CI test matrix added
+- **Community fixes merged** — access_count write-back on retrieval (#33, @maichler), wikilink slug normalization + code-fence skipping (#32, #20), version single-sourced from package.json (#24)
+
+RMH Constraint 2 — "unresolved queries must recurse" — goes from partial to real, with the agent navigating the recursion.
+
 ## [0.5.6] - 2026-05-18
 
 ### OpenCode Bridge: Full Lifecycle Integration
