@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { VERSION } from "./core/version.js";
+import { checkForUpdate } from "./core/update-check.js";
 import { readFileSync } from "node:fs";
 
 import { runInitInteractive } from "./cli/init.js";
@@ -552,7 +553,26 @@ function printNavigated(result: { success: boolean; data: Record<string, unknown
   console.log(`\nnext: ori explore-expand ${d.exploration_id} <direction>   |   ori explore-conclude ${d.exploration_id} --answered --used "titles"`);
 }
 
-program.parseAsync(process.argv).catch((err) => {
-  console.error(String(err));
-  process.exit(1);
-});
+async function maybeNotifyUpdate(): Promise<void> {
+  // Best-effort CLI update notice (issue #34): stderr only, suppressed for
+  // scripts (no TTY), CI, opt-out env, and the long-running serve command.
+  if (process.env.ORI_NO_UPDATE_CHECK || process.env.CI) return;
+  if (process.argv.includes("serve")) return;
+  if (!process.stderr.isTTY) return;
+  try {
+    const update = await checkForUpdate();
+    if (update.updateAvailable && update.message) {
+      console.error(`\n${update.message}`);
+    }
+  } catch {
+    // Never fail the CLI over an update check
+  }
+}
+
+program
+  .parseAsync(process.argv)
+  .then(maybeNotifyUpdate)
+  .catch((err) => {
+    console.error(String(err));
+    process.exit(1);
+  });

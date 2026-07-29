@@ -39,6 +39,7 @@ tests/cli/*
 !tests/core/
 tests/core/*
 !tests/core/config.test.ts
+!tests/core/update-check.test.ts
 !tests/core/engine.test.ts
 !tests/core/fusion.test.ts
 !tests/core/graph.test.ts

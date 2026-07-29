@@ -7,6 +7,7 @@ import { VERSION } from "./version.js";
 
 import path from "node:path";
 import https from "node:https";
+import os from "node:os";
 
 const PACKAGE_NAME = "ori-memory";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -27,27 +28,55 @@ interface CachedCheck {
   checkedAt: number;
 }
 
-function getCachePath(): string {
-  const home =
-    process.env.HOME ?? process.env.USERPROFILE ?? process.cwd();
-  return path.join(home, ".ori", "update-cache.json");
+/**
+ * Cache location. Deliberately NOT under ~/.ori — the ".ori" name doubles as
+ * the vault marker (isVaultRoot), so a cache dir at $HOME made the walk-up
+ * treat the home directory as a vault (issue #34).
+ */
+export function getUpdateCachePath(): string {
+  const override = process.env.ORI_UPDATE_CACHE_DIR;
+  if (override) return path.join(override, "ori", "update-cache.json");
+
+  const xdg = process.env.XDG_CACHE_HOME;
+  if (xdg) return path.join(xdg, "ori", "update-cache.json");
+
+  if (process.platform === "win32") {
+    const base = process.env.LOCALAPPDATA ?? os.homedir();
+    return path.join(base, "ori", "Cache", "update-cache.json");
+  }
+
+  return path.join(os.homedir(), ".cache", "ori", "update-cache.json");
 }
 
-async function readCache(): Promise<CachedCheck | null> {
+function getLegacyCachePath(): string {
+  return path.join(os.homedir(), ".ori", "update-cache.json");
+}
+
+export async function readCache(): Promise<CachedCheck | null> {
+  let raw: string | null = null;
   try {
-    const raw = await fs.readFile(getCachePath(), "utf8");
+    raw = await fs.readFile(getUpdateCachePath(), "utf8");
+  } catch {
+    // New location empty — fall back to the legacy ~/.ori file (pre-0.6.1)
+    try {
+      raw = await fs.readFile(getLegacyCachePath(), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  try {
     const cached = JSON.parse(raw) as CachedCheck;
     if (Date.now() - cached.checkedAt < CACHE_TTL_MS) {
       return cached;
     }
   } catch {
-    // No cache or invalid — fetch fresh
+    // Invalid cache — fetch fresh
   }
   return null;
 }
 
-async function writeCache(latest: string): Promise<void> {
-  const cachePath = getCachePath();
+export async function writeCache(latest: string): Promise<void> {
+  const cachePath = getUpdateCachePath();
   try {
     await fs.mkdir(path.dirname(cachePath), { recursive: true });
     await fs.writeFile(
@@ -57,6 +86,13 @@ async function writeCache(latest: string): Promise<void> {
     );
   } catch {
     // Non-critical — skip silently
+  }
+  // One-time migration: remove the legacy file (never the directory) so the
+  // phantom-vault marker at $HOME disappears once the new cache is in place.
+  try {
+    await fs.unlink(getLegacyCachePath());
+  } catch {
+    // Already gone or inaccessible — fine
   }
 }
 
@@ -91,7 +127,7 @@ function fetchLatestVersion(): Promise<string | null> {
   });
 }
 
-function compareVersions(current: string, latest: string): boolean {
+export function compareVersions(current: string, latest: string): boolean {
   const c = current.split(".").map(Number);
   const l = latest.split(".").map(Number);
   for (let i = 0; i < 3; i++) {
