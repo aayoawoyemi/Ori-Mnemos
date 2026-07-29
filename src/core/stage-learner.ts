@@ -200,19 +200,49 @@ export class LinUCBStage {
 
 // --- Decision ---
 
+export type StageBudgetOptions = { timeBudgetMs?: number; softCutoff?: number; epsilon?: number; random?: () => number };
+export const EPSILON = 0.02;
+
 export function getStageDecision(
   stage: LinUCBStage,
   x: number[],
   elapsedMs: number,
   sampleCount: number,
+  opts: StageBudgetOptions = {}
 ): "run" | "skip" | "abstain" {
-  if (stage.config.essential) return "run";
-  if (elapsedMs > TIME_BUDGET_MS * SOFT_CUTOFF) return "skip";
-  if (sampleCount < MIN_SAMPLES) return "run"; // exploration phase
+  const {
+    timeBudgetMs = TIME_BUDGET_MS,
+    softCutoff = SOFT_CUTOFF,
+    epsilon = EPSILON,
+    random = Math.random
+  } = opts;
+
+  if (stage.config.essential) {
+    return "run"; // essential -> run
+  }
+
+  if (sampleCount < MIN_SAMPLES) {
+    return "run"; // exploration phase must not be starved
+  }
+
+  if (elapsedMs > timeBudgetMs * softCutoff) {
+    return "skip"; // budget exceeded
+  }
+
+  if (random() < epsilon) {
+    return "run"; // epsilon-greedy re-exploration
+  }
 
   const ucb = stage.getUCB(x);
-  if (ucb < ABSTAIN_THRESHOLD) return "abstain";
-  if (ucb < stage.config.skipThreshold) return "skip";
+
+  if (ucb < ABSTAIN_THRESHOLD) {
+    return "abstain";
+  }
+
+  if (ucb < stage.config.skipThreshold) {
+    return "skip";
+  }
+
   return "run";
 }
 

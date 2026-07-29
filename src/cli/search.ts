@@ -81,6 +81,7 @@ export type SearchResult = {
     results: ScoredNote[];
     count: number;
     warmth?: WarmthDebug;
+    stages_skipped?: string[];
   };
   warnings: string[];
 };
@@ -262,11 +263,18 @@ export async function runQueryRanked(
   let pipelineElapsed = 0;
 
   // Helper: check if a stage should run
+  const stagesSkipped: string[] = [];
+
   const shouldRun = (stageId: string): "run" | "skip" | "abstain" => {
     if (!stages || !queryFeatures) return "run";
     const stage = stages.find((s) => s.config.id === stageId);
     if (!stage) return "run";
-    return getStageDecision(stage, queryFeatures, pipelineElapsed, stage.sampleCount);
+    const decision = getStageDecision(stage, queryFeatures, pipelineElapsed, stage.sampleCount, {
+      timeBudgetMs: config.retrieval.stage_time_budget_ms,
+      softCutoff: config.retrieval.stage_soft_cutoff,
+    });
+    if (decision === "skip" || decision === "abstain") stagesSkipped.push(stageId);
+    return decision;
   };
 
   // Helper: wrap a stage with quality tracking
@@ -584,6 +592,7 @@ export async function runQueryRanked(
       results: withExploration,
       count: withExploration.length,
       warmth: config.warmth.shadow_compare_enabled ? warmthDebug : undefined,
+      stages_skipped: stagesSkipped.length > 0 ? stagesSkipped : undefined,
     },
     warnings,
   };

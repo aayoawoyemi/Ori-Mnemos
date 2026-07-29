@@ -1,6 +1,6 @@
 {
   "name": "ori-memory",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "mcpName": "io.github.aayoawoyemi/ori-memory",
   "description": "Cognitive architecture for persistent AI agent memory. Knowledge graph with learning retrieval, ACT-R decay, and spreading activation. Markdown-native, local-first, zero cloud. MCP server + CLI.",
   "keywords": [

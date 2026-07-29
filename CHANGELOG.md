@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.1] - 2026-07-29
+
+### Field-Report Fixes (#34)
+
+Every code-level finding from the 0.5.5 field report, fixed:
+
+- **Update cache moved out of `~/.ori`** — the update checker's cache directory doubled as a vault marker, making the walk-up treat `$HOME` as a vault for any process launched outside a real vault (MCP servers, cron). Cache now lives at `~/.cache/ori/` (XDG-aware; `%LOCALAPPDATA%\ori\Cache` on Windows), with one-time migration and legacy-file cleanup
+- **`ORI_VAULT` environment override** — honored by every command via the shared vault resolver; authoritative like `--vault` (fails loudly if the path is not a vault, never silently ignored)
+- **Stage learner epsilon re-exploration** — stages disabled by transient failures now get 1-in-50 re-exploration chances instead of permanent abstention; skipped/abstained stages are surfaced in the response envelope as `stages_skipped`
+- **Stage time budget configurable** — `retrieval.stage_time_budget_ms` (default 500) and `retrieval.stage_soft_cutoff` (default 0.8); the budget check now runs *below* the exploration-phase gate so cold-start stages are never starved
+- **`--limit` honored on `query ranked` / `query similar`** — the CLI flag was parsed but never passed through
+- **CLI update notifications** — `checkForUpdate` now runs after CLI commands (stderr only, TTY-gated, suppressed by `ORI_NO_UPDATE_CHECK`/`CI`/`serve`)
+
+Thanks to @wilsonalmeida for the exceptional field report.
+
 ## [0.6.0] - 2026-07-21
 
 ### Navigated Recursion: The Agent Steers the Graph

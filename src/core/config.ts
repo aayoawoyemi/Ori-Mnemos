@@ -63,6 +63,11 @@ export type RetrievalConfig = {
     warmth: number;
   };
   exploration_budget: number;
+
+  /** Serve-mode stage pipeline budget (issue #34). Default: 500 ms. */
+  stage_time_budget_ms?: number;
+  /** Fraction of budget to use as soft cutoff (issue #34). Default: 0.8. */
+  stage_soft_cutoff?: number;
 };
 
 export type BM25Config = {
@@ -183,6 +188,8 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
     warmth: 0.20,
   },
   exploration_budget: 0.10,
+  stage_time_budget_ms: 500,
+  stage_soft_cutoff: 0.8,
 };
 
 const DEFAULT_BM25_CONFIG: BM25Config = {
@@ -362,6 +369,8 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
         warmth: rawRetrieval?.signal_weights?.warmth ?? DEFAULT_RETRIEVAL_CONFIG.signal_weights.warmth,
       },
       exploration_budget: rawRetrieval?.exploration_budget ?? DEFAULT_RETRIEVAL_CONFIG.exploration_budget,
+      stage_time_budget_ms: rawRetrieval?.stage_time_budget_ms ?? DEFAULT_RETRIEVAL_CONFIG.stage_time_budget_ms,
+      stage_soft_cutoff: rawRetrieval?.stage_soft_cutoff ?? DEFAULT_RETRIEVAL_CONFIG.stage_soft_cutoff,
     },
     bm25: {
       k1: rawBM25?.k1 ?? DEFAULT_BM25_CONFIG.k1,

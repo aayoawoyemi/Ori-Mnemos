@@ -105,13 +105,13 @@ program
         if (!note) {
           throw new Error("ranked requires a query text");
         }
-        result = await runQueryRanked(process.cwd(), note);
+        result = await runQueryRanked(process.cwd(), note, options.limit ? parseInt(options.limit, 10) : undefined);
         break;
       case "similar":
         if (!note) {
           throw new Error("similar requires a query text");
         }
-        result = await runQuerySimilar(process.cwd(), note);
+        result = await runQuerySimilar(process.cwd(), note, options.limit ? parseInt(options.limit, 10) : undefined);
         break;
       case "important":
         result = await runQueryImportant(process.cwd(), options.limit ? parseInt(options.limit, 10) : undefined);

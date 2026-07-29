@@ -14,6 +14,7 @@ import {
   ABSTAIN_THRESHOLD,
   TIME_BUDGET_MS,
   SOFT_CUTOFF,
+  EPSILON,
   D,
   invertMatrix,
   type StageConfig,
@@ -141,7 +142,7 @@ describe("getStageDecision", () => {
       stage.update(x, -0.8);
     }
 
-    const decision = getStageDecision(stage, x, 0, 50);
+    const decision = getStageDecision(stage, x, 0, 50, { random: () => 1 });
     expect(["skip", "abstain"]).toContain(decision);
   });
 });
@@ -244,5 +245,77 @@ describe("invertMatrix", () => {
         expect(inv[i][j]).toBeCloseTo(i === j ? 1 : 0, 10);
       }
     }
+  });
+});
+
+const dummyX = [0.5, 0.3, 0, 0, 0, 0.2, 0.5, 0.1];
+
+describe("getStageDecision epsilon + budget opts (#34)", () => {
+  const stageConfig = {
+    id: "test",
+    computeCostMs: 10,
+    skipThreshold: 0.2,
+    essential: false,
+  };
+
+  it("exploration phase wins over exceeded budget", () => {
+    const stage = new LinUCBStage(stageConfig);
+    const decision = getStageDecision(stage, dummyX, 10_000, 5);
+    expect(decision).toBe("run");
+  });
+
+  it("epsilon re-exploration revives a frozen stage", () => {
+    const stage = new LinUCBStage(stageConfig);
+    for (let i = 0; i < 50; i++) {
+      stage.update(dummyX, -0.8);
+    }
+    const decisionRun = getStageDecision(stage, dummyX, 0, 50, {
+      random: () => 0,
+    });
+    const decisionAbstain = getStageDecision(stage, dummyX, 0, 50, {
+      random: () => 1,
+    });
+    expect(decisionRun).toBe("run");
+    expect(decisionAbstain).not.toBe("run");
+  });
+
+  it("custom timeBudgetMs is honored", () => {
+    const stage = new LinUCBStage(stageConfig);
+    // Untrained but optimistic UCB => run unless budget forces skip
+    const decisionWithOpts = getStageDecision(stage, dummyX, 450, 50, {
+      timeBudgetMs: 5_000,
+      random: () => 1,
+    });
+    const decisionDefault = getStageDecision(stage, dummyX, 450, 50);
+    expect(decisionWithOpts).not.toBe("skip");
+    expect(decisionDefault).toBe("skip");
+  });
+
+  it("custom softCutoff is honored", () => {
+    const stage = new LinUCBStage(stageConfig);
+    const decisionHighCutoff = getStageDecision(stage, dummyX, 450, 50, {
+      timeBudgetMs: 500,
+      softCutoff: 0.95,
+      random: () => 1,
+    });
+    const decisionLowCutoff = getStageDecision(stage, dummyX, 450, 50, {
+      timeBudgetMs: 500,
+      softCutoff: 0.5,
+      random: () => 1,
+    });
+    expect(decisionHighCutoff).not.toBe("skip");
+    expect(decisionLowCutoff).toBe("skip");
+  });
+
+  it("epsilon=0 disables re-exploration", () => {
+    const stage = new LinUCBStage(stageConfig);
+    for (let i = 0; i < 50; i++) {
+      stage.update(dummyX, -0.8);
+    }
+    const decision = getStageDecision(stage, dummyX, 0, 50, {
+      epsilon: 0,
+      random: () => 0,
+    });
+    expect(decision).not.toBe("run");
   });
 });

@@ -47,6 +47,16 @@ export async function findVaultRootWithSource(
     );
   }
 
+  // 1.5. Environment override — authoritative, validate or throw
+  const envVault = process.env.ORI_VAULT?.trim();
+  if (envVault) {
+    const resolved = path.resolve(envVault);
+    if (await isVaultRoot(resolved)) return { path: resolved, source: "project" };
+    throw new Error(
+      `Vault not found at ORI_VAULT: ${resolved}. Run 'ori init ${resolved}' to create one.`,
+    );
+  }
+
   // 2. Walk up from startDir looking for .ori
   let current = path.resolve(startDir ?? process.cwd());
   while (true) {

@@ -176,3 +176,23 @@ describe("resolveTemplatePath", () => {
     expect(result).toBe(path.resolve("/vault", "templates/note.md"));
   });
 });
+
+describe("retrieval stage budget defaults (#34)", () => {
+  it("defaults", () => {
+    const cfg = applyConfigDefaults({});
+    expect(cfg.retrieval.stage_time_budget_ms).toBe(500);
+    expect(cfg.retrieval.stage_soft_cutoff).toBe(0.8);
+  });
+
+  it("preserves user values", () => {
+    const input = {
+      retrieval: {
+        stage_time_budget_ms: 5_000,
+        stage_soft_cutoff: 0.5,
+      },
+    } as any;
+    const cfg = applyConfigDefaults(input);
+    expect(cfg.retrieval.stage_time_budget_ms).toBe(5_000);
+    expect(cfg.retrieval.stage_soft_cutoff).toBe(0.5);
+  });
+});
