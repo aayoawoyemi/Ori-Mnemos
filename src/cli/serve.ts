@@ -25,6 +25,7 @@ import { runIndexBuild } from "./indexcmd.js";
 import { runPrune } from "./prune.js";
 import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
 import { runInit } from "./init.js";
+import { runWake } from "./wake.js";
 import { GraphCache } from "../core/graph.js";
 import { initDB } from "../core/engine.js";
 // Retrieval intelligence
@@ -514,6 +515,13 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
 
       return textResult(payload);
     }
+  );
+
+  server.tool(
+    "ori_wake",
+    "Bounded session boot: constant-size briefing (budget‑capped lines). Prefer over ori_orient for session start.",
+    { budget: z.number().optional().describe("Max lines (default 96)") },
+    async ({ budget }) => textResult(await runWake(vaultDir, budget ?? 96))
   );
 
   // ori_update_decision — record the user's answer to the update question (#34 follow-on)

@@ -76,6 +76,7 @@ describe("tools listing", () => {
       "ori_update",
       "ori_update_decision",
       "ori_validate",
+      "ori_wake",
       "ori_warmth",
     ]);
   });

@@ -22,6 +22,7 @@ import { runArchive } from "./cli/archive.js";
 import { runBridgeClaudeCode, runBridgeClaudeCodeGlobal, runBridgeCodex, runBridgeCursor, runBridgeGeneric, runBridgeHermes, runBridgeOpenCode, runBridgeStatus } from "./cli/bridge.js";
 import { runServeMcp } from "./cli/serve.js";
 import { runQueryRanked, runQuerySimilar, runQueryWarmthAudit } from "./cli/search.js";
+import { runWake } from "./cli/wake.js";
 import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
 import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
 import { runPrune } from "./cli/prune.js";
@@ -61,6 +62,14 @@ program
     if (options.json || !process.stdout.isTTY) {
       console.log(JSON.stringify({ success: true, data: result, warnings: [] }));
     }
+  });
+
+program
+  .command("wake")
+  .option("--budget <n>", "max lines", "96")
+  .action(async (options) => {
+    const result = await runWake(process.cwd(), parseInt(options.budget, 10));
+    console.log(result.lines.join("\n"));
   });
 
 program
