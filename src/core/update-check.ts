@@ -181,11 +181,22 @@ export { CURRENT_VERSION };
  * Agent-facing update notice (MCP): an imperative instruction the model can
  * relay to the human. Inert metadata gets ignored; instructions get acted on.
  */
-export function buildAgentNotice(info: UpdateInfo): string | null {
-  if (info.updateAvailable && info.message) {
-    return `Ori ${info.latest} is available (installed: ${info.current}). At a natural pause, tell the user an Ori update exists and offer to fetch it for them; if they accept, run: npm update -g ori-memory`;
-  }
-  return null;
+/**
+ * Ask-shaped: the agent must pose the question and record the user's answer via
+ * the ori_update_decision tool. Notice repeats every session until a decision
+ * exists for this exact version; a new version re-opens the question.
+ */
+export async function buildAgentNotice(info: UpdateInfo): Promise<string | null> {
+  if (!info.updateAvailable || !info.message) return null;
+  const prior = await readUpdateDecision();
+  if (prior && prior.version === info.latest) return null; // user already answered for this version
+  return (
+    `Ori ${info.latest} is available (installed: ${info.current}). ` +
+    `Ask the user at a natural pause: "By the way, Ori pushed an update to v${info.latest} — want me to update it, or keep using v${info.current}?" ` +
+    `If they say yes: run \`npm update -g ori-memory\` and then call ori_update_decision with decision="accepted". ` +
+    `If they say no: call ori_update_decision with decision="declined". ` +
+    `If they defer or don't answer, do NOT call the tool — the reminder will resurface next session.`
+  );
 }
 
 /** One notice per server session, across all tools. */
@@ -195,5 +206,39 @@ export class SessionNoticeGate {
     if (this.shown) return false;
     this.shown = true;
     return true;
+  }
+}
+
+// --- Update decision persistence (#user-request: notice repeats until answered) ---
+
+interface UpdateDecision {
+  version: string;
+  decision: "accepted" | "declined";
+  decidedAt: string;
+}
+
+function getDecisionPath(): string {
+  return path.join(path.dirname(getUpdateCachePath()), "update-decision.json");
+}
+
+export async function readUpdateDecision(): Promise<UpdateDecision | null> {
+  try {
+    const raw = await fs.readFile(getDecisionPath(), "utf8");
+    return JSON.parse(raw) as UpdateDecision;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeUpdateDecision(version: string, decision: "accepted" | "declined"): Promise<void> {
+  try {
+    await fs.mkdir(path.dirname(getDecisionPath()), { recursive: true });
+    await fs.writeFile(
+      getDecisionPath(),
+      JSON.stringify({ version, decision, decidedAt: new Date().toISOString() }),
+      "utf8",
+    );
+  } catch {
+    // Best effort
   }
 }

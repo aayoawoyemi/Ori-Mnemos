@@ -46,7 +46,7 @@ import {
 } from "../core/stage-learner.js";
 import { StageTracker } from "../core/stage-tracker.js";
 import type Database from "better-sqlite3";
-import { checkForUpdate, buildAgentNotice, SessionNoticeGate } from "../core/update-check.js";
+import { checkForUpdate, buildAgentNotice, SessionNoticeGate, writeUpdateDecision } from "../core/update-check.js";
 
 let vaultDir: string;
 const graphCache = new GraphCache();
@@ -502,7 +502,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         const update = await checkForUpdate();
         if (update.updateAvailable) {
           payload.updateAvailable = update;
-          const notice = buildAgentNotice(update);
+          const notice = await buildAgentNotice(update);
           if (notice) {
             payload.update_notice = notice;
             noticeGate.take();
@@ -513,6 +513,22 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
       }
 
       return textResult(payload);
+    }
+  );
+
+  // ori_update_decision — record the user's answer to the update question (#34 follow-on)
+  server.tool(
+    "ori_update_decision",
+    "Record the user's answer to an Ori update notice. Call ONLY after the user explicitly answers. " +
+      "decision=accepted after a successful update; decision=declined if they want to stay. " +
+      "If the user defers, do not call this — the reminder resurfaces next session.",
+    {
+      version: z.string().describe("The version the user was asked about (from the update notice)"),
+      decision: z.enum(["accepted", "declined"]).describe("The user's answer"),
+    },
+    async ({ version, decision }) => {
+      await writeUpdateDecision(version, decision);
+      return textResult({ success: true, version, decision, note: "Decision recorded; this version will not be asked again." });
     }
   );
 
@@ -697,7 +713,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
       if (result.success) {
         try {
           const update = await checkForUpdate();
-          const notice = buildAgentNotice(update);
+          const notice = await buildAgentNotice(update);
           if (notice && noticeGate.take()) {
             (result.data as Record<string, unknown>).update_notice = notice;
           }
