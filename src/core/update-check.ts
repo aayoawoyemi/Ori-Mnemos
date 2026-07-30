@@ -176,3 +176,24 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
 }
 
 export { CURRENT_VERSION };
+
+/**
+ * Agent-facing update notice (MCP): an imperative instruction the model can
+ * relay to the human. Inert metadata gets ignored; instructions get acted on.
+ */
+export function buildAgentNotice(info: UpdateInfo): string | null {
+  if (info.updateAvailable && info.message) {
+    return `Ori ${info.latest} is available (installed: ${info.current}). At a natural pause, tell the user an Ori update exists and offer to fetch it for them; if they accept, run: npm update -g ori-memory`;
+  }
+  return null;
+}
+
+/** One notice per server session, across all tools. */
+export class SessionNoticeGate {
+  private shown = false;
+  take(): boolean {
+    if (this.shown) return false;
+    this.shown = true;
+    return true;
+  }
+}

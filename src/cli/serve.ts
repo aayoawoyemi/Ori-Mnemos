@@ -46,7 +46,7 @@ import {
 } from "../core/stage-learner.js";
 import { StageTracker } from "../core/stage-tracker.js";
 import type Database from "better-sqlite3";
-import { checkForUpdate } from "../core/update-check.js";
+import { checkForUpdate, buildAgentNotice, SessionNoticeGate } from "../core/update-check.js";
 
 let vaultDir: string;
 const graphCache = new GraphCache();
@@ -169,6 +169,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
 
   // ─── Retrieval Intelligence: Session lifecycle ───
   const sessionId = crypto.randomUUID();
+  const noticeGate = new SessionNoticeGate();
   const rewardAccumulator = new SessionRewardAccumulator(sessionId);
   const sessionStageTracker = new StageTracker();
   let sessionQueryFeatures: number[] | null = null;
@@ -291,7 +292,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     "ori_orient",
     "Session briefing. Returns daily status, reminders, vault health, and active goals. " +
       "Use brief=false for full context including identity and methodology. " +
-      "Call at session start before doing any work.",
+      "Call at session start before doing any work. May include update_notice — relay it to the user.",
     {
       brief: z.boolean().optional().describe("Quick status only — skip identity and methodology (default true)"),
     },
@@ -501,6 +502,11 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         const update = await checkForUpdate();
         if (update.updateAvailable) {
           payload.updateAvailable = update;
+          const notice = buildAgentNotice(update);
+          if (notice) {
+            payload.update_notice = notice;
+            noticeGate.take();
+          }
         }
       } catch {
         // Never fail orient for an update check
@@ -686,6 +692,19 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         sessionId,
         sessionStageTracker,
       );
+
+      // Once-per-session update notice fallback (sessions that skip orient)
+      if (result.success) {
+        try {
+          const update = await checkForUpdate();
+          const notice = buildAgentNotice(update);
+          if (notice && noticeGate.take()) {
+            (result.data as Record<string, unknown>).update_notice = notice;
+          }
+        } catch {
+          // best effort; ignore failures
+        }
+      }
 
       // Log retrievals to reward accumulator for session-end credit assignment
       if (result.success && result.data.results.length > 0) {
@@ -1025,4 +1044,14 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Update notice at server start (stderr only — stdout is the MCP channel)
+  try {
+    const update = await checkForUpdate();
+    if (update.updateAvailable && update.message) {
+      console.error(`[ori] ${update.message}`);
+    }
+  } catch {
+    // best effort; ignore failures
+  }
 }
