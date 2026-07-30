@@ -74,6 +74,7 @@ describe("tools listing", () => {
       "ori_query_similar",
       "ori_status",
       "ori_update",
+      "ori_update_decision",
       "ori_validate",
       "ori_warmth",
     ]);
