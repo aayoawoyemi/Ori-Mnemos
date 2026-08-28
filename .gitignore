@@ -53,6 +53,7 @@ tests/core/*
 !tests/core/warmth.test.ts
 !tests/core/qvalue.test.ts
 !tests/core/reward.test.ts
+!tests/core/learning-signal-integrity.test.ts
 !tests/core/rerank.test.ts
 !tests/core/cooccurrence.test.ts
 !tests/core/ppr.test.ts

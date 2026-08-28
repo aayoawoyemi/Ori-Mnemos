@@ -6,6 +6,13 @@
  *
  * Research: LinUCB (Li et al. 2010), ACQO curriculum, SmartRAG cost-aware,
  * MoE load balancing (Shazeer), cascade classifiers, Vespa time budgets.
+ *
+ * 2026-08-28 — reward measurement corrected. `computeStageReward` used to
+ * consume raw score means from before/after snapshots taken on different
+ * scales, which floored several stages at exactly -1.0 forever. Quality is now
+ * scale-free (stage-tracker.ts) and the gain is sized for a bounded delta.
+ * Any stage_q rows written before that date encode the broken measurement and
+ * must be reset, not inherited — see scripts/reset-learning.mjs.
  */
 
 import type Database from "better-sqlite3";
@@ -18,6 +25,10 @@ const PRECISION_SWITCH = 50;
 const VARIANCE_THRESHOLD = 0.05;
 const ABSTAIN_THRESHOLD = 0.10;
 const COST_PENALTY_ALPHA = 0.2;
+// Gain applied to a normalized quality delta. Both sides of the delta are in
+// [0,1] since 2026-08-28, so this only needs to spread typical improvements
+// across a usable range — not to rescue raw scores from incomparable units.
+const DELTA_GAIN = 2.0;
 const LOAD_BALANCE_LAMBDA = 0.01;
 const TIME_BUDGET_MS = 500;
 const SOFT_CUTOFF = 0.8;
@@ -248,6 +259,24 @@ export function getStageDecision(
 
 // --- Stage reward ---
 
+/**
+ * Reward for one stage execution, in [-1, 1].
+ *
+ * Both quality arguments now come from `measureCurrentQuality`, which is
+ * normalized to [0, 1] and scale-free (see stage-tracker.ts). A delta is
+ * therefore already bounded by [-1, 1] and needs no arbitrary gain — the old
+ * `delta * 10` existed to amplify raw-score differences and, combined with
+ * cross-scale measurement, pinned rrf_fusion/pagerank/cooccurrence_ppr at
+ * exactly -1.0 on every call for five months.
+ *
+ * DELTA_GAIN of 2.0 is deliberate and mild: a stage that moves normalized
+ * top-heaviness by 0.5 earns full marks, while typical single-digit-percent
+ * improvements register as small positives rather than rounding to zero.
+ *
+ * The cost term is unchanged in spirit but now proportional to a bounded
+ * reward: at COST_PENALTY_ALPHA = 0.2 a 100ms stage pays 0.02, so a genuinely
+ * useful stage can pay for itself and an expensive useless one cannot.
+ */
 export function computeStageReward(
   qualityBefore: number,
   qualityAfter: number,
@@ -255,7 +284,7 @@ export function computeStageReward(
 ): number {
   const delta = qualityAfter - qualityBefore;
   const reward =
-    delta * 10 - COST_PENALTY_ALPHA * (computeTimeMs / 100);
+    delta * DELTA_GAIN - COST_PENALTY_ALPHA * (computeTimeMs / 1000);
   return Math.max(-1, Math.min(1, reward));
 }
 
@@ -410,6 +439,7 @@ export {
   VARIANCE_THRESHOLD,
   ABSTAIN_THRESHOLD,
   COST_PENALTY_ALPHA,
+  DELTA_GAIN,
   LOAD_BALANCE_LAMBDA,
   TIME_BUDGET_MS,
   SOFT_CUTOFF,

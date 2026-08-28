@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
-import { SessionRewardAccumulator } from "../../src/core/reward.js";
+import {
+  SessionRewardAccumulator,
+  EXPOSURE_BETA,
+  MIN_EXPOSURE_RETENTION,
+} from "../../src/core/reward.js";
 import { initQValueTables, incrementExposure } from "../../src/core/qvalue.js";
 
 let db: Database.Database;
@@ -119,8 +123,22 @@ describe("SessionRewardAccumulator", () => {
       acc.logAdd("new-note", "Extends [[note-a]]");
 
       const rewards = acc.computeRewards(db);
-      // Reward = 1.0 / 10^0.5 = 1.0 / 3.162 ≈ 0.316
-      expect(rewards.get("note-a")!).toBeCloseTo(1.0 / Math.pow(10, 0.5), 2);
+      // Derived from the live constants rather than a hardcoded number. This
+      // test previously asserted 1.0/10^0.5 = 0.316 against a literal, so when
+      // EXPOSURE_BETA moved 0.5 -> 0.25 on 2026-08-28 it failed for the right
+      // reason but with a misleading message. Reading the constants means the
+      // test now documents the RELATIONSHIP (reward shrinks with exposure,
+      // bounded below by the retention floor), not one arithmetic result.
+      const expected = Math.max(
+        1 / Math.pow(10, EXPOSURE_BETA),
+        MIN_EXPOSURE_RETENTION,
+      );
+      expect(rewards.get("note-a")!).toBeCloseTo(expected, 10);
+      // Guardrail: correction must bite, but must not erase a full citation.
+      expect(rewards.get("note-a")!).toBeLessThan(1.0);
+      expect(rewards.get("note-a")!).toBeGreaterThanOrEqual(
+        MIN_EXPOSURE_RETENTION,
+      );
     });
 
     it("does not correct for exposure count <= 1", () => {

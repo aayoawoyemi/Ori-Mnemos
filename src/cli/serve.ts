@@ -206,15 +206,31 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
           // co_occurrence table may be empty — skip silently
         }
 
-        // Q-values: full reward computation as correction pass.
-        // Per-query proxy rewards already applied; this adds forward-citation
-        // and other session-wide signals that can only be computed at session end.
+        // Q-values: the ONLY place session credit is assigned. Rewritten
+        // 2026-08-28 — this used to be described as a "correction pass" on top
+        // of per-query proxy rewards. Those proxies are gone; forward citation,
+        // updates, downstream creation and dead ends are all session-scoped
+        // outcomes and can only be known here.
         if (rewardAccumulator.hasData()) {
           const rewards = rewardAccumulator.computeRewards(db);
           batchUpdateQ(db, rewards, sessionId);
+
+          // Emit the signal mix to stderr. The five-month proxy failure was
+          // invisible because nothing ever reported WHICH signals fired — a
+          // single line per session would have shown forward_citation stuck at
+          // zero within a week. stderr, not stdout: stdout is the MCP channel.
+          const counts = rewardAccumulator.getSignalCounts();
+          const summary = Object.entries(counts)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(" ");
+          if (summary) {
+            process.stderr.write(`[ori] session learning: ${summary}\n`);
+          }
         }
 
-        // Stage learning: already updated per-query. Nothing to do here.
+        // Stage learning: updated per-query in the tool handlers, which is
+        // correct — a stage's effect on ranking quality is observable within
+        // the query that ran it, unlike note usefulness.
       });
       tx();
     } catch {
@@ -753,11 +769,13 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
             }
           }
 
-          // Live Q-value: proxy reward based on retrieval rank
-          for (const [rank, note] of result.data.results.entries()) {
-            const proxy = 0.05 / Math.log2(rank + 2);
-            updateQ(intelligenceDb, note.title, proxy, sessionId);
-          }
+          // Per-query Q-writes removed 2026-08-28. This block rewarded a
+          // note ~0.02 for merely appearing in results this ranker produced —
+          // a participation trophy that became 93.4% of all reward history and
+          // inverted the learned values (pearson(exposure, Q) = -0.537).
+          // Retrievals are logged to rewardAccumulator above; credit is
+          // assigned once at session end where outcomes are actually known.
+          // `updateQ` now rejects non-session-end sources outright.
 
           // Live stage learning: update LinUCB per-query with correct features
           if (sessionStageTracker.hasResults() && sessionQueryFeatures) {
@@ -830,11 +848,10 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
             }
           }
 
-          // Live Q-value proxy
-          for (const [rank, note] of result.data.results.entries()) {
-            const proxy = 0.05 / Math.log2(rank + 2);
-            updateQ(intelligenceDb, note.title, proxy, sessionId);
-          }
+          // Per-query Q-writes removed 2026-08-28 — second copy of the same
+          // proxy, on the explore path. Explore returns more notes per call, so
+          // this copy inflated the contamination faster. See the postmortem on
+          // the ori_query_ranked site above.
 
           // Live stage learning
           if (sessionStageTracker.hasResults()) {
@@ -926,9 +943,15 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
       // Flush learning signals from the navigator's actual path
       if (result.success && intelligenceDb && "usedNotes" in result.data) {
         const used = result.data.usedNotes;
+        // Unlike the two per-query proxies removed above, this IS a real
+        // outcome: the navigator explicitly reported which notes answered the
+        // question. It stays — but routed through the sanctioned source so it
+        // is auditable in q_history and cannot be mistaken for session credit.
+        // Rewards are larger than the old proxy because the signal is real:
+        // 0.15 for an answered exploration, 0.03 when the path led nowhere.
         for (const [rank, title] of used.entries()) {
           const reward = (result.data.answered ? 0.15 : 0.03) / Math.log2(rank + 2);
-          updateQ(intelligenceDb, title, reward, sessionId);
+          updateQ(intelligenceDb, title, reward, sessionId, "explore_conclude");
         }
         for (let i = 0; i < used.length; i++) {
           for (let j = i + 1; j < used.length; j++) {

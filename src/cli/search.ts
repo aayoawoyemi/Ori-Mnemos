@@ -38,6 +38,8 @@ import {
   loadStage,
   getStageDecision,
   extractQueryFeatures,
+  logStageDecision,
+  computeStageReward,
   STAGE_CONFIGS,
 } from "../core/stage-learner.js";
 import { StageTracker, measureCurrentQuality } from "../core/stage-tracker.js";
@@ -265,6 +267,17 @@ export async function runQueryRanked(
   // Helper: check if a stage should run
   const stagesSkipped: string[] = [];
 
+  // Every run/skip/abstain verdict, recorded so the pipeline's self-configuration
+  // is auditable. `stage_log` sat empty for the whole of 2026 because
+  // `logStageDecision` was written and never called — which is why three stages
+  // could sit suppressed at a constant -1.0 reward from April to August with no
+  // trace of the decision. Flushed after the query completes (below), not here,
+  // so the log carries the reward the decision actually earned.
+  const stageDecisions: {
+    stageId: string;
+    decision: "run" | "skip" | "abstain";
+  }[] = [];
+
   const shouldRun = (stageId: string): "run" | "skip" | "abstain" => {
     if (!stages || !queryFeatures) return "run";
     const stage = stages.find((s) => s.config.id === stageId);
@@ -274,6 +287,7 @@ export async function runQueryRanked(
       softCutoff: config.retrieval.stage_soft_cutoff,
     });
     if (decision === "skip" || decision === "abstain") stagesSkipped.push(stageId);
+    stageDecisions.push({ stageId, decision });
     return decision;
   };
 
@@ -496,6 +510,32 @@ export async function runQueryRanked(
     ranked = phaseB(mainDb, dampened, query, classified.intent, sessionId);
     pipelineElapsed += performance.now() - t5;
     trackStageAfter("q_reranking", ranked);
+  }
+
+  // Persist stage decisions with the reward each one earned. Pairing the
+  // decision with its measured outcome is what makes the LinUCB state
+  // debuggable — a stage sitting at a constant reward is then one query away
+  // from visible, instead of five months.
+  if (useIntelligence && sessionId && tracker) {
+    const resultsByStage = new Map(
+      tracker.getResults().map((r) => [r.stageId, r]),
+    );
+    for (const { stageId, decision } of stageDecisions) {
+      const sr = resultsByStage.get(stageId);
+      logStageDecision(
+        mainDb,
+        sessionId,
+        stageId,
+        queryFeatures ?? [],
+        decision,
+        sr?.qualityBefore ?? null,
+        sr?.qualityAfter ?? null,
+        sr?.computeMs ?? null,
+        sr
+          ? computeStageReward(sr.qualityBefore, sr.qualityAfter, sr.computeMs)
+          : null,
+      );
+    }
   }
 
   // 12. Filter archived before trimming — ensures full result count

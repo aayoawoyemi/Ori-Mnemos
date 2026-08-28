@@ -4,9 +4,26 @@
  * via exponential moving average Q-updates with UCB-Tuned exploration.
  *
  * Research: MemRL, Drift, Tempera, bandit theory (63-source synthesis)
+ *
+ * ## Two invariants, both added 2026-08-28 after a production postmortem
+ *
+ * **Canonical keys.** Every `noteId` crossing this module is normalized with
+ * `slugify()`. Before this, `retrieval_log` on a live vault held 1,072 distinct
+ * ids — 772 slugs and 300 raw titles — for what were often the same notes, so
+ * Q-values were split across two spellings and citation matching in reward.ts
+ * could never resolve. Normalizing at the storage boundary means callers may
+ * pass either form.
+ *
+ * **Sourced writes.** `updateQ` requires an explicit `RewardSource`. It used to
+ * hardcode `'session_batch'`, which made every row look like deliberate
+ * session-end credit — including the 12,682 rows written by a per-query rank
+ * proxy in serve.ts that drowned the real signal at 93.4% of all history.
+ * `assertSessionFlush` additionally refuses non-session-end writes unless the
+ * caller opts in explicitly, so the same mistake cannot be made silently again.
  */
 
 import type Database from "better-sqlite3";
+import { slugify } from "./slug.js";
 
 // Constants
 const ALPHA = 0.1;
@@ -64,6 +81,7 @@ export function initQValueTables(db: Database.Database): void {
 // --- Read ---
 
 export function getQ(db: Database.Database, noteId: string): number {
+  noteId = slugify(noteId);
   const row = db
     .prepare("SELECT q_value FROM note_q WHERE note_id = ?")
     .get(noteId) as { q_value: number } | undefined;
@@ -71,6 +89,7 @@ export function getQ(db: Database.Database, noteId: string): number {
 }
 
 export function getDecayedQ(db: Database.Database, noteId: string): number {
+  noteId = slugify(noteId);
   const row = db
     .prepare("SELECT q_value, last_updated FROM note_q WHERE note_id = ?")
     .get(noteId) as { q_value: number; last_updated: string } | undefined;
@@ -92,6 +111,7 @@ export function getRewardStats(
   db: Database.Database,
   noteId: string,
 ): { mean: number; variance: number; count: number } {
+  noteId = slugify(noteId);
   const row = db
     .prepare(
       "SELECT update_count, reward_sum, reward_sq_sum FROM note_q WHERE note_id = ?",
@@ -112,6 +132,7 @@ export function getExposureCount(
   db: Database.Database,
   noteId: string,
 ): number {
+  noteId = slugify(noteId);
   const row = db
     .prepare("SELECT exposure_count FROM note_q WHERE note_id = ?")
     .get(noteId) as { exposure_count: number } | undefined;
@@ -136,12 +157,60 @@ export function getTotalQueryCount(db: Database.Database): number {
 
 // --- Write ---
 
+/**
+ * Where a Q-update came from. Recorded on every `q_history` row so a future
+ * audit can separate deliberate session-end credit from anything else without
+ * reverse-engineering the reward values (which is how the 2026-08 proxy
+ * contamination had to be diagnosed: by matching rewards against the formula
+ * `0.05/log2(rank+2)` after the fact).
+ */
+export type RewardSource =
+  | "session_batch"
+  | "explore_conclude"
+  | "manual"
+  | "migration";
+
+/**
+ * Sources permitted to write Q-values in normal operation.
+ *
+ * Deliberately narrow. Per-query writes are what produced the degenerate
+ * feedback loop — a note rewarded for appearing in results the ranker itself
+ * produced. Adding a source here is a decision about the learning signal, not
+ * a plumbing detail: it belongs in review, which is the point of the guard.
+ */
+const ALLOWED_SOURCES: ReadonlySet<RewardSource> = new Set<RewardSource>([
+  "session_batch",
+  "explore_conclude",
+]);
+
+/**
+ * Update a note's Q-value by EMA and record the transition.
+ *
+ * @param source  Provenance of this update. Anything outside ALLOWED_SOURCES
+ *                throws unless `allowUnsafe` is set, so a future per-query
+ *                write fails loudly at the first call in development instead
+ *                of quietly accumulating for five months.
+ * @param allowUnsafe  Escape hatch for migrations and one-off repair scripts.
+ */
 export function updateQ(
   db: Database.Database,
   noteId: string,
   reward: number,
   sessionId: string,
+  source: RewardSource = "session_batch",
+  allowUnsafe = false,
 ): void {
+  if (!allowUnsafe && !ALLOWED_SOURCES.has(source)) {
+    throw new Error(
+      `updateQ: refusing write from source '${source}'. Q-values may only be ` +
+        `written at session end (session_batch) or on explore conclusion ` +
+        `(explore_conclude). Per-query writes create a degenerate feedback ` +
+        `loop — see notes/the-ori-q-value-proxy-reward-was-a-degenerate-` +
+        `feedback-loop. Pass allowUnsafe=true only from a migration script.`,
+    );
+  }
+
+  noteId = slugify(noteId);
   const oldQ = getQ(db, noteId);
   const newQ = oldQ + ALPHA * (reward - oldQ);
 
@@ -172,15 +241,16 @@ export function updateQ(
   db.prepare(
     `
     INSERT INTO q_history (note_id, old_q, new_q, reward, reward_source, session_id)
-    VALUES (?, ?, ?, ?, 'session_batch', ?)
+    VALUES (?, ?, ?, ?, ?, ?)
   `,
-  ).run(noteId, oldQ, newQ, reward, sessionId);
+  ).run(noteId, oldQ, newQ, reward, source, sessionId);
 }
 
 export function incrementExposure(
   db: Database.Database,
   noteId: string,
 ): void {
+  noteId = slugify(noteId);
   db.prepare(
     `
     INSERT INTO note_q (note_id, exposure_count)
@@ -202,6 +272,7 @@ export function logRetrieval(
   ucbBonus: number,
   finalScore: number,
 ): void {
+  noteId = slugify(noteId);
   db.prepare(
     `
     INSERT INTO retrieval_log
@@ -237,18 +308,97 @@ export function explorationBonus(
 
 // --- Batch update ---
 
+/**
+ * Apply a session's worth of credit in one transaction.
+ *
+ * This is the sanctioned write path. `source` defaults to session_batch and is
+ * forwarded to `updateQ`, which enforces ALLOWED_SOURCES — so a caller cannot
+ * launder a per-query write through the batch helper.
+ */
 export function batchUpdateQ(
   db: Database.Database,
   rewards: Map<string, number>,
   sessionId: string,
+  source: RewardSource = "session_batch",
 ): void {
   const tx = db.transaction(() => {
     for (const [noteId, reward] of rewards) {
-      updateQ(db, noteId, reward, sessionId);
+      updateQ(db, noteId, reward, sessionId, source);
     }
   });
   tx();
 }
 
+/**
+ * Health snapshot of the learning signal, for `ori_health` and for tests.
+ *
+ * The 2026-08 failure was invisible for five months because nothing summarized
+ * *what kind* of reward was accumulating. These four numbers would have made it
+ * obvious within a week:
+ *
+ *   - `bySource` — a per-query source dominating session_batch is the alarm.
+ *   - `forwardCitations` — 0 over many sessions means key matching is broken.
+ *   - `exposureQCorrelation` — should be >= 0. Negative means the system is
+ *     punishing use, which is the degenerate-loop signature.
+ *   - `distinctKeyShapes` — >1 means slug/title drift has returned.
+ */
+export function getLearningHealth(db: Database.Database): {
+  bySource: Record<string, number>;
+  forwardCitations: number;
+  exposureQCorrelation: number;
+  distinctKeyShapes: number;
+  totalUpdates: number;
+} {
+  const bySource: Record<string, number> = {};
+  const sourceRows = db
+    .prepare("SELECT reward_source, COUNT(*) as n FROM q_history GROUP BY reward_source")
+    .all() as { reward_source: string; n: number }[];
+  for (const r of sourceRows) bySource[r.reward_source] = r.n;
+
+  // A +1.0 reward is only ever a forward citation (reward.ts). Rounding guards
+  // against float drift through the EMA.
+  const fc = db
+    .prepare("SELECT COUNT(*) as n FROM q_history WHERE ROUND(reward, 6) = 1.0")
+    .get() as { n: number };
+
+  // Pearson correlation between exposure and learned value. Computed in SQL to
+  // avoid pulling the whole table into memory on large vaults.
+  const stats = db
+    .prepare(
+      `SELECT COUNT(*) n, SUM(exposure_count) sx, SUM(q_value) sy,
+              SUM(exposure_count * q_value) sxy,
+              SUM(exposure_count * exposure_count) sxx,
+              SUM(q_value * q_value) syy
+       FROM note_q WHERE update_count > 0 AND exposure_count > 0`,
+    )
+    .get() as Record<string, number>;
+  let corr = 0;
+  if (stats.n > 1) {
+    const num = stats.n * stats.sxy - stats.sx * stats.sy;
+    const den = Math.sqrt(
+      (stats.n * stats.sxx - stats.sx * stats.sx) *
+        (stats.n * stats.syy - stats.sy * stats.sy),
+    );
+    corr = den === 0 ? 0 : num / den;
+  }
+
+  // Key shapes: slugs contain no spaces and no uppercase. Anything else means
+  // a raw title leaked past slugify().
+  const shapes = db
+    .prepare(
+      `SELECT COUNT(DISTINCT CASE WHEN note_id LIKE '% %' THEN 'title' ELSE 'slug' END) as n
+       FROM note_q`,
+    )
+    .get() as { n: number };
+
+  return {
+    bySource,
+    forwardCitations: fc.n,
+    exposureQCorrelation: corr,
+    distinctKeyShapes: shapes.n,
+    totalUpdates: getTotalQUpdates(db),
+  };
+}
+
 // Re-export constants for tests
-export { ALPHA, DEFAULT_Q, DECAY_RATE, EXPOSURE_BETA };
+export { ALPHA, DEFAULT_Q, DECAY_RATE, EXPOSURE_BETA, ALLOWED_SOURCES };

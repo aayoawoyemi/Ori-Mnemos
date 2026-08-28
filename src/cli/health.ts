@@ -11,6 +11,8 @@ import { loadConfig, resolveTemplatePath } from "../core/config.js";
 import { validateNoteAgainstSchema } from "../core/schema.js";
 import { parseFrontmatter } from "../core/frontmatter.js";
 import { computeVitality } from "../core/vitality.js";
+import { initDB } from "../core/engine.js";
+import { getLearningHealth } from "../core/qvalue.js";
 
 export type HealthResult = {
   success: boolean;
@@ -82,6 +84,61 @@ export async function runHealth(
     }
   }
 
+  // Learning-signal health. Added 2026-08-28: a per-query reward proxy ran for
+  // five months and inverted every Q-value, and nothing in `ori health` would
+  // have shown it. These four numbers are the ones that would have.
+  let learning: Record<string, unknown> | undefined;
+  const learningWarnings: string[] = [];
+  const dbPath = path.resolve(vaultRoot, config.engine.db_path);
+  try {
+    await fs.access(dbPath);
+    const db = initDB(dbPath);
+    try {
+      const h = getLearningHealth(db);
+      learning = { ...h };
+
+      // Negative correlation between exposure and learned value is the
+      // signature of the degenerate feedback loop. Measured at -0.537 during
+      // the incident; anything below -0.1 warrants investigation.
+      if (h.exposureQCorrelation < -0.1) {
+        learningWarnings.push(
+          `exposure/Q correlation is ${h.exposureQCorrelation.toFixed(3)} — ` +
+            `frequently-used notes are being scored LOWER, which indicates a ` +
+            `reward-signal defect, not a ranking preference.`,
+        );
+      }
+      // Forward citation is the strongest signal in reward.ts. Zero of them
+      // alongside real update traffic means key matching has broken again.
+      if (h.totalUpdates > 200 && h.forwardCitations === 0) {
+        learningWarnings.push(
+          `0 forward citations across ${h.totalUpdates} Q-updates — the ` +
+            `strongest reward signal is not firing; check note-key ` +
+            `normalization in reward.ts buildOutcome().`,
+        );
+      }
+      // >1 key shape means slug/title drift returned.
+      if (h.distinctKeyShapes > 1) {
+        learningWarnings.push(
+          `note_q holds ${h.distinctKeyShapes} distinct key shapes — slug and ` +
+            `raw-title ids have diverged, so Q-values are split per note.`,
+        );
+      }
+      // Any source outside the sanctioned two means an unaudited writer.
+      const unexpected = Object.keys(h.bySource).filter(
+        (s) => s !== "session_batch" && s !== "explore_conclude",
+      );
+      if (unexpected.length > 0) {
+        learningWarnings.push(
+          `unexpected Q-update sources: ${unexpected.join(", ")}`,
+        );
+      }
+    } finally {
+      db.close();
+    }
+  } catch {
+    // No index yet — learning health is simply unavailable, not an error.
+  }
+
   return {
     success: true,
     data: {
@@ -92,7 +149,8 @@ export async function runHealth(
       dangling,
       schemaViolations,
       fading,
+      ...(learning ? { learning } : {}),
     },
-    warnings: [],
+    warnings: learningWarnings,
   };
 }
