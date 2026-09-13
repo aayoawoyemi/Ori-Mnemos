@@ -80,7 +80,12 @@ export const STAGE_CONFIGS: StageConfig[] = [
     skipThreshold: 0.15,
     essential: true,
   },
-  { id: "bm25", computeCostMs: 10, skipThreshold: 0.15, essential: false },
+  // essential since 2026-09-06: BM25 is the cheapest stage (~10ms) and the
+  // only one that can match an exact identifier. Letting the bandit learn to
+  // drop it (which it did — see search.ts bm25 reward note) removes recall
+  // for names, codes, and titles. Anthropic's contextual-retrieval numbers:
+  // adding BM25 to embeddings cut top-20 retrieval failure 5.7% -> 2.9%.
+  { id: "bm25", computeCostMs: 10, skipThreshold: 0.15, essential: true },
   {
     id: "pagerank",
     computeCostMs: 30,
@@ -212,7 +217,13 @@ export class LinUCBStage {
 // --- Decision ---
 
 export type StageBudgetOptions = { timeBudgetMs?: number; softCutoff?: number; epsilon?: number; random?: () => number };
-export const EPSILON = 0.02;
+// 0.05, raised from 0.02 on 2026-09-12. Recovery rate for a starved arm is
+// epsilon: at 2% a frozen stage waited ~50 queries per sample and needed
+// MIN_SAMPLES=15 to re-enter normal selection. Expected added cost is epsilon
+// times the summed non-essential stage cost (30+30+15+10+25+50 = 160ms), so
+// ~8ms per query at 0.05 against ~3ms at 0.02. 5% is also the conventional
+// floor for epsilon-greedy; 2% was quietly below it.
+export const EPSILON = 0.05;
 
 export function getStageDecision(
   stage: LinUCBStage,
@@ -236,12 +247,19 @@ export function getStageDecision(
     return "run"; // exploration phase must not be starved
   }
 
-  if (elapsedMs > timeBudgetMs * softCutoff) {
-    return "skip"; // budget exceeded
-  }
-
+  // Epsilon-greedy re-exploration is checked BEFORE the time budget on
+  // purpose. When the budget cutoff came first, any stage evaluated after the
+  // budget was already spent could never reach this line, so it never gained a
+  // sample, so its UCB never recovered — a starved arm stayed starved forever.
+  // Observed 2026-09-12: all six non-essential stages frozen since 09-07 while
+  // pagerank held the highest total reward of any stage (+68.0 over 137
+  // samples). The 2% floor is what makes "learn to skip" reversible.
   if (random() < epsilon) {
     return "run"; // epsilon-greedy re-exploration
+  }
+
+  if (elapsedMs > timeBudgetMs * softCutoff) {
+    return "skip"; // budget exceeded
   }
 
   const ucb = stage.getUCB(x);

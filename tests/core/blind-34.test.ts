@@ -59,8 +59,20 @@ describe('time budget and soft cutoff override (bug C)', () => {
   for (let i = 0; i < 50; i++) stage.update(VECTOR, 1);
 
   it('default skips when elapsed > budget*softCutoff', () => {
-    const decision = getStageDecision(stage, VECTOR, 450, 50);
+    // random pinned to 1 so the epsilon escape hatch cannot fire; this case is
+    // about the budget rule alone. Siblings below already pin it.
+    const decision = getStageDecision(stage, VECTOR, 450, 50, { random: () => 1 });
     expect(decision).toBe('skip');
+  });
+
+  it('epsilon still runs a stage that is past the time budget', () => {
+    // Regression for the starvation bug found 2026-09-12: the budget check ran
+    // before the epsilon check, so any stage evaluated after the budget was
+    // spent could never be sampled, never recovered its UCB, and stayed frozen
+    // permanently. All six non-essential stages were dark for six days while
+    // pagerank held the highest total reward of any stage.
+    const decision = getStageDecision(stage, VECTOR, 450, 50, { epsilon: EPSILON, random: () => 0 });
+    expect(decision).toBe('run');
   });
 
   it('large budget prevents skip', () => {
