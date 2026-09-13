@@ -1,5 +1,42 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **Stage bandit could starve a warm stage permanently** — `getStageDecision`
+  evaluated the time-budget cutoff *before* the epsilon re-exploration check,
+  so any stage reached after the budget was spent returned `skip` without ever
+  passing the escape hatch. A stage that never runs gains no sample, so its UCB
+  never moves, so it is never selected again. Measured on the live vault
+  2026-09-12: all six non-essential stages frozen since 09-07, with `pagerank`
+  holding the highest total reward of any stage (+68.0 over 137 samples,
+  ~0.50/sample) while switched off, and `bm25` still running at −0.29/sample
+  because it is `essential`. Ranked queries were effectively keyword-only.
+
+  This completes the 0.6.1 fix rather than replacing it. That release moved the
+  budget check below the *exploration-phase* gate, which protects cold-start
+  stages (`sampleCount < MIN_SAMPLES`). It did not move it below the *epsilon*
+  gate, so a stage that went cold after passing `MIN_SAMPLES` had no way back.
+  All six frozen stages had 57–137 samples.
+
+  Epsilon is now checked above the budget. Verified against `dist`: a stage with
+  57 samples and negative reward at 450ms elapsed returns `run` 4.97% of the
+  time over 20,000 trials, against 0.00% before.
+
+- **`EPSILON` raised 0.02 → 0.05.** Recovery rate for a starved arm *is*
+  epsilon; at 2% a frozen stage waited ~50 queries per sample. Expected added
+  cost is epsilon × summed non-essential stage cost (160ms), so ~8ms per query
+  against ~3ms. 5% is the conventional epsilon-greedy floor.
+
+- **Flaky budget test pinned.** `tests/core/blind-34.test.ts` asserted the
+  budget skip without pinning `random`, unlike its two siblings, so it failed at
+  exactly the new epsilon rate. Pinned, plus a regression test asserting epsilon
+  still runs a stage past the time budget.
+
+See [stage-bandit-starvation.md](docs/stage-bandit-starvation.md) for the full
+diagnosis, the measurements, and what it deliberately does not fix.
+
 ## [0.6.1] - 2026-07-29
 
 ### Field-Report Fixes (#34)
