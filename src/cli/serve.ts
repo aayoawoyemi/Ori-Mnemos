@@ -188,6 +188,91 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     // DB doesn't exist yet — intelligence layers will activate after first ori_index_build
   }
 
+  // ─── Crash-safe reward checkpointing ───
+  //
+  // Measured on this machine 2026-09-13, not assumed. A stdio MCP server on
+  // Windows cannot rely on ANY in-process shutdown hook:
+  //   - closing stdin does not terminate it (verified: still alive 4s later),
+  //     so `stdin.on("end")` never fires;
+  //   - Windows has no real SIGTERM, and a host terminating the child calls
+  //     TerminateProcess, which is uncatchable exactly like SIGKILL — verified
+  //     exit code 1 with an empty stderr and no flush;
+  //   - `beforeExit` never fires while the transport holds handles open.
+  // The consequence was visible in the data: note_q held 717 rows of which 707
+  // had update_count = 0, and `bySource` reported 12 `session_batch` writes in
+  // six months. Those 12 are the times this process happened to die politely.
+  //
+  // So the terminal flush is structurally unreachable and trigger coverage alone
+  // cannot fix it. Instead the session periodically writes its CURRENT computed
+  // rewards to a single row keyed by session id. The write is an overwrite, not
+  // an append, so repeating it cannot double-count — which is what makes this
+  // safe despite `computeRewards` being session-scoped and the accumulator
+  // having no clear(). If we are killed, the row survives and the next server
+  // start applies it. A clean exit applies it directly and deletes the row.
+  if (intelligenceDb) {
+    intelligenceDb.exec(`
+      CREATE TABLE IF NOT EXISTS session_checkpoint (
+        session_id TEXT PRIMARY KEY,
+        rewards_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
+
+  const applyAbandonedCheckpoints = (): void => {
+    if (!intelligenceDb) return;
+    try {
+      const rows = intelligenceDb
+        .prepare("SELECT session_id, rewards_json FROM session_checkpoint WHERE session_id != ?")
+        .all(sessionId) as { session_id: string; rewards_json: string }[];
+      let recovered = 0;
+      for (const row of rows) {
+        try {
+          const rewards = new Map<string, number>(Object.entries(JSON.parse(row.rewards_json)));
+          if (rewards.size > 0) {
+            batchUpdateQ(intelligenceDb, rewards, row.session_id);
+            recovered += rewards.size;
+          }
+        } catch {
+          // A corrupt row must not block the others or the server start.
+        }
+        intelligenceDb.prepare("DELETE FROM session_checkpoint WHERE session_id = ?").run(row.session_id);
+      }
+      if (recovered > 0) {
+        process.stderr.write(
+          `[ori] recovered ${recovered} note reward(s) from ${rows.length} killed session(s)\n`,
+        );
+      }
+    } catch {
+      // Never let recovery stop the server from starting.
+    }
+  };
+  applyAbandonedCheckpoints();
+
+  const checkpointRewards = (): void => {
+    if (!intelligenceDb || sessionFlushed || !rewardAccumulator.hasData()) return;
+    try {
+      const rewards = rewardAccumulator.computeRewards(intelligenceDb);
+      if (rewards.size === 0) return;
+      intelligenceDb
+        .prepare(
+          `INSERT INTO session_checkpoint (session_id, rewards_json, updated_at)
+           VALUES (?, ?, datetime('now'))
+           ON CONFLICT(session_id) DO UPDATE SET
+             rewards_json = excluded.rewards_json, updated_at = excluded.updated_at`,
+        )
+        .run(sessionId, JSON.stringify(Object.fromEntries(rewards)));
+    } catch {
+      // Best effort. A failed checkpoint costs this session's learning, not the
+      // server.
+    }
+  };
+
+  // 60s. unref() so an idle checkpoint timer can never be the reason the process
+  // stays alive — this exists to survive a kill, not to cause one.
+  const checkpointTimer = setInterval(checkpointRewards, 60_000);
+  checkpointTimer.unref();
+
   // Session-end flush: update all 3 intelligence layers
   let sessionFlushed = false;
   const flushSession = () => {
@@ -214,6 +299,13 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         if (rewardAccumulator.hasData()) {
           const rewards = rewardAccumulator.computeRewards(db);
           batchUpdateQ(db, rewards, sessionId);
+
+          // Applied directly, so our checkpoint row must go. Leaving it would
+          // make the next server start re-apply this session's rewards a second
+          // time — the overwrite discipline only protects repeated CHECKPOINTS,
+          // not a checkpoint plus a terminal flush. Same transaction, so either
+          // both land or neither does.
+          db.prepare("DELETE FROM session_checkpoint WHERE session_id = ?").run(sessionId);
 
           // Emit the signal mix to stderr. The five-month proxy failure was
           // invisible because nothing ever reported WHICH signals fired — a
@@ -244,16 +336,60 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     }
   };
 
-  // Register shutdown handlers
+  // Register shutdown handlers.
+  //
+  // Measured 2026-09-13: note_q held 717 rows of which 707 had update_count = 0,
+  // and `bySource` reported exactly 12 `session_batch` writes in six months.
+  // That is not a policy outcome, it is the number of times this process
+  // happened to die politely. The three handlers below were the whole list, and
+  // none of them fires for a stdio MCP server in practice:
+  //   - `beforeExit` never fires while the stdio transport keeps handles live,
+  //     and never fires at all after an explicit process.exit().
+  //   - SIGINT/SIGTERM are delivered to an interactive shell's child, not to a
+  //     server the host terminates; on Windows SIGTERM is not really deliverable.
+  // So the learning loop was structurally unable to close. Same shape as the
+  // stage-bandit starvation: wired, correct-looking, never executed.
+  //
+  // The fix is trigger coverage, not flush frequency. Rewards here are
+  // session-scoped by construction — forward citation, downstream creation and
+  // dead ends are only knowable at the end — and SessionRewardAccumulator has no
+  // clear(), so a periodic flush would recompute over the whole accumulated set
+  // and inflate update_count and reward_sum on every pass. One flush per
+  // session is right; it just has to happen.
+  //
+  // `exit` is the important addition: it fires for process.exit() and for a
+  // normal return, and better-sqlite3 is synchronous, so a DB write is legal in
+  // it. stdin end/close is the real shutdown signal for a stdio MCP server —
+  // the host closes the pipe rather than signalling.
+  process.on("exit", flushSession);
   process.on("beforeExit", flushSession);
-  process.on("SIGINT", () => {
+
+  const flushAndExit = (code: number) => {
     flushSession();
-    process.exit(0);
+    process.exit(code);
+  };
+  process.on("SIGINT", () => flushAndExit(0));
+  process.on("SIGTERM", () => flushAndExit(0));
+  process.on("SIGHUP", () => flushAndExit(0));
+
+  // The host closing the pipe is how this server is normally shut down.
+  process.stdin.on("end", () => flushAndExit(0));
+  process.stdin.on("close", () => flushAndExit(0));
+
+  // A crash is still a session that happened and still earned its rewards.
+  process.on("uncaughtException", (err) => {
+    process.stderr.write(`[ori] uncaught: ${err?.stack ?? err}\n`);
+    flushAndExit(1);
   });
-  process.on("SIGTERM", () => {
-    flushSession();
-    process.exit(0);
+  process.on("unhandledRejection", (err) => {
+    process.stderr.write(`[ori] unhandled rejection: ${String(err)}\n`);
+    flushAndExit(1);
   });
+
+  // SIGKILL and a hard power loss still lose the session, and nothing in-process
+  // can change that. Surviving those needs delta-checkpointing in
+  // SessionRewardAccumulator so a partial flush is safe to repeat — a separate
+  // change with its own correctness argument, deliberately not made here.
 
   const server = new McpServer(
     { name: "ori-memory", version: VERSION },
