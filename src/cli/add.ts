@@ -1,11 +1,15 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { findVaultRoot, getVaultPaths } from "../core/vault.js";
+import { findVaultRoot, getVaultPaths, listNoteTitles } from "../core/vault.js";
 import { loadConfig, resolveTemplatePath } from "../core/config.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../core/frontmatter.js";
 import { runValidate } from "./validate.js";
 import { runPromote } from "./promote.js";
 import { slugify } from "../core/slug.js";
+import { initDB, indexNote } from "../core/engine.js";
+import { buildGraph } from "../core/graph.js";
+import { computeGraphMetrics } from "../core/importance.js";
+import { openSyncedIndex, cachedGraphMetrics } from "../core/indexstore.js";
 
 export type AddOptions = {
   startDir: string;
@@ -101,8 +105,51 @@ export async function runAdd(options: AddOptions): Promise<AddResult> {
 
   await fs.writeFile(destPath, content, "utf8");
 
+  // Embed on write (2026-09-06). Until now runAdd wrote the file and returned;
+  // the vector index only learned about the note at the next manual
+  // `ori index build`. On 2026-09-06 that gap was 8 days and 34 notes — every
+  // note written in a session was invisible to ori_query_ranked for the rest
+  // of that session. Best-effort: an embedding failure must never lose the
+  // write. Zep/Graphiti index each episode on arrival for the same reason.
+  const embedWarnings: string[] = [];
+  try {
+    const dbPath = path.resolve(vaultRoot, config.engine.db_path);
+    const db = initDB(dbPath);
+    try {
+      // The file is already on disk, so the sync inside openSyncedIndex
+      // reparses exactly one note and the graph comes from SQL instead of a
+      // full vault scan (2,088 ms at 1,538 notes). The metrics cache misses
+      // by design - the fingerprint moved - and the recompute it stores is the
+      // one the next query would otherwise have paid for.
+      const titles = await listNoteTitles(paths.notes);
+      const opened = await openSyncedIndex(db, paths.notes, titles.length);
+      if (opened.reason) embedWarnings.push(opened.reason);
+      const linkGraph = await buildGraph(paths.notes, opened.index);
+      const metrics = cachedGraphMetrics(
+        opened.index, () => computeGraphMetrics(linkGraph),
+      ).metrics;
+      const noteTitle = path.basename(destPath, ".md");
+      await indexNote(
+        db,
+        noteTitle,
+        frontmatter as Record<string, unknown>,
+        body,
+        linkGraph,
+        metrics.communities,
+        metrics.communityStats.size,
+        config.engine,
+      );
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    embedWarnings.push(
+      `embed-on-write failed (note saved, run \`ori index build\`): ${String(err)}`,
+    );
+  }
+
   const validation = await runValidate({ notePath: destPath });
-  const warnings = [...validation.warnings];
+  const warnings = [...validation.warnings, ...embedWarnings];
   if (!frontmatter.description) {
     warnings.push("Description is empty");
   }

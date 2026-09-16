@@ -31,6 +31,21 @@ const DEFAULT_Q = 0.5;
 const DECAY_RATE = 0.007; // half-life ~99 days
 const EXPOSURE_BETA = 0.5;
 
+/**
+ * Exposure damping exponent for the exploration bonus (fix list item 8).
+ * At 0.35 a note shown 10 times keeps 46% of its bonus and one shown 100 times
+ * keeps 20% - a real gradient toward cold notes without erasing the bonus for
+ * anything popular.
+ */
+const EXPLORE_EXPOSURE_BETA = 0.35;
+
+/**
+ * Floor on that damping. An over-exposed note still carries some exploration
+ * bonus, so the term can never become a hard exclusion: the same reason the
+ * stage bandit keeps an epsilon floor (see docs/stage-bandit-starvation.md).
+ */
+const MIN_EXPLORE_RETENTION = 0.15;
+
 // --- Schema ---
 
 export function initQValueTables(db: Database.Database): void {
@@ -91,41 +106,172 @@ export function getQ(db: Database.Database, noteId: string): number {
 export function getDecayedQ(db: Database.Database, noteId: string): number {
   noteId = slugify(noteId);
   const row = db
-    .prepare("SELECT q_value, last_updated FROM note_q WHERE note_id = ?")
-    .get(noteId) as { q_value: number; last_updated: string } | undefined;
+    .prepare(
+      "SELECT q_value, update_count, last_updated FROM note_q WHERE note_id = ?",
+    )
+    .get(noteId) as
+    | { q_value: number; update_count: number; last_updated: string }
+    | undefined;
 
-  if (!row) return DEFAULT_Q;
+  // No row, or a row created by `incrementExposure` and never rewarded: there
+  // is no learned value to decay. Decaying the initialisation constant made
+  // `q_reranking` order notes by when exposure happened to create their row,
+  // which is noise wearing a learned score's clothes.
+  if (!row || row.update_count === 0) return DEFAULT_Q;
 
-  const daysSince =
-    (Date.now() - new Date(row.last_updated).getTime()) / 86_400_000;
-
-  // Q-informed decay: high-Q notes decay slower
-  let mult = 1.0;
-  if (row.q_value >= 0.7) mult = 0.7;
-  else if (row.q_value <= 0.3) mult = 1.3;
-
-  return row.q_value * Math.exp(-DECAY_RATE * mult * daysSince);
+  return applyDecay(row.q_value, row.last_updated);
 }
 
+/** Q-informed time decay: high-Q notes decay slower, low-Q notes faster. */
+function applyDecay(qValue: number, lastUpdated: string): number {
+  const daysSince =
+    (Date.now() - parseSqlTimestamp(lastUpdated)) / 86_400_000;
+
+  let mult = 1.0;
+  if (qValue >= 0.7) mult = 0.7;
+  else if (qValue <= 0.3) mult = 1.3;
+
+  return qValue * Math.exp(-DECAY_RATE * mult * daysSince);
+}
+
+/**
+ * Milliseconds for a SQLite `datetime('now')` string, which is UTC and carries
+ * no zone marker.
+ *
+ * `new Date("2026-09-15 16:22:39")` is parsed as LOCAL time, so west of UTC
+ * every freshly written row looked like it was stamped in the future:
+ * `daysSince` went negative and the decay became a small GROWTH, inflating
+ * un-decayed values by the size of the UTC offset. Harmless at a 99-day
+ * half-life, not harmless when the comparison being made is between two notes
+ * that have learned nothing.
+ */
+function parseSqlTimestamp(value: string): number {
+  const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  return new Date(iso).getTime();
+}
+
+/**
+ * A Q-value together with the provenance that says whether it means anything.
+ *
+ * `learned === false` means the value is the initialisation constant, not a
+ * score: either the note has no row at all, or it has one written by
+ * `incrementExposure` and never touched by a reward. Fix-list item 5 measured
+ * 707 of 717 production rows in that state while every consumer read them
+ * through `getQ` and could not tell them apart from a converged 0.5.
+ */
+export interface QState {
+  noteId: string;
+  q: number;
+  decayedQ: number;
+  updateCount: number;
+  exposureCount: number;
+  learned: boolean;
+  lastUpdated: string | null;
+}
+
+/**
+ * Full Q state for a note, in one query.
+ *
+ * Use this instead of `getQ`/`getDecayedQ` wherever the difference between
+ * "no signal yet" and "learned, and it landed near the default" changes what
+ * the caller should do - reranking weight, confidence reporting, health.
+ */
+export function getQState(db: Database.Database, noteId: string): QState {
+  const id = slugify(noteId);
+  const row = db
+    .prepare(
+      `SELECT q_value, update_count, exposure_count, last_updated
+       FROM note_q WHERE note_id = ?`,
+    )
+    .get(id) as
+    | {
+        q_value: number;
+        update_count: number;
+        exposure_count: number;
+        last_updated: string;
+      }
+    | undefined;
+
+  if (!row) {
+    return {
+      noteId: id,
+      q: DEFAULT_Q,
+      decayedQ: DEFAULT_Q,
+      updateCount: 0,
+      exposureCount: 0,
+      learned: false,
+      lastUpdated: null,
+    };
+  }
+
+  const learned = row.update_count > 0;
+  return {
+    noteId: id,
+    q: row.q_value,
+    // An un-updated row has no meaningful `last_updated` to decay from: it was
+    // stamped when exposure created the row. Decaying it would manufacture a
+    // difference between two notes that have both learned nothing.
+    decayedQ: learned ? applyDecay(row.q_value, row.last_updated) : DEFAULT_Q,
+    updateCount: row.update_count,
+    exposureCount: row.exposure_count,
+    learned,
+    lastUpdated: row.last_updated,
+  };
+}
+
+/**
+ * Reward statistics for UCB, plus the two facts that say what they are worth.
+ *
+ * `learned` distinguishes "never rewarded" from "rewarded, converged near the
+ * default" - see `getQState`. `exposure` rides along because the caller that
+ * needs UCB also needs it (`explorationBonus` damps by it) and it is the same
+ * row: one query, not two.
+ */
 export function getRewardStats(
   db: Database.Database,
   noteId: string,
-): { mean: number; variance: number; count: number } {
+): {
+  mean: number;
+  variance: number;
+  count: number;
+  exposure: number;
+  learned: boolean;
+} {
   noteId = slugify(noteId);
   const row = db
     .prepare(
-      "SELECT update_count, reward_sum, reward_sq_sum FROM note_q WHERE note_id = ?",
+      `SELECT update_count, reward_sum, reward_sq_sum, exposure_count
+       FROM note_q WHERE note_id = ?`,
     )
     .get(noteId) as
-    | { update_count: number; reward_sum: number; reward_sq_sum: number }
+    | {
+        update_count: number;
+        reward_sum: number;
+        reward_sq_sum: number;
+        exposure_count: number;
+      }
     | undefined;
 
   if (!row || row.update_count === 0)
-    return { mean: 0, variance: 0.25, count: 0 };
+    return {
+      mean: 0,
+      variance: 0.25,
+      count: 0,
+      exposure: row?.exposure_count ?? 0,
+      learned: false,
+    };
 
   const mean = row.reward_sum / row.update_count;
   const variance = row.reward_sq_sum / row.update_count - mean * mean;
-  return { mean, variance: Math.max(0, variance), count: row.update_count };
+  return {
+    mean,
+    variance: Math.max(0, variance),
+    count: row.update_count,
+    exposure: row.exposure_count,
+    learned: true,
+  };
 }
 
 export function getExposureCount(
@@ -295,15 +441,137 @@ export function logRetrieval(
 
 // --- Exploration: UCB-Tuned ---
 
+/**
+ * Exposure damping factor for the exploration bonus, in [MIN_EXPLORE_RETENTION, 1].
+ *
+ * Monotonically decreasing in exposure and floored, never zero. A note nobody
+ * has seen keeps its whole bonus; one shown 100 times keeps a fifth of it.
+ */
+export function exposureDamping(exposure: number): number {
+  if (exposure <= 0) return 1;
+  return Math.max(
+    Math.pow(1 + exposure, -EXPLORE_EXPOSURE_BETA),
+    MIN_EXPLORE_RETENTION,
+  );
+}
+
+/**
+ * UCB-Tuned exploration bonus, damped by how often the note was already shown.
+ *
+ * ## Why exposure enters here (fix list item 8, 2026-09-15)
+ *
+ * Measured on the live vault: the top 50 notes held 47.2% of all exposure and
+ * ~280 of 1,423 notes had never been surfaced once. The cause is visible in
+ * the old one-line form of this function. With 707 of 717 rows at
+ * `update_count = 0`, `count === 0` held for nearly every candidate, so nearly
+ * every candidate received exactly the same `c * 2.5`. A constant added to
+ * every score is not exploration - it cancels in the ranking, leaving
+ * similarity alone to decide, and similarity is what concentrated exposure in
+ * the first place.
+ *
+ * Damping restores the differential that constant destroyed. It is
+ * deterministic and monotone in exposure, and there is no early return above
+ * it that could preempt it: the 2026-09-12 stage starvation bug was precisely
+ * a short-circuit evaluated before the mechanism that guarantees recovery.
+ *
+ * `stats.exposure` is optional. Omitted means "no exposure information", damps
+ * nothing, and reproduces the previous value exactly.
+ */
 export function explorationBonus(
-  stats: { mean: number; variance: number; count: number },
+  stats: {
+    mean: number;
+    variance: number;
+    count: number;
+    exposure?: number;
+  },
   totalQueries: number,
   c: number = 0.2,
 ): number {
-  if (stats.count === 0) return c * 2.5;
+  const damp = exposureDamping(stats.exposure ?? 0);
+  if (stats.count === 0) return c * 2.5 * damp;
   const logT = Math.log(totalQueries + 1);
   const V = stats.variance + Math.sqrt((2 * logT) / stats.count);
-  return c * Math.sqrt((logT / stats.count) * Math.min(0.25, V));
+  return c * Math.sqrt((logT / stats.count) * Math.min(0.25, V)) * damp;
+}
+
+/**
+ * Probability that one returned slot is handed to a never-surfaced note.
+ *
+ * The exploration bonus alone cannot fix exposure bias, and the arithmetic
+ * says why: `phaseB` blends z-scored similarity at weight (1 - lambda) >= 0.5,
+ * and a z-normalized candidate list spans roughly three standard deviations,
+ * so the largest bonus this module can emit (c * 2.5 = 0.5) moves a note about
+ * two ranks. A note that never enters the window cannot be promoted out of it.
+ * Measured consequence: ~280 of 1,423 notes had never been surfaced once while
+ * the top 50 held 47.2% of all exposure.
+ *
+ * 0.1 gives a cold note a slot in one query out of ten - the same escape-hatch
+ * argument as the stage bandit's EPSILON, at the same order of magnitude
+ * (docs/stage-bandit-starvation.md), and it costs one of eight returned slots
+ * when it fires.
+ */
+export const COLD_START_EPSILON = 0.1;
+
+export interface ColdStartOptions {
+  epsilon?: number;
+  /** Injectable for tests; a stochastic path with an unpinned RNG is a flake. */
+  random?: () => number;
+}
+
+/**
+ * Hand one of the top-`k` slots to the best never-surfaced candidate, epsilon
+ * of the time.
+ *
+ * "Never surfaced" means no `note_q` row or `exposure_count = 0` - the note has
+ * never been shown to an agent, so nothing about it has ever been learned and
+ * ranking it on its Q-value ranks the initialisation constant.
+ *
+ * The epsilon draw happens FIRST, before any early exit. That ordering is the
+ * whole lesson of the 2026-09-12 stage starvation bug, where a budget
+ * short-circuit sat above the epsilon check and six stages stayed dark for six
+ * days: the mechanism that guarantees recovery must not be reachable only when
+ * some other condition happens to allow it. Here it also keeps RNG consumption
+ * independent of the candidate list, so a caller's random stream does not
+ * change shape with vault size.
+ *
+ * Returns the top-`k` slice, with at most one substitution. Never grows the
+ * list and never reorders anything else.
+ */
+export function applyColdStartFloor<T extends { title: string }>(
+  db: Database.Database,
+  ranked: T[],
+  k: number,
+  opts: ColdStartOptions = {},
+): T[] {
+  const { epsilon = COLD_START_EPSILON, random = Math.random } = opts;
+  const fires = random() < epsilon;
+
+  if (k <= 0) return [];
+  const top = ranked.slice(0, k);
+  if (!fires || ranked.length <= k) return top;
+
+  // Candidates that did not make the cut, in rank order: the first cold one is
+  // the strongest note nobody has seen.
+  const below = ranked.slice(k);
+  const ids = below.map((c) => slugify(c.title));
+  const placeholders = ids.map(() => "?").join(",");
+  const surfaced = new Set(
+    (
+      db
+        .prepare(
+          `SELECT note_id FROM note_q
+           WHERE exposure_count > 0 AND note_id IN (${placeholders})`,
+        )
+        .all(...ids) as { note_id: string }[]
+    ).map((r) => r.note_id),
+  );
+
+  const coldIndex = ids.findIndex((id) => !surfaced.has(id));
+  if (coldIndex < 0) return top;
+
+  // Costs the weakest kept slot, never the head of the list.
+  top[k - 1] = below[coldIndex]!;
+  return top;
 }
 
 // --- Batch update ---
@@ -333,7 +601,7 @@ export function batchUpdateQ(
  * Health snapshot of the learning signal, for `ori_health` and for tests.
  *
  * The 2026-08 failure was invisible for five months because nothing summarized
- * *what kind* of reward was accumulating. These four numbers would have made it
+ * *what kind* of reward was accumulating. These numbers would have made it
  * obvious within a week:
  *
  *   - `bySource` — a per-query source dominating session_batch is the alarm.
@@ -341,6 +609,16 @@ export function batchUpdateQ(
  *   - `exposureQCorrelation` — should be >= 0. Negative means the system is
  *     punishing use, which is the degenerate-loop signature.
  *   - `distinctKeyShapes` — >1 means slug/title drift has returned.
+ *
+ * The last three were added 2026-09-15 for fix-list item 5, which was invisible
+ * for the opposite reason: nothing counted the rows where learning had *not*
+ * happened. Production held 717 tracked notes, 707 of them never updated, and
+ * every summary in the system reported only the 10 that were.
+ *
+ *   - `neverUpdated` — rows sitting at the initialisation constant.
+ *   - `exposedButNeverUpdated` — shown to an agent, never credited. A large
+ *     value means retrieval is running and the session flush is not.
+ *   - `neverExposed` — tracked but never surfaced; the exposure-bias tail.
  */
 export function getLearningHealth(db: Database.Database): {
   bySource: Record<string, number>;
@@ -348,6 +626,10 @@ export function getLearningHealth(db: Database.Database): {
   exposureQCorrelation: number;
   distinctKeyShapes: number;
   totalUpdates: number;
+  trackedNotes: number;
+  neverUpdated: number;
+  exposedButNeverUpdated: number;
+  neverExposed: number;
 } {
   const bySource: Record<string, number> = {};
   const sourceRows = db
@@ -391,14 +673,37 @@ export function getLearningHealth(db: Database.Database): {
     )
     .get() as { n: number };
 
+  // Signal-absence counters. One pass, so this stays cheap on large vaults.
+  const coverage = db
+    .prepare(
+      `SELECT COUNT(*) total,
+              SUM(CASE WHEN update_count = 0 THEN 1 ELSE 0 END) never_updated,
+              SUM(CASE WHEN update_count = 0 AND exposure_count > 0 THEN 1 ELSE 0 END) exposed_unlearned,
+              SUM(CASE WHEN exposure_count = 0 THEN 1 ELSE 0 END) never_exposed
+       FROM note_q`,
+    )
+    .get() as Record<string, number>;
+
   return {
     bySource,
     forwardCitations: fc.n,
     exposureQCorrelation: corr,
     distinctKeyShapes: shapes.n,
     totalUpdates: getTotalQUpdates(db),
+    trackedNotes: coverage.total ?? 0,
+    neverUpdated: coverage.never_updated ?? 0,
+    exposedButNeverUpdated: coverage.exposed_unlearned ?? 0,
+    neverExposed: coverage.never_exposed ?? 0,
   };
 }
 
 // Re-export constants for tests
-export { ALPHA, DEFAULT_Q, DECAY_RATE, EXPOSURE_BETA, ALLOWED_SOURCES };
+export {
+  ALPHA,
+  DEFAULT_Q,
+  DECAY_RATE,
+  EXPOSURE_BETA,
+  ALLOWED_SOURCES,
+  EXPLORE_EXPOSURE_BETA,
+  MIN_EXPLORE_RETENTION,
+};

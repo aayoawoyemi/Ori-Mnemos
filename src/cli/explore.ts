@@ -7,6 +7,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import type Database from "better-sqlite3";
 import { findVaultRoot, getVaultPaths, listNoteTitles } from "../core/vault.js";
+import { openSyncedIndex, cachedGraphMetrics } from "../core/indexstore.js";
 import { buildGraph, type LinkGraph } from "../core/graph.js";
 import { loadConfig } from "../core/config.js";
 import { classifyIntent } from "../core/intent.js";
@@ -16,7 +17,9 @@ import {
   loadVectors,
   initDB,
 } from "../core/engine.js";
-import { buildBM25IndexFromVault, searchBM25 } from "../core/bm25.js";
+import {
+  buildBM25IndexFromVault, buildBM25IndexFromStore, searchBM25,
+} from "../core/bm25.js";
 import { computeGraphMetrics, personalizedPageRank, buildGraphologyGraph } from "../core/importance.js";
 import { fuseScoreWeightedRRF } from "../core/fusion.js";
 import type { SignalResults } from "../core/fusion.js";
@@ -116,15 +119,13 @@ export async function runExplore(
   const depth = options.depth ?? exploreConfig.max_depth;
   exploreConfig.ppr_iterations = depthToIterations(depth, config.explore.ppr_iterations);
 
-  // 2. Build link graph
-  const graph = linkGraph ?? await buildGraph(paths.notes);
-
-  // 3. Graph metrics
   const allTitles = await listNoteTitles(paths.notes);
-  const noteIndex = await buildNoteIndex(paths.notes, allTitles);
-  const graphMetrics = computeGraphMetrics(graph, noteIndex);
 
-  // 4. Ensure embedding index exists and open DB
+  // 2. Ensure embedding index exists and open DB. This moved ahead of the
+  // graph build so explore can read the derived index too: it was scanning the
+  // vault three times per call (buildGraph 2,088 ms + buildNoteIndex 2,031 ms
+  // + computeGraphMetrics 388 ms at 1,538 notes) because only the ranked query
+  // path had been wired up.
   const dbPath = path.resolve(vaultRoot, config.engine.db_path);
   const ownDb = !externalDb;
   let mainDb: Database.Database;
@@ -151,12 +152,24 @@ export async function runExplore(
     }
   }
 
+  // 3. Link graph and metrics, from the derived index when it is trustworthy.
+  const opened = await openSyncedIndex(mainDb, paths.notes, allTitles.length);
+  if (opened.reason) warnings.push(opened.reason);
+  const graph = linkGraph ?? await buildGraph(paths.notes, opened.index);
+  const noteIndex = await buildNoteIndex(paths.notes, allTitles, opened.index);
+  const cached = cachedGraphMetrics(
+    opened.index, () => computeGraphMetrics(graph, noteIndex),
+  );
+  if (cached.reason) warnings.push(cached.reason);
+  const graphMetrics = cached.metrics;
+
   const storedVectors = loadVectors(mainDb);
 
   // 5. Load vitality + boosts
   const boostScores = config.activation?.enabled !== false ? loadBoosts(mainDb) : undefined;
   const vitalityScores = await computeAllVitality(
     paths.notes, allTitles, graph, graphMetrics.bridges, config, boostScores,
+    opened.index,
   );
 
   // 6. Classify intent
@@ -171,7 +184,17 @@ export async function runExplore(
     vitalityScores, limit: candidateLimit, config: config.engine,
   });
 
-  const bm25Index = await buildBM25IndexFromVault(vaultRoot, config.bm25);
+  // Same store-backed keyword index the ranked path uses: 2,590 ms of vault
+  // re-tokenization per call becomes a scoped read of the persisted postings.
+  const storeBm25 = opened.index
+    ? buildBM25IndexFromStore(opened.index, config.bm25, query)
+    : undefined;
+  if (opened.index && !storeBm25) {
+    warnings.push(
+      "Keyword index unavailable from the derived index; re-reading the vault",
+    );
+  }
+  const bm25Index = storeBm25 ?? await buildBM25IndexFromVault(vaultRoot, config.bm25);
   const keywordResults = searchBM25(query, bm25Index, config.bm25, candidateLimit);
 
   // Entity-seeded PPR (flat's graph signal, α=0.85)
@@ -432,10 +455,7 @@ export async function buildSessionDeps(
   const config = await loadConfig(paths.config);
   const exploreConfig = { ...config.explore };
 
-  const graph = await buildGraph(paths.notes);
   const allTitles = await listNoteTitles(paths.notes);
-  const noteIndex = await buildNoteIndex(paths.notes, allTitles);
-  const graphMetrics = computeGraphMetrics(graph, noteIndex);
 
   const dbPath = path.resolve(vaultRoot, config.engine.db_path);
   const ownDb = !externalDb;
@@ -453,16 +473,45 @@ export async function buildSessionDeps(
   }
 
   initQValueTables(mainDb);
+
+  // Same wiring as the main explore path: read the graph from the derived
+  // index, and reuse the cached metrics instead of recomputing PageRank,
+  // Louvain and betweenness for a steering call.
+  const openedSteer = await openSyncedIndex(mainDb, paths.notes, allTitles.length);
+  if (openedSteer.reason) warnings.push(openedSteer.reason);
+  const graph = await buildGraph(paths.notes, openedSteer.index);
+  const noteIndex = await buildNoteIndex(paths.notes, allTitles, openedSteer.index);
+  const cachedSteer = cachedGraphMetrics(
+    openedSteer.index, () => computeGraphMetrics(graph, noteIndex),
+  );
+  if (cachedSteer.reason) warnings.push(cachedSteer.reason);
+  const graphMetrics = cachedSteer.metrics;
+
   const storedVectors = loadVectors(mainDb);
   const boostScores = config.activation?.enabled !== false ? loadBoosts(mainDb) : undefined;
   const vitalityScores = await computeAllVitality(
     paths.notes, allTitles, graph, graphMetrics.bridges, config, boostScores,
+    openedSteer.index,
   );
 
   // Warmth signals are query-agnostic seeds here; per-query warmth comes via reseed
   const warmthSignals = new Map<string, number>();
 
-  const bm25Index = await buildBM25IndexFromVault(vaultRoot, config.bm25);
+  // Store-backed keyword index. Deliberately NOT query-scoped here, unlike the
+  // ranked and explore paths: this builds session `deps` that later steering
+  // turns search with queries not yet known, so a scoped index would answer
+  // those with postings it never loaded. The full build from SQL is ~2x the
+  // vault rebuild rather than the ~200x a scoped read gets, and that is the
+  // honest ceiling for a caller that cannot name its query yet.
+  const storeBm25 = openedSteer.index
+    ? buildBM25IndexFromStore(openedSteer.index, config.bm25)
+    : undefined;
+  if (openedSteer.index && !storeBm25) {
+    warnings.push(
+      "Keyword index unavailable from the derived index; re-reading the vault",
+    );
+  }
+  const bm25Index = storeBm25 ?? await buildBM25IndexFromVault(vaultRoot, config.bm25);
 
   const reseed = async (subQuery: string): Promise<ScoredNote[]> => {
     const subClassified = classifyIntent(subQuery, allTitles);

@@ -6,7 +6,11 @@ import Database from "better-sqlite3";
 import { pipeline as hfPipeline } from "@huggingface/transformers";
 
 import type { EngineConfig } from "./config.js";
-import type { ClassifiedQuery } from "./intent.js";
+import type {
+  ClassifiedQuery,
+  SpaceWeights,
+  SplitWeights,
+} from "./intent.js";
 import type { ScoredNote } from "./ranking.js";
 import type { LinkGraph } from "./graph.js";
 import { buildGraph } from "./graph.js";
@@ -97,34 +101,107 @@ export function removeNoteFromDB(
 // Vector loading
 // ---------------------------------------------------------------------------
 
+/**
+ * A space the caller does not weight is a space it does not need loaded.
+ *
+ * Weights are read exactly the way `searchComposite` reads them: a space
+ * whose weight is `0` cannot contribute to any composite score, so its column
+ * is left in SQLite and its slot is filled with an empty vector. `cosine`
+ * already returns 0 for a zero-length vector, so a pruned space is
+ * arithmetically identical to a loaded one multiplied by its zero weight -
+ * pruning cannot move a ranking, by construction.
+ *
+ * A missing field means "needed". Only an explicit `0` prunes, so
+ * `loadVectors(db)` still loads every column and every existing caller is
+ * untouched.
+ *
+ * None of the four built-in intent profiles zeroes a space (the smallest
+ * weight is 0.05), so passing `intent.spaceWeights` prunes nothing today.
+ * The win is for callers that genuinely need a subset: the warmth scan reads
+ * only `bodyVec`/`descVec`, and on the 1,527-row vault that subset loads in
+ * 7.0 ms against 23.0 ms for all five columns.
+ */
+export interface LoadVectorsOptions {
+  spaceWeights?: Partial<SpaceWeights>;
+  splitWeights?: Partial<SplitWeights>;
+}
+
+const EMPTY_VECTOR = new Float32Array(0);
+
+interface ColumnPlan {
+  sql: string;
+  titleVec: number;
+  descVec: number;
+  bodyVec: number;
+  typeVec: number;
+  communityVec: number;
+  contentHash: number;
+  indexedAt: number;
+}
+
+function planVectorColumns(options?: LoadVectorsOptions): ColumnPlan {
+  const sw = options?.spaceWeights;
+  const splitW = options?.splitWeights;
+  const textWanted = (sw?.text ?? 1) !== 0;
+
+  const columns: string[] = ["title"];
+  const take = (wanted: boolean, column: string): number => {
+    if (!wanted) return -1;
+    columns.push(column);
+    return columns.length - 1;
+  };
+
+  // Evaluated in source order, so each index matches its position in `columns`.
+  const titleVec = take(textWanted && (splitW?.title ?? 1) !== 0, "title_vec");
+  const descVec = take(
+    textWanted && (splitW?.description ?? 1) !== 0,
+    "desc_vec",
+  );
+  const bodyVec = take(textWanted && (splitW?.body ?? 1) !== 0, "body_vec");
+  const typeVec = take((sw?.type ?? 1) !== 0, "type_vec");
+  const communityVec = take((sw?.community ?? 1) !== 0, "community_vec");
+  const contentHash = take(true, "content_hash");
+  const indexedAt = take(true, "indexed_at");
+
+  return {
+    sql: `SELECT ${columns.join(", ")} FROM embeddings`,
+    titleVec,
+    descVec,
+    bodyVec,
+    typeVec,
+    communityVec,
+    contentHash,
+    indexedAt,
+  };
+}
+
+function vectorAt(row: unknown[], index: number): Float32Array {
+  if (index < 0) return EMPTY_VECTOR;
+  const blob = row[index];
+  // A NULL blob used to throw out of loadVectors and abort the whole session.
+  // The index is derived data; an unreadable space degrades to "no signal".
+  return Buffer.isBuffer(blob) ? bufferToFloat32(blob) : EMPTY_VECTOR;
+}
+
 export function loadVectors(
   db: InstanceType<typeof Database>,
+  options?: LoadVectorsOptions,
 ): Map<string, StoredVectors> {
-  const rows = db
-    .prepare(
-      `SELECT title, title_vec, desc_vec, body_vec, type_vec, community_vec, content_hash, indexed_at FROM embeddings`,
-    )
-    .all() as Array<{
-    title: string;
-    title_vec: Buffer;
-    desc_vec: Buffer;
-    body_vec: Buffer;
-    type_vec: Buffer;
-    community_vec: Buffer;
-    content_hash: string;
-    indexed_at: string;
-  }>;
+  const plan = planVectorColumns(options);
+  // `.raw()` yields positional rows: no 8-key object per note, and the column
+  // set is dynamic anyway once pruning is in play.
+  const rows = db.prepare(plan.sql).raw().all() as unknown[][];
 
   const map = new Map<string, StoredVectors>();
   for (const row of rows) {
-    map.set(row.title, {
-      titleVec: bufferToFloat32(row.title_vec),
-      descVec: bufferToFloat32(row.desc_vec),
-      bodyVec: bufferToFloat32(row.body_vec),
-      typeVec: bufferToFloat32(row.type_vec),
-      communityVec: bufferToFloat32(row.community_vec),
-      contentHash: row.content_hash,
-      indexedAt: row.indexed_at,
+    map.set(row[0] as string, {
+      titleVec: vectorAt(row, plan.titleVec),
+      descVec: vectorAt(row, plan.descVec),
+      bodyVec: vectorAt(row, plan.bodyVec),
+      typeVec: vectorAt(row, plan.typeVec),
+      communityVec: vectorAt(row, plan.communityVec),
+      contentHash: row[plan.contentHash] as string,
+      indexedAt: row[plan.indexedAt] as string,
     });
   }
   return map;
@@ -321,8 +398,24 @@ function float32ToBuffer(arr: Float32Array): Buffer {
   return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
 }
 
+/**
+ * Copies the blob. The copy is deliberate and was re-measured 2026-09-15.
+ *
+ * A zero-copy `new Float32Array(buf.buffer, buf.byteOffset, len)` view does
+ * work and does win: better-sqlite3 gave each of the 7,635 blobs on the real
+ * 1,527-note vault its own exact-size ArrayBuffer (7,635 distinct buffers, 0
+ * shared, 0 misaligned byteOffsets, 0 value mismatches against the copy), and
+ * it took loadVectors from 35.0 ms to 23.0 ms warm while halving peak
+ * ArrayBuffer bytes from 13.51 MiB to 6.84 MiB.
+ *
+ * It is still not worth it. loadVectors is 25 ms of a 3,344 ms warm query on
+ * that vault - 0.7% - so the view buys 0.4% of a query in exchange for
+ * handing out live views onto memory better-sqlite3 owns. Whether blobs stay
+ * unshared is an implementation detail of the driver, not a contract, and the
+ * failure mode is silently wrong vectors. Do not "optimize" this back without
+ * a denominator that justifies it.
+ */
 function bufferToFloat32(buf: Buffer): Float32Array {
-  // Copy to avoid shared ArrayBuffer alignment issues
   const copy = new ArrayBuffer(buf.byteLength);
   const view = new Uint8Array(copy);
   view.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
@@ -508,8 +601,154 @@ export async function buildIndex(
 }
 
 // ---------------------------------------------------------------------------
+// Community affinity
+// ---------------------------------------------------------------------------
+
+/** Neutral community score: what an orthogonal community vector earns. */
+const COMMUNITY_NEUTRAL_SCORE = 0.5;
+
+/**
+ * How many top text matches vote for the query's community: 2% of the vault,
+ * floored at 3 so a tiny vault still gets a vote and capped at 25 so a large
+ * one does not average its whole graph back into a constant.
+ */
+const COMMUNITY_VOTE_FRACTION = 0.02;
+const COMMUNITY_VOTE_MIN = 3;
+const COMMUNITY_VOTE_MAX = 25;
+
+export interface CommunityVote {
+  textScore: number;
+  vectors: { communityVec: Float32Array };
+}
+
+/**
+ * Where in community space this query lives.
+ *
+ * The stored `community_vec` says which Louvain community a note belongs to,
+ * but nothing said which community the *query* was asking about, so the
+ * community space had no target to compare against and shipped the constant
+ * 0.5 for four months. The target is recoverable from data already in hand:
+ * the notes that match the query best on text are, by construction, the best
+ * available evidence about which neighbourhoods of the graph the query is
+ * in - so let them vote.
+ *
+ * Each of the top `k` text matches contributes its unit community vector,
+ * weighted by the SQUARE of how far its text score exceeds the k-th (last)
+ * voter's. Community vectors are shared by every note in a community, so the
+ * sum concentrates on the communities the text hits actually cluster in, and
+ * a query whose hits are scattered gets a flat affinity that barely separates
+ * anyone - which is the honest answer for such a query.
+ *
+ * The weighting is not arbitrary; five were measured on the real 1,524-note
+ * vault over 10 queries (top-10 window, community weight as each intent
+ * profile sets it), against the constant-0.5 baseline "OFF":
+ *
+ *   weight                  same-community  nbrSim  quality  meanTextRank
+ *   OFF (constant 0.5)              0.480   0.5545   0.0312          42.8
+ *   textScore                       0.490   0.5402   0.0276          65.8
+ *   textScore - kth                 0.510   0.5489   0.0299          49.8
+ *   1 / (1 + rank)                  0.520   0.5560   0.0301          47.0
+ *   softmax(T=0.05)                 0.530   0.5640   0.0320          68.9
+ *   (textScore - kth)^2             0.540   0.5634   0.0313          57.0
+ *
+ * `same-community` is the share of the top 10 in the same Louvain community
+ * as the best text hit; `nbrSim` is mean body-embedding cosine to that hit
+ * (a graph-free relatedness check); `quality` is
+ * `stage-tracker.measureCurrentQuality` over the top 20; `meanTextRank` is
+ * how far down the text-only ordering the top 10 reaches, i.e. the cost of
+ * the space in text relevance. Raw text score - the obvious choice - is the
+ * worst option on record: it makes the largest community win regardless of
+ * the query, because 25 near-equal weights average into the vault's bulk.
+ * Squaring the excess makes the strongest hits dominate, which is what lifts
+ * relatedness without paying softmax's text-relevance cost.
+ *
+ * Returns `null` when no vote is usable (empty vault, community column
+ * pruned, every community vector zero, or every voter tied on text). Callers
+ * must fall back to the neutral score, not to zero: `null` means "no
+ * information", and the old constant is exactly the no-information answer.
+ */
+export function deriveCommunityAffinity(
+  votes: ReadonlyArray<CommunityVote>,
+  topK?: number,
+): Float32Array | null {
+  if (votes.length === 0) return null;
+  const defaultK = Math.min(
+    COMMUNITY_VOTE_MAX,
+    Math.max(
+      COMMUNITY_VOTE_MIN,
+      Math.ceil(votes.length * COMMUNITY_VOTE_FRACTION),
+    ),
+  );
+  const k = Math.max(1, Math.min(topK ?? defaultK, votes.length));
+
+  // Bounded insertion beats sorting the whole vault to read 25 rows off it.
+  const best: CommunityVote[] = [];
+  for (const vote of votes) {
+    if (best.length === k && vote.textScore <= best[k - 1]!.textScore) continue;
+    let pos = best.length;
+    while (pos > 0 && best[pos - 1]!.textScore < vote.textScore) pos--;
+    best.splice(pos, 0, vote);
+    if (best.length > k) best.pop();
+  }
+
+  const dims = best[0]!.vectors.communityVec.length;
+  if (dims === 0) return null;
+
+  // The marginal voter sets the baseline, so it weighs nothing and the
+  // strongest hits weigh quadratically more.
+  const baseline = best[best.length - 1]!.textScore;
+  const affinity = new Float32Array(dims);
+  let weightSum = 0;
+  for (const vote of best) {
+    const vec = vote.vectors.communityVec;
+    if (vec.length !== dims) continue;
+    const excess = vote.textScore - baseline;
+    if (excess <= 0) continue;
+    const weight = excess * excess;
+    const norm = vectorNorm(vec);
+    if (norm === 0) continue;
+    for (let i = 0; i < dims; i++) {
+      affinity[i]! += (vec[i]! / norm) * weight;
+    }
+    weightSum += weight;
+  }
+
+  if (weightSum === 0 || vectorNorm(affinity) === 0) return null;
+  return affinity;
+}
+
+/**
+ * How well one note's community matches the query's community affinity.
+ *
+ * Mapped from cosine's [-1, 1] onto [0, 1] so the space stays on the same
+ * scale as the other five, all of which are cosines of non-negative vectors.
+ * The midpoint is deliberate: an orthogonal community scores exactly the 0.5
+ * this space used to hand everybody, so the composite scale is unchanged and
+ * only the spread around it is new.
+ *
+ * A note with no community vector still scores 0, as before - absent data
+ * earns nothing rather than earning the average.
+ */
+export function communityAffinityScore(
+  affinity: Float32Array | null,
+  communityVec: Float32Array,
+): number {
+  if (communityVec.length === 0 || vectorNorm(communityVec) === 0) return 0;
+  if (affinity === null || affinity.length !== communityVec.length) {
+    return COMMUNITY_NEUTRAL_SCORE;
+  }
+  return (cosine(affinity, communityVec) + 1) / 2;
+}
+
+// ---------------------------------------------------------------------------
 // Composite search
 // ---------------------------------------------------------------------------
+
+interface StagedNote {
+  title: string;
+  vectors: StoredVectors;
+  textScore: number;
+}
 
 export async function searchComposite(params: {
   queryText: string;
@@ -519,6 +758,13 @@ export async function searchComposite(params: {
   vitalityScores: Map<string, number>;
   limit: number;
   config: EngineConfig;
+  /**
+   * Precomputed embedding of `queryText`. Omit and it is embedded here; the
+   * embedding is the only thing in this function that needs the model, so
+   * supplying it makes composite scoring testable without loading 86 MB of
+   * ONNX weights.
+   */
+  queryVec?: Float32Array;
 }): Promise<ScoredNote[]> {
   const {
     queryText,
@@ -531,7 +777,7 @@ export async function searchComposite(params: {
   } = params;
 
   // Embed query once
-  const queryVec = await embedText(queryText, config);
+  const queryVec = params.queryVec ?? (await embedText(queryText, config));
 
   const sw = intent.spaceWeights;
   const splitW = intent.splitWeights;
@@ -545,6 +791,10 @@ export async function searchComposite(params: {
       ? 0.8
       : 0.5;
   const queryImportanceVec = encodePiecewiseLinear(importanceTarget, bins);
+  // Loop-invariant: one vector and one clock reading for the whole scan,
+  // instead of one of each per note.
+  const queryTypeVec = buildQueryTypeVec(intent.intent);
+  const nowMs = Date.now();
 
   // Max pagerank for normalization
   let maxPR = 0;
@@ -553,32 +803,45 @@ export async function searchComposite(params: {
   }
   if (maxPR === 0) maxPR = 1;
 
-  const results: ScoredNote[] = [];
-
+  // Pass 1: text space only. The community target is derived from the best
+  // text matches, so it cannot be known until every text score exists. This
+  // is not a second pass over the vault - the expensive cosines happen once,
+  // here, and pass 2 reuses them.
+  const staged: StagedNote[] = [];
   for (const [title, vectors] of storedVectors) {
-    // Text space: weighted split similarity
     const titleSim = cosine(queryVec, vectors.titleVec);
     const descSim = cosine(queryVec, vectors.descVec);
     const bodySim = cosine(queryVec, vectors.bodyVec);
-    const textScore =
-      splitW.title * titleSim +
-      splitW.description * descSim +
-      splitW.body * bodySim;
+    staged.push({
+      title,
+      vectors,
+      textScore:
+        splitW.title * titleSim +
+        splitW.description * descSim +
+        splitW.body * bodySim,
+    });
+  }
 
+  const communityAffinity = deriveCommunityAffinity(staged);
+
+  const results: ScoredNote[] = [];
+
+  for (const { title, vectors, textScore } of staged) {
     // Type space: cosine between query-implied type vector and stored type
-    const queryTypeVec = buildQueryTypeVec(intent.intent);
     const typeScore = cosine(queryTypeVec, vectors.typeVec);
 
-    // Community space: use community vector norm as baseline signal
-    // (full community-aware scoring needs query-time community detection)
-    const communityScore = vectorNorm(vectors.communityVec) > 0 ? 0.5 : 0;
+    // Community space: similarity to the community affinity the query's own
+    // top text matches voted for.
+    const communityScore = communityAffinityScore(
+      communityAffinity,
+      vectors.communityVec,
+    );
 
     // Temporal space: recency from indexedAt
     const indexedDate = new Date(vectors.indexedAt);
-    const now = new Date();
     const daysSinceIndex = Math.max(
       0,
-      (now.getTime() - indexedDate.getTime()) / (1000 * 60 * 60 * 24),
+      (nowMs - indexedDate.getTime()) / (1000 * 60 * 60 * 24),
     );
     const recency = Math.exp(-daysSinceIndex / 30); // 30-day half-life
     const temporalVec = encodePiecewiseLinear(recency, bins);

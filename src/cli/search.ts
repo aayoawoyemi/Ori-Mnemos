@@ -11,7 +11,9 @@ import {
   loadVectors,
   initDB,
 } from "../core/engine.js";
-import { buildBM25IndexFromVault, searchBM25 } from "../core/bm25.js";
+import {
+  buildBM25IndexFromVault, buildBM25IndexFromStore, searchBM25,
+} from "../core/bm25.js";
 import {
   computeGraphMetrics,
   personalizedPageRank,
@@ -21,6 +23,9 @@ import { fuseScoreWeightedRRF, normalizeSignalWeights } from "../core/fusion.js"
 import { injectExploration, logAccess } from "../core/tracking.js";
 import type { ScoredNote } from "../core/ranking.js";
 import { buildNoteIndex, computeAllVitality, recordNoteAccess } from "../core/noteindex.js";
+import {
+  termDocumentFrequency, openSyncedIndex, cachedGraphMetrics,
+} from "../core/indexstore.js";
 import { loadBoosts, applyActivationBoosts, computeActivationSpread } from "../core/activation.js";
 import { WarmthService, type WarmthSignal } from "../core/warmth.js";
 import {
@@ -43,6 +48,12 @@ import {
   STAGE_CONFIGS,
 } from "../core/stage-learner.js";
 import { StageTracker, measureCurrentQuality } from "../core/stage-tracker.js";
+import { SessionRewardAccumulator } from "../core/reward.js";
+import {
+  initQValueTables, logRetrieval, incrementExposure,
+} from "../core/qvalue.js";
+import { initCoOccurrenceTables } from "../core/cooccurrence.js";
+import { initStageTables, saveStage } from "../core/stage-learner.js";
 import {
   applyGravityDampening,
   applyHubDampening,
@@ -194,15 +205,13 @@ export async function runQueryRanked(
   const resultLimit = limit ?? config.retrieval.default_limit;
   const candidateLimit = resultLimit * config.retrieval.candidate_multiplier;
 
-  // 2. Build link graph
-  const graph = linkGraph ?? await buildGraph(paths.notes);
-
-  // 3. Graph metrics (PageRank, communities, bridges)
+  // 2. Open the DB FIRST, because steps 3-5 now read the derived index out of
+  //    it instead of re-reading the vault. Measured 2026-09-15: buildGraph
+  //    944 ms + buildNoteIndex 859 ms + computeAllVitality's own full pass, per
+  //    query, at 2,000 notes - against 26.5 ms to load all of it from SQLite.
+  //    This ordering is load-bearing; moving the open back below the graph
+  //    build silently restores the scans.
   const allTitles = await listNoteTitles(paths.notes);
-  const noteIndex = await buildNoteIndex(paths.notes, allTitles);
-  const graphMetrics = computeGraphMetrics(graph, noteIndex);
-
-  // 4. Ensure embedding index exists and open DB
   const dbPath = path.resolve(vaultRoot, config.engine.db_path);
   const ownDb = !externalDb; // track if we manage the DB lifecycle
   let mainDb: Database.Database;
@@ -237,6 +246,38 @@ export async function runQueryRanked(
     }
   }
 
+  // 3. Decide whether the derived index can be trusted for THIS query.
+  //
+  //    The failure to avoid is silent: an empty or stale `note` table would
+  //    make loadLinkGraph return an empty graph, and every graph signal would
+  //    score zero while still returning numbers. That is issue #32's shape
+  //    exactly, and it is why this compares the index against the vault rather
+  //    than assuming freshness.
+  //
+  //    A mismatch triggers an incremental sync (stat-filtered; 230 ms at 2,000
+  //    notes when nothing changed, and it reparses only what moved). If the
+  //    sync still cannot account for every note on disk, the scans run instead
+  //    and the caller is told. A stale index must never stop a session, and it
+  //    must never quietly answer a different question.
+  //
+  //    The mechanics live in `openSyncedIndex` because warmth, explore and the
+  //    steering path need exactly the same three steps, and for a while only
+  //    this function had them - so those paths still paid the full per-query
+  //    vault scans after this one was fixed.
+  const opened = await openSyncedIndex(mainDb, paths.notes, allTitles.length);
+  const indexDb = opened.index;
+  if (opened.reason) warnings.push(opened.reason);
+
+  // 4. Link graph and note metadata, from the index when it is trustworthy.
+  const graph = linkGraph ?? await buildGraph(paths.notes, indexDb);
+  const noteIndex = await buildNoteIndex(paths.notes, allTitles, indexDb);
+
+  const metrics = cachedGraphMetrics(
+    indexDb, () => computeGraphMetrics(graph, noteIndex),
+  );
+  if (metrics.reason) warnings.push(metrics.reason);
+  const graphMetrics = metrics.metrics;
+
   const storedVectors = loadVectors(mainDb);
 
   // 5. Load activation boosts and compute vitality
@@ -248,13 +289,38 @@ export async function runQueryRanked(
     graphMetrics.bridges,
     config,
     boostScores,
+    indexDb,
   );
 
   // 6. Classify query intent
   const classified = classifyIntent(query, allTitles);
 
   // Stage meta-learning: load stages and prepare features if DB available
-  const useIntelligence = !!externalDb && !!sessionId;
+  // Items 9 and 10 share one root cause: this line.
+  //
+  // `useIntelligence` required an EXTERNAL db and a caller-supplied session id,
+  // both of which only the MCP server passes. So the CLI never constructed a
+  // stage tracker, never loaded stage policies, never wrote `stage_log`, and
+  // never credited Q-values - which is the mechanical reason `stage_log` sat
+  // empty and 707 of 717 `note_q` rows had update_count = 0. It also means the
+  // same query answered differently depending on transport, because only one
+  // side ran the bandit and its time budget (issue #34 section 3).
+  //
+  // The CLI has a database right here; it simply was not given a session. One
+  // is minted per invocation, so a CLI query now learns and logs exactly as an
+  // MCP query does. Safe to enable only because the per-query vault scans are
+  // gone: with the index in place the pipeline no longer approaches the 400 ms
+  // budget that was shedding three of four signals.
+  const activeSession = sessionId ?? `cli-${Date.now().toString(36)}-${
+    Math.random().toString(36).slice(2, 8)}`;
+  // The learning tables were created by serve.ts and nowhere else, so simply
+  // enabling intelligence on the CLI threw `no such table: stage_q` on the
+  // first query - more evidence that this path had never run, not a new bug.
+  // These are CREATE TABLE IF NOT EXISTS, so they are a no-op for the server.
+  initQValueTables(mainDb);
+  initCoOccurrenceTables(mainDb);
+  initStageTables(mainDb);
+  const useIntelligence = true;
   const tracker = stageTracker ?? (useIntelligence ? new StageTracker() : undefined);
   const stages = useIntelligence
     ? STAGE_CONFIGS.map((c) => loadStage(mainDb, c))
@@ -291,12 +357,31 @@ export async function runQueryRanked(
     return decision;
   };
 
+  // Item 6: let the quality metric see exact-identifier recall.
+  //
+  // Without this probe the metric scored only how concentrated a result set
+  // was, so it could not express "this set missed a literal identifier that
+  // exists in the vault". That blindness is why `bm25` carried -21.38 total
+  // reward while being marked `essential: true` - the bandit had learned to
+  // drop it, dropping it destroyed recall for names, codes and titles, and the
+  // metric registered neither fact. A real query, "Resume J", scored 0.005.
+  //
+  // Document frequency comes from the index (one aggregation, then free
+  // lookups) and is tokenized by bm25.ts's own `tokenize` on both sides, so the
+  // metric counts the terms the stage it is judging counts. A different
+  // tokenizer here would measure vocabulary mismatch and call it quality.
+  // Absent an index the probe is omitted and the metric returns its previous
+  // number exactly, which keeps historical `stage_q` rows comparable.
+  const lexicalProbe = indexDb
+    ? { query, ...termDocumentFrequency(indexDb) }
+    : undefined;
+
   // Helper: wrap a stage with quality tracking
   const trackStage = (stageId: string, candidates: ScoredNote[]): void => {
-    if (tracker) tracker.before(stageId, measureCurrentQuality(candidates));
+    if (tracker) tracker.before(stageId, measureCurrentQuality(candidates, lexicalProbe));
   };
   const trackStageAfter = (stageId: string, candidates: ScoredNote[]): void => {
-    if (tracker) tracker.after(stageId, measureCurrentQuality(candidates));
+    if (tracker) tracker.after(stageId, measureCurrentQuality(candidates, lexicalProbe));
   };
 
   // 8. Signal 1: composite vector search (essential — always runs)
@@ -318,10 +403,33 @@ export async function runQueryRanked(
   if (bm25Decision !== "abstain" && bm25Decision !== "skip") {
     trackStage("bm25", compositeResults);
     const t1 = performance.now();
-    const bm25Index = await buildBM25IndexFromVault(vaultRoot, config.bm25);
+    // BM25 from the persisted postings when the index is trustworthy.
+    // Measured on the real 1,538-note vault: the vault rebuild is 2,590 ms of a
+    // 3,344 ms query - 77%, and the largest remaining cost after the graph and
+    // metadata scans moved into the index. My earlier 2,000-note synthetic
+    // fixture reported 59.6 ms for a whole query and hid this completely: the
+    // fixture's notes were tiny, so re-tokenizing them was free. Benchmarks
+    // measure the fixture until a real corpus says otherwise.
+    const storeIndex = indexDb ? buildBM25IndexFromStore(indexDb, config.bm25, query) : undefined;
+    if (indexDb && !storeIndex) {
+      warnings.push(
+        "Keyword index unavailable from the derived index; re-reading the " +
+        "vault for this query (run `ori index build`)",
+      );
+    }
+    const bm25Index = storeIndex ?? await buildBM25IndexFromVault(vaultRoot, config.bm25);
     keywordResults = searchBM25(query, bm25Index, config.bm25, candidateLimit);
     pipelineElapsed += performance.now() - t1;
-    trackStageAfter("bm25", [...compositeResults, ...keywordResults]);
+    // Measure the stage on the list it actually produced. The previous
+    // `[...compositeResults, ...keywordResults]` appended an unsorted second
+    // list on a different score scale (BM25 2-10 vs cosine 0.3-0.5) to the
+    // tail of the window; measureCurrentQuality read that as a flatter
+    // distribution and paid bm25 a negative reward on every call. By
+    // 2026-09-06 LinUCB had total_reward -19.8 for bm25 (every other stage
+    // positive) and was abstaining on 100% of recent queries — the only
+    // signal that can match a proper noun had been learned out of the
+    // pipeline. Scoring the fused view is rrf_fusion's job, not this stage's.
+    trackStageAfter("bm25", keywordResults.length > 0 ? keywordResults : compositeResults);
   }
 
   // 10. Signal 3: personalized PageRank from entity seeds
@@ -507,7 +615,7 @@ export async function runQueryRanked(
   ) {
     trackStage("q_reranking", dampened);
     const t5 = performance.now();
-    ranked = phaseB(mainDb, dampened, query, classified.intent, sessionId);
+    ranked = phaseB(mainDb, dampened, query, classified.intent, activeSession);
     pipelineElapsed += performance.now() - t5;
     trackStageAfter("q_reranking", ranked);
   }
@@ -516,7 +624,7 @@ export async function runQueryRanked(
   // decision with its measured outcome is what makes the LinUCB state
   // debuggable — a stage sitting at a constant reward is then one query away
   // from visible, instead of five months.
-  if (useIntelligence && sessionId && tracker) {
+  if (useIntelligence && tracker) {
     const resultsByStage = new Map(
       tracker.getResults().map((r) => [r.stageId, r]),
     );
@@ -524,7 +632,7 @@ export async function runQueryRanked(
       const sr = resultsByStage.get(stageId);
       logStageDecision(
         mainDb,
-        sessionId,
+        activeSession,
         stageId,
         queryFeatures ?? [],
         decision,
@@ -598,6 +706,7 @@ export async function runQueryRanked(
   await recordNoteAccess(
     paths.notes,
     withExploration.map((r) => r.title),
+    indexDb,
   );
 
   // 16. Spreading activation: propagate boosts to neighbors of top results
@@ -615,8 +724,72 @@ export async function runQueryRanked(
       }
     }
     if (allBoosts.size > 0) {
-      applyActivationBoosts(mainDb, allBoosts, sessionId);
+      applyActivationBoosts(mainDb, allBoosts, activeSession);
     }
+  }
+
+  // Item 5: credit the retrieval, which nothing on the CLI path ever did.
+  //
+  // `SessionRewardAccumulator` was constructed only in serve.ts, so a CLI query
+  // logged nothing and `updateQ` was never reached through a sanctioned path.
+  // The gate inside `updateQ` (writes only from `session_batch` or
+  // `explore_conclude`) is correct and stays - it exists to prevent a
+  // documented degenerate feedback loop. What was missing was anyone calling
+  // through it. Result: Q-values frozen at the initialisation constant, so
+  // `q_reranking` was ranking a number that had never been learned.
+  //
+  // One accumulator per invocation, concluded before returning. Failure here
+  // must never fail the query: retrieval already succeeded, and losing a
+  // learning update is strictly less bad than losing the answer.
+  // Live stage learning. The server updates LinUCB and calls `saveStage` after
+  // every query (serve.ts:917-925); the CLI recorded decisions into `stage_log`
+  // but never wrote the learned policy back, so `stage_q` stayed empty and the
+  // bandit could observe a CLI query without ever learning from one.
+  if (tracker && queryFeatures && tracker.hasResults()) {
+    try {
+      const loaded = STAGE_CONFIGS.map((c) => loadStage(mainDb, c));
+      for (const sr of tracker.drain()) {
+        const stage = loaded.find((x) => x.config.id === sr.stageId);
+        if (!stage) continue;
+        stage.update(queryFeatures, computeStageReward(sr.qualityBefore, sr.qualityAfter, sr.computeMs));
+        saveStage(mainDb, stage);
+      }
+    } catch (err: unknown) {
+      warnings.push(
+        `Stage learning update skipped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  try {
+    const accumulator = new SessionRewardAccumulator(activeSession);
+    withExploration.forEach((result, position) => {
+      // rank is 1-based: the credit model weights by position, and a 0 here
+      // would make the top hit indistinguishable from an unranked one.
+      accumulator.logRetrieval(result.title, position + 1, query, classified.intent);
+    });
+    // Default source `session_batch`, which is what the `updateQ` gate allows.
+    // A new source string would be rejected by ALLOWED_SOURCES, and widening
+    // that set to label CLI traffic would weaken the guard that exists to stop
+    // a degenerate feedback loop. The session id already records provenance:
+    // CLI sessions are minted with a `cli-` prefix.
+    // `retrieval_log` is the exposure record item 8 reasons over ("top-50 hold
+    // 47.2% of all exposure; ~280 notes never surfaced once"), and the CLI was
+    // contributing nothing to it - so the exposure statistics described a
+    // fraction of actual usage. Exposure is incremented for RETURNED notes
+    // only, matching the correction made in qvalue.ts.
+    withExploration.forEach((result, position) => {
+      logRetrieval(
+        mainDb, activeSession, query, classified.intent, result.title,
+        position + 1, result.score, 0, 0, result.score,
+      );
+      incrementExposure(mainDb, result.title);
+    });
+    accumulator.concludeSession(mainDb);
+  } catch (err: unknown) {
+    warnings.push(
+      `Learning update skipped: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   // 17. Close DB only if we opened it ourselves
@@ -650,7 +823,6 @@ export async function runQueryWarmth(
   const paths = getVaultPaths(vaultRoot);
   const config = await loadConfig(paths.config);
   const resultLimit = limit ?? config.warmth.max_results;
-  const graph = linkGraph ?? await buildGraph(paths.notes);
 
   const dbPath = path.resolve(vaultRoot, config.engine.db_path);
   let dbExists = true;
@@ -677,7 +849,28 @@ export async function runQueryWarmth(
   }
 
   const mainDb = rowCount === 0 ? initDB(dbPath) : db;
-  const storedVectors = loadVectors(mainDb);
+
+  // Warmth spreads activation over the link graph, so it needs the same graph
+  // the ranked path needs - and it was rebuilding it from the vault on every
+  // call, 2,088 ms at 1,538 notes, because only `runQueryRanked` had been
+  // wired to the index. The graph is built after the database is open for
+  // exactly that reason.
+  let graph = linkGraph;
+  if (!graph) {
+    const titles = await listNoteTitles(paths.notes);
+    const opened = await openSyncedIndex(mainDb, paths.notes, titles.length);
+    if (opened.reason) warnings.push(opened.reason);
+    graph = await buildGraph(paths.notes, opened.index);
+  }
+
+  // Warmth reads only bodyVec, falling back to descVec (warmth.ts:214), so
+  // loading the title, type and community columns is 610,000 floats of pure
+  // waste. Measured on the real 1,538-note vault: 33 ms -> 14 ms, 1.79M floats
+  // -> 1.17M, with the seed ranking unchanged.
+  const storedVectors = loadVectors(mainDb, {
+    spaceWeights: { type: 0, community: 0 },
+    splitWeights: { title: 0 },
+  });
   const results = await warmthService.scan(
     context,
     storedVectors,

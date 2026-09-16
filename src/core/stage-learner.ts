@@ -280,12 +280,20 @@ export function getStageDecision(
 /**
  * Reward for one stage execution, in [-1, 1].
  *
- * Both quality arguments now come from `measureCurrentQuality`, which is
- * normalized to [0, 1] and scale-free (see stage-tracker.ts). A delta is
- * therefore already bounded by [-1, 1] and needs no arbitrary gain — the old
- * `delta * 10` existed to amplify raw-score differences and, combined with
- * cross-scale measurement, pinned rrf_fusion/pagerank/cooccurrence_ppr at
- * exactly -1.0 on every call for five months.
+ * Both quality arguments come from `measureCurrentQuality`, which is bounded
+ * by [-1, 1] and scale-free (see stage-tracker.ts). A delta is therefore
+ * bounded too and needs no arbitrary gain — the old `delta * 10` existed to
+ * amplify raw-score differences and, combined with cross-scale measurement,
+ * pinned rrf_fusion/pagerank/cooccurrence_ppr at exactly -1.0 on every call
+ * for five months.
+ *
+ * Since 2026-09-15 that measure also carries exact-identifier recall when the
+ * caller supplies a lexical probe, blended convexly so this formula is
+ * unchanged and old `stage_q` rows stay comparable. The practical effect is
+ * that a lexical stage which pulls a literal identifier into the window now
+ * earns a positive delta for it instead of being paid only for reordering —
+ * which is why `bm25` could hold the worst total reward in the table while
+ * being known to be necessary.
  *
  * DELTA_GAIN of 2.0 is deliberate and mild: a stage that moves normalized
  * top-heaviness by 0.5 earns full marks, while typical single-digit-percent

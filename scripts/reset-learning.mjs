@@ -18,7 +18,8 @@
  *
  *   3. Mixed note keys — retrieval_log and note_q held both slugs and raw
  *      titles for the same notes. Rows are folded onto the canonical slug so
- *      historical retrieval data stays usable for propensity analysis.
+ *      historical retrieval data stays usable as a record. No estimator
+ *      currently consumes it.
  *
  * Idempotent: safe to re-run. Refuses to run twice destructively by checking
  * for the marker row in `meta`.
@@ -161,8 +162,9 @@ function main() {
     console.log("cleared stage_q — stages relearn from an identity prior");
 
     // --- 3. Fold mixed keys onto canonical slugs --------------------------
-    // retrieval_log is kept (it is observational, not learned) but normalized
-    // so future propensity work sees one id per note.
+    // retrieval_log is kept (it is observational, not learned) and normalized
+    // to one id per note. Nothing reads it today — it is retained as the raw
+    // record, which the CLI now actually writes to.
     const ids = db
       .prepare("SELECT DISTINCT note_id FROM retrieval_log")
       .all()

@@ -2,7 +2,11 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { findVaultRoot, getVaultPaths, listNoteTitles } from "../core/vault.js";
 import { loadConfig, resolveTemplatePath } from "../core/config.js";
-import { readFrontmatterFile, writeFrontmatterFile } from "../core/frontmatter.js";
+import {
+  readFrontmatterFile,
+  renameWithRetry,
+  writeFrontmatterFile,
+} from "../core/frontmatter.js";
 import { buildGraph } from "../core/graph.js";
 import { validateNoteAgainstSchema } from "../core/schema.js";
 import { computePromotion, isTemplatePlaceholder, type PromoteResult } from "../core/promote.js";
@@ -285,15 +289,32 @@ export async function runPromote(
       continue;
     }
 
-    // Write promoted note to notes/
-    await writeFrontmatterFile(
-      destPath,
-      result.updatedFrontmatter,
-      result.updatedBody
-    );
-
-    // Delete from inbox
-    await fs.unlink(inboxPath);
+    // Move inbox -> notes with a single rename, then rewrite the moved file in
+    // place with the promoted frontmatter. A rename cannot alter content, so
+    // "create the destination with the new frontmatter and drop the inbox
+    // copy" is not expressible as one syscall; moving first is the ordering
+    // that can neither duplicate nor lose the note. The destination is durable
+    // the instant it exists, and the inbox entry is gone in the same
+    // operation. Worst case after a crash between the two steps is the note
+    // living in notes/ with its original inbox frontmatter - present exactly
+    // once, intact, and readable.
+    // renameWithRetry, not fs.rename: on Windows a rename is refused with
+    // EPERM while either end is transiently open, e.g. by an antivirus filter
+    // scanning the note that was just written to inbox/.
+    await renameWithRetry(inboxPath, destPath);
+    try {
+      await writeFrontmatterFile(
+        destPath,
+        result.updatedFrontmatter,
+        result.updatedBody
+      );
+    } catch (err) {
+      // Roll the move back so a failed promote leaves the inbox note exactly
+      // as it was. writeFrontmatterFile stages into a sibling temp file, so on
+      // failure destPath still holds the untouched original bytes.
+      await renameWithRetry(destPath, inboxPath).catch(() => undefined);
+      throw err;
+    }
 
     // Validate against schema
     const templatePath = resolveTemplatePath(

@@ -28,6 +28,13 @@
  * min-max version that was tried and rejected the same day.
  */
 
+// Same tokenizer BM25 uses, deliberately. If the quality metric counted
+// different terms than the stage it is judging, its recall number would be
+// measuring a vocabulary mismatch instead of a retrieval failure. `tokenize`
+// is also the reason "Resume J" has a "j" term at all - single-character
+// tokens survive only when they look like an identifier (bm25.ts, 2026-09-06).
+import { tokenize } from "./bm25.js";
+
 export interface StageSnapshot {
   stageId: string;
   qualityBefore: number;
@@ -111,7 +118,7 @@ const QUALITY_WINDOW = 10;
  * the metric ranked flat above peaked, exactly backwards. Caught by
  * tests/core/learning-signal-integrity.test.ts before it shipped.
  */
-export function measureCurrentQuality(
+export function measureConcentration(
   candidates: { score: number }[],
 ): number {
   const window = candidates.slice(0, QUALITY_WINDOW);
@@ -146,4 +153,147 @@ export function measureCurrentQuality(
 
   const quality = (weighted - uniform) / (1 - uniform);
   return Math.max(-1, Math.min(1, quality));
+}
+
+// --- Exact-identifier recall (fix list item 6, 2026-09-15) ---
+
+/**
+ * Rarity gate for a query term, as a fraction of the corpus.
+ *
+ * A term appearing in more than 1% of notes is a topic word: semantic search
+ * finds those, and missing one is not a recall failure worth punishing. Below
+ * the gate the term behaves like an identifier - a name, a code, a title
+ * fragment - and is exactly what BM25 exists to retrieve.
+ */
+export const RARE_DF_FRACTION = 0.01;
+
+/**
+ * Absolute floor on the rarity gate, so small vaults still have a rare band.
+ * At 1% a 161-note vault would gate at df <= 1, making almost nothing count.
+ */
+export const RARE_DF_FLOOR = 8;
+
+/**
+ * Share of the quality signal owned by exact-identifier recall.
+ *
+ * Deliberately a convex blend, not an extra additive term: the result stays in
+ * [-1, 1], stays scale-invariant, and a probe-less call returns EXACTLY the
+ * concentration number this metric has always returned, so `stage_q` history
+ * written before 2026-09-15 remains comparable and needs no rescaling.
+ *
+ * At 0.25 a set that finds every rare term is 0.5 above one that finds none
+ * (the lexical term spans [-1, 1]), which is large enough to flip the sign of a
+ * noise-floor result - `"Resume J"` at concentration 0.005 now measures -0.246
+ * instead of +0.005 - and small enough that concentration still dominates when
+ * both sets recall the same identifiers.
+ */
+export const LEXICAL_WEIGHT = 0.25;
+
+/**
+ * Corpus knowledge needed to judge exact-identifier recall.
+ *
+ * `documentFrequency` is a lookup, not a scan: the caller owns the index and
+ * answers in microseconds. Nothing in this module reads the vault - the metric
+ * runs on the query path and must not re-add the per-query full-corpus read
+ * that tier 2 exists to remove.
+ */
+export interface LexicalProbe {
+  /** The user's query, verbatim. */
+  query: string;
+  /** Notes containing this lowercased term. 0 means absent from the corpus. */
+  documentFrequency: (term: string) => number;
+  /** Notes in the corpus, for the rarity gate. */
+  corpusSize: number;
+}
+
+/** A candidate as seen by the quality metric. Text is optional and lexical-only. */
+export interface QualityCandidate {
+  score: number;
+  title?: string;
+  text?: string;
+}
+
+/**
+ * Query terms that are rare AND present in the corpus.
+ *
+ * Both halves matter. `df <= gate` is what makes a term an identifier rather
+ * than a topic word. `df >= 1` is what keeps the signal fair: a result set
+ * cannot be punished for failing to return something the vault does not
+ * contain, which would turn every unanswerable query into a stage penalty.
+ */
+export function rareQueryTerms(probe: LexicalProbe): string[] {
+  const gate = Math.max(
+    RARE_DF_FLOOR,
+    Math.floor(probe.corpusSize * RARE_DF_FRACTION),
+  );
+  const terms: string[] = [];
+  const seen = new Set<string>();
+  for (const term of tokenize(probe.query)) {
+    if (seen.has(term)) continue;
+    seen.add(term);
+    const df = probe.documentFrequency(term);
+    if (df >= 1 && df <= gate) terms.push(term);
+  }
+  return terms;
+}
+
+/**
+ * Fraction of the rare terms that literally appear in the candidate window.
+ *
+ * Returns 1 for an empty term list so callers that blend it unconditionally
+ * cannot be penalized by a query with no identifiers in it.
+ */
+export function measureExactRecall(
+  candidates: QualityCandidate[],
+  terms: string[],
+): number {
+  if (terms.length === 0) return 1;
+  const found = new Set<string>();
+  for (const c of candidates.slice(0, QUALITY_WINDOW)) {
+    if (found.size === terms.length) break;
+    const text = `${c.title ?? ""} ${c.text ?? ""}`;
+    if (text.trim().length === 0) continue;
+    const tokens = new Set(tokenize(text));
+    for (const t of terms) if (tokens.has(t)) found.add(t);
+  }
+  return found.size / terms.length;
+}
+
+/**
+ * Ranking quality of a candidate set, in [-1, 1].
+ *
+ * Without a `probe` this is `measureConcentration` verbatim - the scale-free
+ * top-heaviness measure described above, unchanged since 2026-08-28.
+ *
+ * With a probe it additionally sees **exact-identifier recall**, which the
+ * metric was structurally blind to before 2026-09-15. That blindness was
+ * provable rather than suspected: `bm25` carried the worst total reward in the
+ * table (-21.38 over 74 samples) while being marked `essential` precisely
+ * because dropping it had already been observed to destroy recall for names,
+ * codes, and titles. Both facts can only hold at once if the reward function
+ * cannot see the thing BM25 contributes. Concentration is a measure of ORDER;
+ * it is identical whether or not the right note is in the set at all, so a
+ * lexical stage that pulls a literal identifier into the window from nowhere
+ * scored zero for it - and paid the cost penalty.
+ *
+ * The two components are blended convexly (see LEXICAL_WEIGHT), so the output
+ * range, the scale-invariance, and the meaning of a historical `stage_q` row
+ * are all preserved. Queries with no rare terms fall through to pure
+ * concentration, so the blend only fires where it has something to say.
+ */
+export function measureCurrentQuality(
+  candidates: QualityCandidate[],
+  probe?: LexicalProbe,
+): number {
+  const concentration = measureConcentration(candidates);
+  if (!probe) return concentration;
+
+  const terms = rareQueryTerms(probe);
+  if (terms.length === 0) return concentration;
+
+  const recall = measureExactRecall(candidates, terms);
+  const lexical = 2 * recall - 1;
+  const blended =
+    (1 - LEXICAL_WEIGHT) * concentration + LEXICAL_WEIGHT * lexical;
+  return Math.max(-1, Math.min(1, blended));
 }

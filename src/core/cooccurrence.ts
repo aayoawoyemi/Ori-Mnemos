@@ -22,6 +22,38 @@ const HOMEOSTASIS_TARGET = 0.5;
 const BOOTSTRAP_BCS_THRESHOLD = 0.1;
 const BOOTSTRAP_INIT_WEIGHT = 0.15;
 
+/**
+ * Maximum number of notes that may link to one target before that target stops
+ * contributing coupling evidence in `bootstrapFromWikiLinks`.
+ *
+ * MEASURED, not guessed. Real vault (C:/Users/aayoa/brain, 1537 notes with
+ * outgoing entries, 6850 links, 900 distinct targets) poster-list sizes:
+ *
+ *   1016  "index"           (a real note every note links to)
+ *    882  "relevant-map"    (DANGLING - an unfilled note-template placeholder)
+ *    853  "related-note"    (DANGLING - an unfilled note-template placeholder)
+ *    462  "ai agents map"
+ *     65  <- next largest, then a long tail; p50 = 2
+ *
+ * Those four targets hold 98.8% of all within-target pair work. Uncapped
+ * inversion costs 1,392,115 pair-visits, which is WORSE than the 1,180,416
+ * ordered pairs the old all-pairs loop examined. At this cap: 18,105
+ * pair-visits, 12,403 distinct pairs - 77x less work, and 896 of 900 targets
+ * (99.6%) are untouched.
+ *
+ * The cap is also what makes the function scale. Work is bounded by
+ * sum over targets of C(k,2) with k <= CAP, which is at most
+ * links * CAP / 2 - linear in link count, not quadratic in note count.
+ *
+ * Semantically this is stopword pruning: a target reachable from 8% of the
+ * vault (128/1537) is uniform noise, and two of the four real offenders are
+ * literal template placeholders that were never filled in. The cap only ever
+ * removes shared-target evidence; note degrees (the BCS denominator) are
+ * unchanged, so capped output is a subset of uncapped output with weights that
+ * are less than or equal. It never invents an edge.
+ */
+const BOOTSTRAP_HUB_POSTER_CAP = 128;
+
 // --- Schema ---
 
 export function initCoOccurrenceTables(db: Database.Database): void {
@@ -250,34 +282,83 @@ export function recomputeAllNPMI(db: Database.Database): void {
 
 // --- Bootstrap from wiki-links (bibliographic coupling) ---
 
+/**
+ * Seed day-0 co-occurrence edges from wiki-link structure using bibliographic
+ * coupling: two notes are coupled by how many link targets they share,
+ * normalised by the geometric mean of their out-degrees.
+ *
+ *   bcs(A,B) = |links(A) INTERSECT links(B)| / sqrt(|links(A)| * |links(B)|)
+ *
+ * Target-inverted accumulation, NOT all-pairs. The previous implementation
+ * compared every ordered pair of notes and intersected their link sets:
+ * 1,160,526 pairs examined to write 29,898 rows at 1524 notes, so 97.4% of the
+ * work was discarded, and it recompiled the INSERT once per surviving pair.
+ * Two notes can only share a target if some target lists both of them, so only
+ * pairs that genuinely co-occur are ever materialised here.
+ *
+ * Pair keys are packed integers (i * n + j) over the sorted note array rather
+ * than concatenated slugs: no per-pair string allocation, and the ordering
+ * i < j is inherited from the sorted iteration, so note_a < note_b holds
+ * exactly as `recordCoRetrieval` expects.
+ *
+ * See BOOTSTRAP_HUB_POSTER_CAP for the one deliberate divergence from the old
+ * all-pairs result, and why the measured vault forces it.
+ */
 export function bootstrapFromWikiLinks(
   db: Database.Database,
   noteLinks: Map<string, Set<string>>,
 ): void {
   const notes = [...noteLinks.keys()].sort(); // sorted for consistent ordering
-  const tx = db.transaction(() => {
-    for (let i = 0; i < notes.length; i++) {
-      for (let j = i + 1; j < notes.length; j++) {
-        const linksA = noteLinks.get(notes[i])!;
-        const linksB = noteLinks.get(notes[j])!;
-        const intersection = new Set(
-          [...linksA].filter((x) => linksB.has(x)),
-        );
-        if (intersection.size === 0) continue;
+  const n = notes.length;
+  if (n < 2) return;
 
-        const bcs =
-          intersection.size / Math.sqrt(linksA.size * linksB.size);
-        if (bcs < BOOTSTRAP_BCS_THRESHOLD) continue;
+  // Out-degrees by index, so the BCS denominator costs no Map lookups.
+  const degree = new Array<number>(n);
+  for (let i = 0; i < n; i++) degree[i] = noteLinks.get(notes[i])!.size;
 
-        // notes[i] < notes[j] by sort order — consistent with recordCoRetrieval
-        db.prepare(
-          `
-          INSERT OR IGNORE INTO co_occurrence
-            (note_a, note_b, co_retrieval_count, npmi_weight, source)
-          VALUES (?, ?, 0, ?, 'bootstrap')
-        `,
-        ).run(notes[i], notes[j], bcs * BOOTSTRAP_INIT_WEIGHT);
+  // 1. Invert noteLinks into target -> ascending indices of notes linking to it.
+  //    Ascending because `notes` is iterated in sorted order.
+  const posters = new Map<string, number[]>();
+  for (let i = 0; i < n; i++) {
+    for (const target of noteLinks.get(notes[i])!) {
+      const list = posters.get(target);
+      if (list === undefined) posters.set(target, [i]);
+      else list.push(i);
+    }
+  }
+
+  // 2. Accumulate a shared-target count per co-occurring pair.
+  const shared = new Map<number, number>();
+  for (const list of posters.values()) {
+    const size = list.length;
+    // A target with one poster couples nothing; a hub target couples everything
+    // and therefore distinguishes nothing.
+    if (size < 2 || size > BOOTSTRAP_HUB_POSTER_CAP) continue;
+    for (let x = 0; x < size; x++) {
+      const base = list[x] * n;
+      for (let y = x + 1; y < size; y++) {
+        const key = base + list[y];
+        const prev = shared.get(key);
+        shared.set(key, prev === undefined ? 1 : prev + 1);
       }
+    }
+  }
+  if (shared.size === 0) return;
+
+  // 3. Threshold and insert. Prepared once, not once per qualifying pair.
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO co_occurrence
+      (note_a, note_b, co_retrieval_count, npmi_weight, source)
+    VALUES (?, ?, 0, ?, 'bootstrap')
+  `);
+  const tx = db.transaction(() => {
+    for (const [key, count] of shared) {
+      const i = (key - (key % n)) / n;
+      const j = key % n;
+      const bcs = count / Math.sqrt(degree[i] * degree[j]);
+      if (bcs < BOOTSTRAP_BCS_THRESHOLD) continue;
+      // notes[i] < notes[j] by sort order — consistent with recordCoRetrieval
+      insert.run(notes[i], notes[j], bcs * BOOTSTRAP_INIT_WEIGHT);
     }
   });
   tx();
@@ -293,4 +374,5 @@ export {
   HOMEOSTASIS_TARGET,
   BOOTSTRAP_BCS_THRESHOLD,
   BOOTSTRAP_INIT_WEIGHT,
+  BOOTSTRAP_HUB_POSTER_CAP,
 };

@@ -17,6 +17,8 @@ import {
   explorationBonus,
   incrementExposure,
   logRetrieval,
+  applyColdStartFloor,
+  type ColdStartOptions,
 } from "./qvalue.js";
 
 // Constants
@@ -67,6 +69,7 @@ export function phaseB(
   queryText: string,
   queryType: string,
   sessionId: string,
+  coldStart: ColdStartOptions = {},
 ): ScoredNote[] {
   if (candidates.length === 0) return [];
 
@@ -99,9 +102,6 @@ export function phaseB(
       score = maxAllowed + (score - maxAllowed) * EXCESS_COMPRESSION;
     }
 
-    // Increment exposure counter
-    incrementExposure(db, c.title);
-
     return {
       ...c,
       score,
@@ -109,13 +109,23 @@ export function phaseB(
     };
   });
 
-  // Sort and take top k2
+  // Sort, then let the cold-start floor claim one slot before the cut. It must
+  // run on the FULL ranked list: applied after `slice`, every never-surfaced
+  // note has already been discarded and the floor can only reorder notes that
+  // were going to be returned anyway. This is the same ordering lesson as
+  // docs/stage-bandit-starvation.md - the recovery mechanism goes above the
+  // cutoff, not below it.
   results.sort((a, b) => b.score - a.score);
-  const topK = results.slice(0, K2);
+  const topK = applyColdStartFloor(db, results, K2, coldStart);
 
-  // Log all results to retrieval_log
+  // Exposure counts what an agent was actually shown, not what was considered.
+  // Before 2026-09-15 this incremented for every candidate, which made
+  // `exposure_count = 0` unreachable for anything that ever reached phaseB and
+  // left the cold-start floor with nothing to find. It also overstated the
+  // exposure divisor in reward.ts for notes that were never returned.
   for (let rank = 0; rank < topK.length; rank++) {
     const r = topK[rank];
+    incrementExposure(db, r.title);
     logRetrieval(
       db,
       sessionId,

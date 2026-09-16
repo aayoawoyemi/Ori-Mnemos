@@ -90,7 +90,6 @@ export type RerankConfig = {
 
 export type IPSConfig = {
   enabled: boolean;
-  epsilon: number;
   log_path: string;
 };
 
@@ -192,7 +191,18 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   stage_soft_cutoff: 0.8,
 };
 
-const DEFAULT_BM25_CONFIG: BM25Config = {
+/**
+ * The one definition of the BM25 defaults.
+ *
+ * `bm25.ts` held a second, byte-identical copy as its default parameter. Two
+ * sources of truth for the same constant diverge on the first edit to either,
+ * and the divergence is invisible: callers that pass a config get one set of
+ * numbers and callers that rely on the default get the other. Found when a test
+ * imported a `DEFAULT_BM25` that did not exist from this module, got
+ * `undefined`, and still passed - because the undefined argument fell through
+ * to the duplicate.
+ */
+export const DEFAULT_BM25_CONFIG: BM25Config = {
   k1: 1.2,
   b: 0.75,
   title_boost: 3.0,
@@ -208,7 +218,6 @@ const DEFAULT_RERANK_CONFIG: RerankConfig = {
 
 const DEFAULT_IPS_CONFIG: IPSConfig = {
   enabled: true,
-  epsilon: 0.01,
   log_path: "ops/access.jsonl",
 };
 
@@ -361,7 +370,9 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
     retrieval: {
       default_limit: rawRetrieval?.default_limit ?? DEFAULT_RETRIEVAL_CONFIG.default_limit,
       candidate_multiplier: rawRetrieval?.candidate_multiplier ?? DEFAULT_RETRIEVAL_CONFIG.candidate_multiplier,
-      rrf_k: rawRetrieval?.rrf_k ?? DEFAULT_RETRIEVAL_CONFIG.rrf_k,
+      // ORI_RRF_K: eval-only override so bench/eval-rrf.mjs can sweep k without
+      // rewriting the live ori.config.yaml (2026-09-06). Unset in normal use.
+      rrf_k: Number(process.env.ORI_RRF_K) > 0 ? Number(process.env.ORI_RRF_K) : (rawRetrieval?.rrf_k ?? DEFAULT_RETRIEVAL_CONFIG.rrf_k),
       signal_weights: {
         composite: rawRetrieval?.signal_weights?.composite ?? DEFAULT_RETRIEVAL_CONFIG.signal_weights.composite,
         keyword: rawRetrieval?.signal_weights?.keyword ?? DEFAULT_RETRIEVAL_CONFIG.signal_weights.keyword,
@@ -386,7 +397,6 @@ export function applyConfigDefaults(raw: Partial<OriConfig>): OriConfig {
     },
     ips: {
       enabled: rawIPS?.enabled ?? DEFAULT_IPS_CONFIG.enabled,
-      epsilon: rawIPS?.epsilon ?? DEFAULT_IPS_CONFIG.epsilon,
       log_path: rawIPS?.log_path ?? DEFAULT_IPS_CONFIG.log_path,
     },
     activation: {

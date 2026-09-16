@@ -37,7 +37,7 @@
  */
 
 import type Database from "better-sqlite3";
-import { getExposureCount } from "./qvalue.js";
+import { batchUpdateQ, getExposureCount, type RewardSource } from "./qvalue.js";
 import { slugify } from "./slug.js";
 
 /**
@@ -95,6 +95,7 @@ export class SessionRewardAccumulator {
   private updatedNoteIds: string[] = [];
   private createdNoteIds: string[] = [];
   private lastBreakdown: RewardBreakdown[] = [];
+  private flushed = false;
   readonly sessionId: string;
 
   constructor(sessionId: string) {
@@ -217,6 +218,41 @@ export class SessionRewardAccumulator {
 
   getBreakdown(): RewardBreakdown[] {
     return this.lastBreakdown;
+  }
+
+  /**
+   * Compute this session's credit and write it, once.
+   *
+   * The sanctioned write path condensed to one call, because fix-list item 5
+   * measured what happens when it is spelled out per caller: `note_q` held 717
+   * rows with 707 at `update_count = 0`, since only the MCP server assembled
+   * accumulator + `computeRewards` + `batchUpdateQ`, and every other entry
+   * point retrieved without ever crediting. A caller that retrieves and then
+   * concludes now needs one line and cannot get the source wrong.
+   *
+   * Returns the number of notes credited, so the absence of signal is a value
+   * a caller can check rather than something it has to infer from the table.
+   *
+   * Guarded against a second call: rewards are session-scoped and cumulative
+   * here (there is no `clear()`), so flushing twice would inflate
+   * `update_count` and `reward_sum` over the whole accumulated set. Subsequent
+   * calls return 0 and write nothing.
+   */
+  concludeSession(
+    db: Database.Database,
+    source: RewardSource = "session_batch",
+  ): number {
+    if (this.flushed || !this.hasData()) return 0;
+    const rewards = this.computeRewards(db);
+    if (rewards.size === 0) return 0;
+    batchUpdateQ(db, rewards, this.sessionId, source);
+    this.flushed = true;
+    return rewards.size;
+  }
+
+  /** True once `concludeSession` has written this session's credit. */
+  isFlushed(): boolean {
+    return this.flushed;
   }
 
   /**

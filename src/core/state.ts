@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { writeFileAtomic } from "./frontmatter.js";
 import { getVaultPaths } from "./vault.js";
 
 export interface OriState {
@@ -30,7 +31,7 @@ export async function writeState(vaultDir: string, updates: Partial<OriState>): 
   const merged = { ...current, ...updates };
   const fp = statePath(vaultDir);
   await fs.mkdir(path.dirname(fp), { recursive: true });
-  await fs.writeFile(fp, JSON.stringify(merged, null, 2) + "\n", "utf8");
+  await writeFileAtomic(fp, JSON.stringify(merged, null, 2) + "\n");
 }
 
 export function isOnboarded(state: OriState): boolean {

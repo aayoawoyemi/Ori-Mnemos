@@ -4,6 +4,7 @@
  */
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import { writeFileAtomic } from "./frontmatter.js";
 
 export type NapScan = {
     inboxNotes: Array<{ title: string; ageDays: number }>;
@@ -126,7 +127,7 @@ export async function recordKeptSeparate(
     const key = createKey(a, b);
     if (!data.includes(key)) {
         data.push(key);
-        await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+        await writeFileAtomic(filePath, JSON.stringify(data, null, 2));
     }
 }
 

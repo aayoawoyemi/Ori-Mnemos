@@ -1,8 +1,15 @@
 /**
- * IPS (Inverse Propensity Scoring) access tracking and exploration injection.
+ * Access tracking (the IPS audit trail) and exploration injection.
  *
- * Tracks which notes get surfaced for which queries, computes propensity
- * scores, and injects exploration candidates to counter popularity bias.
+ * Logs which notes got surfaced for which queries, and injects exploration
+ * candidates to counter popularity bias.
+ *
+ * The propensity estimators this module used to carry were deleted on
+ * 2026-09-15: nothing in the repo ever called them, and the per-title one
+ * was O(events x results per event), so wiring it in per note would have put
+ * a quadratic on the query path. The logged `propensity` field is still
+ * written (as 0 by `runQueryRanked`) so the on-disk log format is unchanged
+ * and propensity stays computable post-hoc from the log.
  */
 
 import { promises as fs } from "node:fs";
@@ -47,105 +54,6 @@ export async function logAccess(
   await fs.appendFile(logFile, JSON.stringify(event) + "\n", "utf-8");
 }
 
-/**
- * Read the JSONL log file and parse all events.
- * Returns empty array if the file doesn't exist.
- * Skips malformed lines with a console warning.
- */
-export async function loadAccessLog(
-  vaultRoot: string,
-  config: IPSConfig,
-): Promise<AccessEvent[]> {
-  const logFile = path.resolve(vaultRoot, config.log_path);
-
-  let raw: string;
-  try {
-    raw = await fs.readFile(logFile, "utf-8");
-  } catch {
-    return [];
-  }
-
-  const events: AccessEvent[] = [];
-  const lines = raw.split("\n");
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === "") continue;
-    try {
-      events.push(JSON.parse(trimmed) as AccessEvent);
-    } catch {
-      console.warn(`[tracking] skipping malformed line: ${trimmed.slice(0, 80)}`);
-    }
-  }
-
-  return events;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Propensity                                                         */
-/* ------------------------------------------------------------------ */
-
-/**
- * Compute propensity for a single note title.
- *
- * propensity = times_surfaced / total_queries, floored at epsilon.
- * If the note never appeared in any event, returns epsilon.
- */
-export function computePropensity(
-  title: string,
-  events: AccessEvent[],
-  epsilon: number,
-): number {
-  if (events.length === 0) return epsilon;
-
-  let surfaced = 0;
-  for (const event of events) {
-    if (event.results.some((r) => r.title === title)) {
-      surfaced++;
-    }
-  }
-
-  if (surfaced === 0) return epsilon;
-  return Math.max(surfaced / events.length, epsilon);
-}
-
-/**
- * Build propensity scores for all notes.
- *
- * For each note: propensity = times it appeared in any event's results / total events.
- * Floored at epsilon.
- */
-export function buildPropensityMap(
-  events: AccessEvent[],
-  allNotes: string[],
-  epsilon: number,
-): Map<string, number> {
-  const map = new Map<string, number>();
-  const total = events.length;
-
-  if (total === 0) {
-    for (const note of allNotes) {
-      map.set(note, epsilon);
-    }
-    return map;
-  }
-
-  // Count appearances per title across all events
-  const counts = new Map<string, number>();
-  for (const event of events) {
-    for (const result of event.results) {
-      counts.set(result.title, (counts.get(result.title) || 0) + 1);
-    }
-  }
-
-  for (const note of allNotes) {
-    const surfaced = counts.get(note) ?? 0;
-    map.set(note, Math.max(surfaced / total, epsilon));
-  }
-
-  return map;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Exploration Injection                                              */
 /* ------------------------------------------------------------------ */
@@ -156,6 +64,19 @@ export function buildPropensityMap(
  * `metadata.wasExploration = true`.
  *
  * Returns a new array; the original is not modified.
+ *
+ * Selection is O(k) expected, where k = replaceCount (typically 1). The
+ * previous implementation copied every candidate title into a fresh array
+ * and Fisher-Yates shuffled all of it — ~1,500 swaps and two N-sized
+ * allocations on a 1,524-note vault — then threw away all but the first
+ * entry. Here the common case draws random indices straight out of
+ * `allNotes` and rejects the ones already on the page, so nothing
+ * proportional to N is allocated or swapped.
+ *
+ * `allNotes` is a list of distinct note titles (`listNoteTitles` reads one
+ * flat directory, so the filesystem guarantees uniqueness). Should a
+ * duplicate ever arrive, `taken` still keeps it out of the output: no title
+ * is injected twice under any input.
  */
 export function injectExploration(
   results: ScoredNote[],
@@ -168,17 +89,7 @@ export function injectExploration(
 
   const replaceCount = Math.max(1, Math.floor(results.length * budget));
   const existingTitles = new Set(results.map((r) => r.title));
-
-  // Candidates: notes not already in results
-  const candidates = allNotes.filter((n) => !existingTitles.has(n));
-
-  // Shuffle candidates (Fisher-Yates) and pick up to replaceCount
-  const shuffled = [...candidates];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  const picks = shuffled.slice(0, replaceCount);
+  const picks = selectCandidates(allNotes, existingTitles, replaceCount);
 
   // Build output: keep the top portion, replace the tail
   const keepCount = results.length - replaceCount;
@@ -200,4 +111,64 @@ export function injectExploration(
   }
 
   return output;
+}
+
+/**
+ * Draw up to `want` distinct titles from `allNotes`, skipping `exclude`,
+ * uniformly at random and in uniformly random order.
+ *
+ * Fast path: rejection sampling on indices. Every draw is a uniform index,
+ * blocked and already-drawn titles are rejected, so the result is a uniform
+ * sample without replacement — and it never inspects, copies, or swaps the
+ * N - k titles it does not need.
+ *
+ * A draw fails only when it lands on an excluded or already-taken title, so
+ * on any real page (a few dozen results against hundreds or thousands of
+ * notes) success probability per draw is > 0.99 and `4 * want + 16` attempts
+ * overshoot by orders of magnitude. The attempt cap exists because a vault
+ * where nearly every note is already on the page has too few candidates to
+ * hit by chance — that case, and only that case, falls through to a scan.
+ */
+function selectCandidates(
+  allNotes: string[],
+  exclude: Set<string>,
+  want: number,
+): string[] {
+  const n = allNotes.length;
+  if (n === 0 || want <= 0) return [];
+
+  const picks: string[] = [];
+  const taken = new Set<string>();
+  const attemptCap = 4 * want + 16;
+
+  for (let attempt = 0; attempt < attemptCap && picks.length < want; attempt++) {
+    const title = allNotes[Math.floor(Math.random() * n)]!;
+    if (exclude.has(title) || taken.has(title)) continue;
+    taken.add(title);
+    picks.push(title);
+  }
+  if (picks.length === want) return picks;
+
+  // Candidates are too scarce to find by chance. Enumerate them once and
+  // take a partial Fisher-Yates prefix, which touches `want` positions
+  // rather than all of them. The partial draws above are discarded so this
+  // stays an unconditionally uniform sample rather than a biased top-up.
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  for (const title of allNotes) {
+    if (exclude.has(title) || seen.has(title)) continue;
+    seen.add(title);
+    candidates.push(title);
+  }
+
+  const limit = Math.min(want, candidates.length);
+  const chosen: string[] = [];
+  for (let i = 0; i < limit; i++) {
+    const j = i + Math.floor(Math.random() * (candidates.length - i));
+    const swap = candidates[i]!;
+    candidates[i] = candidates[j]!;
+    candidates[j] = swap;
+    chosen.push(candidates[i]!);
+  }
+  return chosen;
 }

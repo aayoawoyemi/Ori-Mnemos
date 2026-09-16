@@ -91,5 +91,4 @@ bm25:
 
 ips:
   enabled: true
-  epsilon: 0.01
   log_path: "ops/access.jsonl"

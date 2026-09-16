@@ -36,7 +36,6 @@ import {
   recordCoRetrieval,
   recomputeAllNPMI,
   runHomeostasis,
-  bootstrapFromWikiLinks,
 } from "../core/cooccurrence.js";
 import {
   initStageTables,
@@ -1204,23 +1203,12 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
       force: z.boolean().optional().describe("Rebuild all embeddings (default false)"),
     },
     async ({ force }) => {
+      // Embeddings, derived index and the co-occurrence bootstrap all happen
+      // inside runIndexBuild now, so the CLI and this tool build the same
+      // thing. This handler used to bootstrap co-occurrence itself, inside a
+      // bare catch, and the CLI never did.
       const result = await runIndexBuild(vaultDir, force === true);
       graphCache.invalidate();
-
-      // Bootstrap co-occurrence edges from wiki-links (Layer 2 day-0 edges)
-      if (intelligenceDb) {
-        try {
-          const linkGraph = await graphCache.get(paths.notes);
-          const noteLinks = new Map<string, Set<string>>();
-          for (const [src, targets] of linkGraph.outgoing) {
-            noteLinks.set(src, targets);
-          }
-          bootstrapFromWikiLinks(intelligenceDb, noteLinks);
-        } catch {
-          // Non-critical — bootstrap is best-effort
-        }
-      }
-
       return textResult(result);
     }
   );

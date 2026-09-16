@@ -132,6 +132,20 @@ export async function runHealth(
           `unexpected Q-update sources: ${unexpected.join(", ")}`,
         );
       }
+      // The number that was invisible for five months: rows sitting at the
+      // initialisation constant. Production held 717 tracked notes with 707
+      // never updated, and every summary reported only the 10 that were.
+      // `q_reranking` on such a table orders notes by a constant. Threshold is
+      // a majority with enough rows to mean something; at 50 tracked notes a
+      // fresh vault legitimately has most of them uncredited for a while.
+      if (h.trackedNotes >= 50 && h.neverUpdated > h.trackedNotes / 2) {
+        learningWarnings.push(
+          `${h.neverUpdated} of ${h.trackedNotes} tracked notes have never ` +
+            `received a Q-update (${h.exposedButNeverUpdated} of them were ` +
+            `shown to an agent). Retrieval is running; session-end credit ` +
+            `is not. Learned ranking is ordering by the init constant.`,
+        );
+      }
     } finally {
       db.close();
     }

@@ -2,6 +2,8 @@ import { promises as fs, type Dirent } from "node:fs";
 import path from "node:path";
 import { parseFrontmatter } from "./frontmatter.js";
 import { slugify } from "./slug.js";
+import type DatabaseType from "better-sqlite3";
+import { loadLinkGraph } from "./indexstore.js";
 
 export type LinkGraph = {
   outgoing: Map<string, Set<string>>;
@@ -89,7 +91,26 @@ export function resolveLinkTarget(
   return titleBySlug.get(slug) ?? slug;
 }
 
-export async function buildGraph(notesDir: string): Promise<LinkGraph> {
+/**
+ * Resolve the wiki-link graph.
+ *
+ * `db` reads the persisted edges instead of opening and regex-scanning every
+ * note. Measured 2026-09-15: 944 ms of file reads at 2,000 notes for this
+ * function alone, per query. `indexstore.loadLinkGraph` returns the identical
+ * structure - `tests/core/indexstore.test.ts` pins the two against each other,
+ * because two ways of deriving one graph diverging is exactly issue #32, where
+ * node ids were basenames and edge keys were raw display titles so no edge
+ * resolved at all.
+ *
+ * Optional, not required: the vault is the source of truth and must stay
+ * queryable with no index.
+ */
+export async function buildGraph(
+  notesDir: string,
+  db?: InstanceType<typeof DatabaseType>,
+): Promise<LinkGraph> {
+  if (db) return loadLinkGraph(db);
+
   let files: Dirent[];
   try {
     files = await fs.readdir(notesDir, { withFileTypes: true });
