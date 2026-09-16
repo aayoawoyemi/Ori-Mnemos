@@ -125,7 +125,14 @@ describe("getStageDecision", () => {
   it("returns 'skip' when time budget exceeded", () => {
     const stage = new LinUCBStage(testConfig);
     const elapsed = TIME_BUDGET_MS * SOFT_CUTOFF + 1;
-    expect(getStageDecision(stage, [0, 0, 0, 0, 0, 0, 0, 0], elapsed, 100)).toBe("skip");
+    // random pinned: the epsilon escape hatch sits ABOVE the budget check, so
+    // an unpinned draw makes this case fail at exactly the epsilon rate. A
+    // stochastic assertion with an unpinned RNG is a latent flake.
+    expect(
+      getStageDecision(stage, [0, 0, 0, 0, 0, 0, 0, 0], elapsed, 100, {
+        random: () => 1,
+      }),
+    ).toBe("skip");
   });
 
   it("returns 'run' during exploration phase (sampleCount < MIN_SAMPLES)", () => {
@@ -286,7 +293,9 @@ describe("getStageDecision epsilon + budget opts (#34)", () => {
       timeBudgetMs: 5_000,
       random: () => 1,
     });
-    const decisionDefault = getStageDecision(stage, dummyX, 450, 50);
+    const decisionDefault = getStageDecision(stage, dummyX, 450, 50, {
+      random: () => 1,
+    });
     expect(decisionWithOpts).not.toBe("skip");
     expect(decisionDefault).toBe("skip");
   });
@@ -317,5 +326,65 @@ describe("getStageDecision epsilon + budget opts (#34)", () => {
       random: () => 0,
     });
     expect(decision).not.toBe("run");
+  });
+});
+
+describe("starvation guarantee (2026-09-13 fix)", () => {
+  const frozenConfig: StageConfig = {
+    id: "frozen",
+    computeCostMs: 30,
+    skipThreshold: 0.2,
+    essential: false,
+  };
+
+  // The exact production condition: well past MIN_SAMPLES, driven to a
+  // strongly negative score, evaluated after the time budget is spent. Six
+  // stages sat here for six days, including the highest-rewarding stage in the
+  // system, because the budget short-circuit preempted the epsilon check.
+  const drivenDown = (): LinUCBStage => {
+    const stage = new LinUCBStage(frozenConfig);
+    for (let i = 0; i < 60; i++) stage.update(dummyX, -0.9);
+    return stage;
+  };
+
+  it("runs a low-scoring stage past the budget when epsilon fires", () => {
+    const stage = drivenDown();
+    expect(getStageDecision(stage, dummyX, 450, 60, { random: () => 0 })).toBe(
+      "run",
+    );
+    expect(getStageDecision(stage, dummyX, 450, 60, { random: () => 1 })).toBe(
+      "skip",
+    );
+  });
+
+  it("recovers at the epsilon rate instead of never", () => {
+    const stage = drivenDown();
+    // Deterministic sweep of the unit interval, so the measured rate is exact
+    // rather than sampled. Before the fix this was 0.00% at any elapsed time
+    // past the cutoff.
+    const trials = 1000;
+    let runs = 0;
+    for (let i = 0; i < trials; i++) {
+      const draw = i / trials;
+      if (
+        getStageDecision(stage, dummyX, 5_000, 60, { random: () => draw }) ===
+        "run"
+      ) {
+        runs++;
+      }
+    }
+    expect(runs / trials).toBeCloseTo(EPSILON, 10);
+  });
+
+  it("keeps the exploration floor independent of elapsed time", () => {
+    // The ordering property itself: no elapsed time, however large, may change
+    // the decision when epsilon fires. Any new short-circuit added above the
+    // epsilon check breaks this test.
+    const stage = drivenDown();
+    for (const elapsed of [0, 399, 400, 401, 5_000, 1_000_000]) {
+      expect(
+        getStageDecision(stage, dummyX, elapsed, 60, { random: () => 0 }),
+      ).toBe("run");
+    }
   });
 });

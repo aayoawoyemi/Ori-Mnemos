@@ -5,7 +5,13 @@ import {
   EXPOSURE_BETA,
   MIN_EXPOSURE_RETENTION,
 } from "../../src/core/reward.js";
-import { initQValueTables, incrementExposure } from "../../src/core/qvalue.js";
+import {
+  initQValueTables,
+  incrementExposure,
+  getQ,
+  getQState,
+  DEFAULT_Q,
+} from "../../src/core/qvalue.js";
 
 let db: Database.Database;
 
@@ -179,5 +185,78 @@ describe("SessionRewardAccumulator", () => {
         expect(reward).toBeLessThanOrEqual(1);
       }
     });
+  });
+});
+
+describe("concludeSession (fix list item 5)", () => {
+  it("turns a retrieve-then-conclude session into non-zero update_count", () => {
+    // The measured production state was 717 note_q rows with 707 at
+    // update_count = 0: retrieval ran everywhere, the session flush only in
+    // the MCP server, and nothing in between recorded that learning had never
+    // happened. One call now closes the loop.
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    acc.logRetrieval("note-b", 1, "q", "semantic");
+    acc.logRetrieval("note-c", 5, "q", "semantic");
+    acc.logAdd("Synthesis", "building on [[note a]]");
+
+    expect(acc.concludeSession(db)).toBe(3);
+    for (const id of ["note-a", "note-b", "note-c"]) {
+      expect(getQState(db, id).updateCount).toBeGreaterThan(0);
+      expect(getQState(db, id).learned).toBe(true);
+    }
+    // The cited note actually moved, so the credit is real and not a no-op
+    // write that merely bumps the counter.
+    expect(getQ(db, "note-a")).toBeGreaterThan(DEFAULT_Q);
+  });
+
+  it("writes through the sanctioned source only", () => {
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    acc.concludeSession(db);
+    const rows = db
+      .prepare("SELECT DISTINCT reward_source FROM q_history")
+      .all() as { reward_source: string }[];
+    expect(rows.map((r) => r.reward_source)).toEqual(["session_batch"]);
+  });
+
+  it("refuses to flush twice", () => {
+    // Rewards accumulate for the whole session and there is no clear(), so a
+    // second flush would recompute over the same set and inflate update_count
+    // and reward_sum on every pass.
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    expect(acc.concludeSession(db)).toBe(1);
+    expect(acc.isFlushed()).toBe(true);
+    expect(acc.concludeSession(db)).toBe(0);
+    expect(getQState(db, "note-a").updateCount).toBe(1);
+  });
+
+  it("reports zero when a session retrieved nothing", () => {
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logAdd("Standalone", "no citations here");
+    expect(acc.concludeSession(db)).toBe(0);
+    expect(acc.isFlushed()).toBe(false);
+    expect(db.prepare("SELECT COUNT(*) n FROM q_history").get()).toEqual({
+      n: 0,
+    });
+  });
+
+  it("accepts explore_conclude as the source for a navigated session", () => {
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    expect(acc.concludeSession(db, "explore_conclude")).toBe(1);
+    const rows = db
+      .prepare("SELECT DISTINCT reward_source FROM q_history")
+      .all() as { reward_source: string }[];
+    expect(rows.map((r) => r.reward_source)).toEqual(["explore_conclude"]);
+  });
+
+  it("cannot launder an unsanctioned source", () => {
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    expect(() => acc.concludeSession(db, "manual")).toThrow(
+      /refusing write from source/,
+    );
   });
 });

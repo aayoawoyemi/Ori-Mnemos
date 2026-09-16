@@ -16,13 +16,21 @@ import {
   batchUpdateQ,
   getLearningHealth,
   incrementExposure,
+  getQState,
   DEFAULT_Q,
 } from "../../src/core/qvalue.js";
 import { SessionRewardAccumulator } from "../../src/core/reward.js";
 import {
   measureCurrentQuality,
+  measureConcentration,
+  measureExactRecall,
+  rareQueryTerms,
+  LEXICAL_WEIGHT,
+  type LexicalProbe,
 } from "../../src/core/stage-tracker.js";
 import { computeStageReward } from "../../src/core/stage-learner.js";
+import { phaseB } from "../../src/core/rerank.js";
+import type { ScoredNote } from "../../src/core/ranking.js";
 
 let db: Database.Database;
 
@@ -262,5 +270,274 @@ describe("learning health surfaces the failure modes", () => {
     expect(health.forwardCitations).toBe(1);
     expect(health.distinctKeyShapes).toBe(1);
     expect(Number.isFinite(health.exposureQCorrelation)).toBe(true);
+  });
+});
+
+// A 1,524-note corpus. Document frequencies stand in for what the index
+// supplies: `resume`, `j` and `zep` are identifier-rare, the rest are topic
+// words. The rarity gate at this size is max(8, 15) = 15.
+const CORPUS_SIZE = 1524;
+const DF: Record<string, number> = {
+  resume: 4,
+  j: 3,
+  zep: 2,
+  agent: 340,
+  memory: 512,
+  notes: 900,
+};
+const probeFor = (query: string): LexicalProbe => ({
+  query,
+  documentFrequency: (t) => DF[t] ?? 0,
+  corpusSize: CORPUS_SIZE,
+});
+
+// A noise-floor result set: near-flat scores, which is what "Resume J scoring
+// 0.005" looks like. Both variants below share this shape exactly, so the only
+// thing that differs is whether the literal identifier is present.
+const FLAT_SCORES = [0.3, 0.299, 0.298, 0.297, 0.296];
+const withTitles = (titles: string[]) =>
+  FLAT_SCORES.map((score, i) => ({ score, title: titles[i]! }));
+
+const HIT = withTitles([
+  "Resume J",
+  "Agent memory compounds",
+  "Notes on agent memory",
+  "Memory notes",
+  "Agent notes",
+]);
+const MISS = withTitles([
+  "Agent memory compounds",
+  "Notes on agent memory",
+  "Memory notes",
+  "Agent notes",
+  "More agent notes",
+]);
+
+describe("defect 6: exact-identifier recall is visible to the reward", () => {
+  it("scores a set that misses a literal identifier strictly lower", () => {
+    const probe = probeFor("Resume J");
+
+    // The old metric — concentration alone — is blind by construction: it
+    // measures ORDER, and both sets have the same order. This equality IS the
+    // defect that let bm25 carry -21.38 total reward while being essential.
+    expect(measureConcentration(MISS)).toBeCloseTo(
+      measureConcentration(HIT),
+      12,
+    );
+
+    expect(measureCurrentQuality(MISS, probe)).toBeLessThan(
+      measureCurrentQuality(HIT, probe),
+    );
+  });
+
+  it("registers a noise-floor miss as a failure rather than a small positive", () => {
+    const probe = probeFor("Resume J");
+    // 0.005-ish before: positive, indistinguishable from a weak success.
+    expect(measureConcentration(MISS)).toBeGreaterThan(0);
+    expect(measureCurrentQuality(MISS, probe)).toBeLessThan(0);
+  });
+
+  it("pays a lexical stage for pulling the identifier into the window", () => {
+    const probe = probeFor("Resume J");
+    const before = measureCurrentQuality(MISS, probe);
+    const after = measureCurrentQuality(HIT, probe);
+    // The stage does nothing to the ordering, so under the old metric its
+    // reward was the cost penalty alone — negative, every single call.
+    expect(computeStageReward(measureConcentration(MISS), measureConcentration(HIT), 5)).toBeLessThan(0);
+    expect(computeStageReward(before, after, 5)).toBeGreaterThan(0);
+  });
+
+  it("moves the score by exactly the lexical weight, and no more", () => {
+    const probe = probeFor("Resume J");
+    // Full recall versus none spans 2*LEXICAL_WEIGHT. Pinned deliberately:
+    // the stage reward must stay comparable across stages and against history,
+    // so this component's authority over the number is a fixed, stated budget.
+    expect(
+      measureCurrentQuality(HIT, probe) - measureCurrentQuality(MISS, probe),
+    ).toBeCloseTo(2 * LEXICAL_WEIGHT, 10);
+  });
+
+  it("scores partial recall between full and none", () => {
+    const probe = probeFor("Resume J Zep");
+    const partial = withTitles([
+      "Resume of the agent",
+      "Agent memory compounds",
+      "Notes on agent memory",
+      "Memory notes",
+      "Agent notes",
+    ]);
+    const q = measureCurrentQuality(partial, probe);
+    expect(q).toBeGreaterThan(measureCurrentQuality(MISS, probe));
+    expect(q).toBeLessThan(measureCurrentQuality(HIT, probe));
+  });
+
+  it("is unchanged when the caller supplies no probe", () => {
+    // Historical stage_q rows were written without a lexical component. If a
+    // probe-less call returned anything else, every stored reward would have
+    // been silently rescaled.
+    expect(measureCurrentQuality(MISS)).toBe(measureConcentration(MISS));
+    expect(measureCurrentQuality(HIT)).toBe(measureConcentration(HIT));
+  });
+
+  it("ignores query terms that are not in the corpus", () => {
+    // A result set cannot be punished for failing to return something the
+    // vault does not contain, or every unanswerable query becomes a penalty.
+    const probe = probeFor("Nonexistent Xyzzy");
+    expect(rareQueryTerms(probe)).toEqual([]);
+    expect(measureCurrentQuality(MISS, probe)).toBe(measureConcentration(MISS));
+  });
+
+  it("ignores topic words above the rarity gate", () => {
+    const probe = probeFor("agent memory notes");
+    expect(rareQueryTerms(probe)).toEqual([]);
+    expect(measureCurrentQuality(MISS, probe)).toBe(measureConcentration(MISS));
+  });
+
+  it("counts a rare term found anywhere in the window, not just at the top", () => {
+    const probe = probeFor("Zep");
+    const deep = withTitles([
+      "Agent memory compounds",
+      "Notes on agent memory",
+      "Memory notes",
+      "Agent notes",
+      "Zep bi temporal edges",
+    ]);
+    expect(measureExactRecall(deep, ["zep"])).toBe(1);
+    expect(measureCurrentQuality(deep, probe)).toBeGreaterThan(
+      measureCurrentQuality(MISS, probe),
+    );
+  });
+
+  it("stays inside [-1, 1] for an empty result set", () => {
+    const q = measureCurrentQuality([], probeFor("Resume J"));
+    // Empty misses everything, so it sits at the bottom of the lexical budget.
+    expect(q).toBeCloseTo(-LEXICAL_WEIGHT, 10);
+    expect(q).toBeGreaterThanOrEqual(-1);
+  });
+});
+
+describe("defect 5: the absence of a learning signal is observable", () => {
+  it("counts the notes learning never reached", () => {
+    for (let i = 0; i < 5; i++) incrementExposure(db, `shown-${i}`);
+    updateQ(db, "credited", 0.5, "s1", "session_batch");
+
+    const health = getLearningHealth(db);
+    // Production: 717 tracked, 707 never updated — and every summary in the
+    // system reported only the 10 that were.
+    expect(health.trackedNotes).toBe(6);
+    expect(health.neverUpdated).toBe(5);
+    expect(health.exposedButNeverUpdated).toBe(5);
+    expect(health.neverExposed).toBe(1);
+  });
+
+  it("distinguishes a learned 0.5 from the initialisation constant", () => {
+    updateQ(db, "learned", DEFAULT_Q, "s1", "session_batch");
+    incrementExposure(db, "shown");
+    // Identical values; only the provenance separates them.
+    expect(getQ(db, "learned")).toBe(getQ(db, "shown"));
+    expect(getQState(db, "learned").learned).toBe(true);
+    expect(getQState(db, "shown").learned).toBe(false);
+  });
+
+  it("leaves no retrieved note unlearned once a session concludes", () => {
+    const acc = new SessionRewardAccumulator("s1");
+    acc.logRetrieval("note-a", 0, "q", "semantic");
+    acc.logRetrieval("note-b", 3, "q", "semantic");
+    acc.logAdd("Synthesis", "from [[note a]]");
+
+    expect(acc.concludeSession(db)).toBe(2);
+    const health = getLearningHealth(db);
+    expect(health.neverUpdated).toBe(0);
+    expect(health.exposedButNeverUpdated).toBe(0);
+    expect(health.totalUpdates).toBe(2);
+  });
+});
+
+describe("defect 8: exposure does not concentrate monotonically", () => {
+  // Twelve candidates: the top nine have been surfaced repeatedly, the last
+  // three never once, and their similarity is far enough below the cut that no
+  // bonus this module can emit would lift them. This is the shape of the
+  // measured vault: top 50 notes at 47.2% of all exposure, ~280 notes at zero.
+  const candidates: ScoredNote[] = [
+    ...Array.from({ length: 9 }, (_, i) => ({
+      title: `hot-${i}`,
+      score: 1 - i * 0.02,
+      signals: { rrf: 1 - i * 0.02 },
+    })),
+    ...Array.from({ length: 3 }, (_, i) => ({
+      title: `cold-${i}`,
+      score: 0.2 - i * 0.02,
+      signals: { rrf: 0.2 - i * 0.02 },
+    })),
+  ];
+
+  const surfaceHotNotes = (): void => {
+    for (let i = 0; i < 9; i++) {
+      for (let n = 0; n < 40; n++) incrementExposure(db, `hot-${i}`);
+    }
+  };
+
+  it("selects a never-surfaced note when the exploration floor fires", () => {
+    surfaceHotNotes();
+    const titles = phaseB(db, candidates, "q", "semantic", "s1", {
+      random: () => 0,
+    }).map((r) => r.title);
+    expect(titles).toContain("cold-0");
+  });
+
+  it("never surfaces a cold note without the floor", () => {
+    // Same call, epsilon pinned off: similarity alone decides and the cold
+    // tail stays invisible forever. This is the baseline the floor breaks.
+    surfaceHotNotes();
+    const titles = phaseB(db, candidates, "q", "semantic", "s1", {
+      random: () => 1,
+    }).map((r) => r.title);
+    expect(titles.some((t) => t.startsWith("cold-"))).toBe(false);
+  });
+
+  it("spreads exposure into the cold tail over repeated queries", () => {
+    surfaceHotNotes();
+    // Fires on every third query: deterministic, so the test is not a flake.
+    let call = 0;
+    for (let q = 0; q < 12; q++) {
+      phaseB(db, candidates, `q${q}`, "semantic", `s${q}`, {
+        random: () => (call++ % 3 === 0 ? 0 : 1),
+      });
+    }
+
+    for (const title of ["cold-0", "cold-1", "cold-2"]) {
+      expect(getQState(db, title).exposureCount).toBeGreaterThan(0);
+    }
+  });
+
+  it("charges the floor to the weakest kept slot, never the top result", () => {
+    surfaceHotNotes();
+    const titles = phaseB(db, candidates, "q", "semantic", "s1", {
+      random: () => 0,
+    }).map((r) => r.title);
+    expect(titles[0]).toBe("hot-0");
+    expect(titles.filter((t) => t.startsWith("cold-"))).toHaveLength(1);
+  });
+
+  it("promotes a near-cut cold note on the exploration bonus alone", () => {
+    // No epsilon (random pinned to 1). Ten candidates, evenly spaced, the top
+    // eight already saturated: the exposure-damped bonus alone is enough to
+    // move the ninth into the cut. Before the damping every candidate received
+    // the identical c*2.5, which cancels out of the ranking and leaves
+    // similarity - the thing that concentrated exposure - to decide alone.
+    const tight: ScoredNote[] = Array.from({ length: 10 }, (_, i) => ({
+      title: i < 8 ? `hot-${i}` : `cold-${i - 8}`,
+      score: 1 - i * 0.02,
+      signals: { rrf: 1 - i * 0.02 },
+    }));
+    for (let i = 0; i < 8; i++) {
+      for (let n = 0; n < 60; n++) incrementExposure(db, `hot-${i}`);
+    }
+
+    const titles = phaseB(db, tight, "q", "semantic", "s1", {
+      random: () => 1,
+    }).map((r) => r.title);
+    expect(titles).toContain("cold-0");
+    expect(titles).not.toContain("hot-7");
   });
 });

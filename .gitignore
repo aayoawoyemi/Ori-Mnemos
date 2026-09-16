@@ -26,52 +26,16 @@ research/
 CLAUDE.md
 PLAN.md
 ROADMAP.md
-tests/*
-!tests/e2e/
-tests/e2e/*
-!tests/e2e/auto-init.test.ts
-!tests/bridge.test.ts
-!tests/cli/
-tests/cli/*
-!tests/cli/archive.test.ts
-!tests/cli/prune.test.ts
-!tests/cli/explore-steering.test.ts
-!tests/core/
-tests/core/*
-!tests/core/config.test.ts
-!tests/core/update-check.test.ts
-!tests/core/blind-34.test.ts
-!tests/core/agent-notice.test.ts
-!tests/core/wake.test.ts
-!tests/core/temporal.test.ts
-!tests/core/wake-sources.test.ts
-!tests/core/nap.test.ts
-!tests/core/engine.test.ts
-!tests/core/fusion.test.ts
-!tests/core/graph.test.ts
-!tests/core/warmth-audit.test.ts
-!tests/core/warmth.test.ts
-!tests/core/qvalue.test.ts
-!tests/core/reward.test.ts
-!tests/core/learning-signal-integrity.test.ts
-!tests/core/rerank.test.ts
-!tests/core/cooccurrence.test.ts
-!tests/core/ppr.test.ts
-!tests/core/stage-learner.test.ts
-!tests/core/dampening.test.ts
-!tests/core/classify.test.ts
-!tests/core/activation.test.ts
-!tests/core/vault.test.ts
-!tests/core/vault-path.test.ts
-!tests/core/promote-llm.test.ts
-!tests/core/access-tracking.test.ts
-!tests/core/explore-session.test.ts
-!tests/core/crossencoder.test.ts
-!tests/mcp/
-tests/mcp/*
-!tests/mcp/server.test.ts
-!tests/mcp/navigated-explore.test.ts
-!tests/mcp/harness.ts
+# tests/ is TRACKED. This was previously `tests/*` plus a hand-maintained
+# allowlist of 36 individual files, which meant a new test was invisible to git
+# by default. 21 of the 57 test files on disk were ignored - including
+# atomic-writes, frontmatter, promote, tracking, indexstore, bm25-store,
+# graph-metrics-cache, cli-learning-wiring and health-learning, i.e. exactly the
+# tests that prove the correctness fixes in this release. `tests/fixtures/` was
+# ignored too, so the 36 allowlisted tests could not run from a clean clone.
+#
+# Deny-by-default on a test directory fails silently and in the worst direction:
+# the suite still passes locally, so nothing tells you the evidence never shipped.
 .npmrc
 
 # Registry tokens (sensitive)
@@ -83,3 +47,8 @@ mcp-publisher.exe
 bench/data/
 # Benchmark results (local runs)
 bench/results/
+
+# Local agent scratch (Aries session state, REPL traces)
+.aries/
+# Pre-release dist snapshots taken by hand
+dist.bak-*/

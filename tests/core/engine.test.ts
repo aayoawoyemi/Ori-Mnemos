@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import path from "node:path";
 import os from "node:os";
 import { mkdirSync, rmSync } from "node:fs";
 import { promises as fs } from "node:fs";
 
+import type Database from "better-sqlite3";
 import {
   cosine,
   encodePiecewiseLinear,
@@ -15,10 +16,15 @@ import {
   loadVectors,
   buildIndex,
   removeNoteFromDB,
+  searchComposite,
 } from "../../src/core/engine.js";
+import type { StoredVectors } from "../../src/core/engine.js";
 import { stringifyFrontmatter } from "../../src/core/frontmatter.js";
 import { runInit } from "../../src/cli/init.js";
 import { loadConfig } from "../../src/core/config.js";
+import type { EngineConfig } from "../../src/core/config.js";
+import type { ClassifiedQuery } from "../../src/core/intent.js";
+import type { GraphMetrics } from "../../src/core/importance.js";
 import type { LinkGraph } from "../../src/core/graph.js";
 
 function vectorBuffer(fill: number = 0.1): Buffer {
@@ -27,7 +33,7 @@ function vectorBuffer(fill: number = 0.1): Buffer {
 }
 
 function insertEmbeddingRow(
-  db: ReturnType<typeof initDB>,
+  db: Database.Database,
   title: string,
   contentHash: string = "hash",
 ) {
@@ -47,7 +53,7 @@ function insertEmbeddingRow(
   );
 }
 
-function insertBoostRow(db: ReturnType<typeof initDB>, title: string, boost = 0.5) {
+function insertBoostRow(db: Database.Database, title: string, boost = 0.5) {
   db.prepare(
     "INSERT INTO boosts (title, boost, updated) VALUES (?, ?, ?)",
   ).run(title, boost, "2026-03-01T00:00:00.000Z");
@@ -773,5 +779,391 @@ describe("buildIndex cleanup", () => {
     expect(archivedEmbeddingCount).toBe(0);
     expect(archivedBoostCount).toBe(0);
     verifyDb.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadVectors column pruning (fix-list item 17) and the community space
+// (fix-list item 19)
+//
+// Measured on the real 1,524-note vault (1,527 embedding rows, 7,635 blobs,
+// 6.84 MiB of vectors) on 2026-09-15:
+//
+//   loadVectors(db)                        25-42 ms warm, 7,635 Float32Arrays
+//   loadVectors(db, desc+body only)        11-21 ms warm, 3,054 Float32Arrays
+//
+// For scale: that 25 ms is 0.7% of a 3,344 ms warm query on the same vault,
+// so pruning is a small win and is only worth having because it cannot cost
+// anything - a zero-weight space contributes 0 whether loaded or not. The
+// tests below are what makes that claim checkable rather than asserted.
+// ---------------------------------------------------------------------------
+
+const FIXTURE_COMMUNITY_TOTAL = 50;
+
+function vectorToBuffer(a: Float32Array): Buffer {
+  return Buffer.from(a.buffer, a.byteOffset, a.byteLength);
+}
+
+function insertVectors(
+  db: Database.Database,
+  title: string,
+  vectors: {
+    title: Float32Array;
+    desc: Float32Array;
+    body: Float32Array;
+    type: Float32Array;
+    community: Float32Array | null;
+  },
+): void {
+  db.prepare(
+    `INSERT INTO embeddings
+       (title, title_vec, desc_vec, body_vec, type_vec, community_vec, content_hash, indexed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    title,
+    vectorToBuffer(vectors.title),
+    vectorToBuffer(vectors.desc),
+    vectorToBuffer(vectors.body),
+    vectorToBuffer(vectors.type),
+    vectors.community === null ? null : vectorToBuffer(vectors.community),
+    "hash",
+    "2026-09-01T00:00:00.000Z",
+  );
+}
+
+const FIXTURE_CONFIG: EngineConfig = {
+  embedding_model: "test",
+  embedding_dims: 8,
+  piecewise_bins: 8,
+  community_dims: 16,
+  db_path: ".ori/embeddings.db",
+};
+
+const FIXTURE_METRICS: GraphMetrics = {
+  pagerank: new Map(),
+  communities: new Map(),
+  bridges: new Set(),
+  betweenness: new Map(),
+  communityStats: new Map(),
+};
+
+function fixtureIntent(community: number): ClassifiedQuery {
+  return {
+    intent: "semantic",
+    confidence: 1,
+    query: "q",
+    entities: [],
+    spaceWeights: {
+      text: 0.6,
+      temporal: 0.1,
+      vitality: 0.1,
+      importance: 0.1,
+      type: 0,
+      community,
+    },
+    splitWeights: { title: 1, description: 0, body: 0 },
+  };
+}
+
+/** Query direction for the fixture: aligned with axis 0. */
+function axisVec(axis: number, value = 1): Float32Array {
+  const v = new Float32Array(8);
+  v[axis] = value;
+  return v;
+}
+
+function totalVectorFloats(map: Map<string, StoredVectors>): number {
+  let total = 0;
+  for (const v of map.values()) {
+    total +=
+      v.titleVec.length +
+      v.descVec.length +
+      v.bodyVec.length +
+      v.typeVec.length +
+      v.communityVec.length;
+  }
+  return total;
+}
+
+describe("loadVectors column pruning", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    tmpDir = path.join(
+      os.tmpdir(),
+      `ori-prune-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(tmpDir, { recursive: true });
+    db = initDB(path.join(tmpDir, "prune.db"));
+    for (const title of ["a", "b", "c"]) {
+      insertVectors(db, title, {
+        title: axisVec(0),
+        desc: axisVec(1),
+        body: axisVec(2),
+        type: encodeType("decision"),
+        community: encodeCommunity(3, FIXTURE_COMMUNITY_TOTAL, 16),
+      });
+    }
+  });
+
+  afterEach(() => {
+    try {
+      db.close();
+    } catch {
+      // already closed
+    }
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // best effort
+    }
+  });
+
+  it("loads every space when no weights are supplied", () => {
+    // 3 notes x (8 title + 8 desc + 8 body + 6 type + 16 community) floats.
+    expect(totalVectorFloats(loadVectors(db))).toBe(3 * 46);
+  });
+
+  it("allocates nothing for a space whose weight is zero", () => {
+    const lean = loadVectors(db, {
+      spaceWeights: { text: 1, type: 0, community: 0 },
+      splitWeights: { title: 0, description: 1, body: 1 },
+    });
+
+    // Only desc and body survive: 3 notes x 16 floats, down from 3 x 46.
+    // This is the allocation count the 7,635 -> 3,054 claim rests on.
+    expect(totalVectorFloats(lean)).toBe(3 * 16);
+
+    const entry = lean.get("a")!;
+    expect(entry.titleVec.length).toBe(0);
+    expect(entry.typeVec.length).toBe(0);
+    expect(entry.communityVec.length).toBe(0);
+    expect(entry.descVec.length).toBe(8);
+    expect(entry.bodyVec.length).toBe(8);
+    // Non-vector fields are never pruned; callers use them for staleness.
+    expect(entry.contentHash).toBe("hash");
+    expect(entry.indexedAt).toBe("2026-09-01T00:00:00.000Z");
+  });
+
+  it("keeps the text spaces when only the metadata spaces are zeroed", () => {
+    const lean = loadVectors(db, {
+      spaceWeights: { type: 0, community: 0 },
+    });
+    expect(totalVectorFloats(lean)).toBe(3 * 24);
+  });
+
+  it("degrades a NULL blob to an empty vector instead of throwing", () => {
+    insertVectors(db, "no community", {
+      title: axisVec(0),
+      desc: axisVec(1),
+      body: axisVec(2),
+      type: encodeType("idea"),
+      community: null,
+    });
+
+    const loaded = loadVectors(db);
+    expect(loaded.get("no community")!.communityVec.length).toBe(0);
+    expect(loaded.get("no community")!.bodyVec.length).toBe(8);
+  });
+
+  it("scores identically whether a zero-weight column was loaded or pruned", async () => {
+    // The latency fix must be invisible to ranking. The temporal space reads
+    // the clock, so it is frozen: two calls milliseconds apart otherwise
+    // differ by ~1e-9 for reasons that have nothing to do with pruning.
+    const intent = fixtureIntent(0);
+    intent.spaceWeights.type = 0;
+    intent.splitWeights = { title: 0, description: 0.4, body: 0.6 };
+
+    const full = loadVectors(db);
+    const lean = loadVectors(db, {
+      spaceWeights: intent.spaceWeights,
+      splitWeights: intent.splitWeights,
+    });
+
+    const args = {
+      queryText: "q",
+      intent,
+      graphMetrics: FIXTURE_METRICS,
+      vitalityScores: new Map<string, number>(),
+      limit: 10,
+      config: FIXTURE_CONFIG,
+      queryVec: axisVec(1, 0.7),
+    };
+
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1789000000000);
+    try {
+      const fullResults = await searchComposite({ ...args, storedVectors: full });
+      const leanResults = await searchComposite({ ...args, storedVectors: lean });
+
+      expect(leanResults.map((r) => r.title)).toEqual(
+        fullResults.map((r) => r.title),
+      );
+      for (let i = 0; i < fullResults.length; i++) {
+        expect(Math.abs(fullResults[i]!.score - leanResults[i]!.score)).toBeLessThan(
+          1e-12,
+        );
+      }
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+});
+
+describe("community space", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  // Two notes match the query on text and sit in community 3; two are
+  // textually orthogonal, one in community 3 and one in community 29
+  // (cos(c3, c29) = -0.27, so they are genuinely far apart in this encoding).
+  const NEAR = encodeCommunity(3, FIXTURE_COMMUNITY_TOTAL, 16);
+  const FAR = encodeCommunity(29, FIXTURE_COMMUNITY_TOTAL, 16);
+
+  beforeEach(() => {
+    tmpDir = path.join(
+      os.tmpdir(),
+      `ori-community-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(tmpDir, { recursive: true });
+    db = initDB(path.join(tmpDir, "community.db"));
+    const rows: Array<[string, Float32Array, Float32Array]> = [
+      ["hit one", axisVec(0), NEAR],
+      ["hit two", axisVec(0, 0.9), NEAR],
+      ["quiet near", axisVec(1), NEAR],
+      ["quiet far", axisVec(1), FAR],
+    ];
+    for (const [title, titleVec, community] of rows) {
+      insertVectors(db, title, {
+        title: titleVec,
+        desc: axisVec(3),
+        body: axisVec(3),
+        type: encodeType("idea"),
+        community,
+      });
+    }
+  });
+
+  afterEach(() => {
+    try {
+      db.close();
+    } catch {
+      // already closed
+    }
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // best effort
+    }
+  });
+
+  async function score(community: number) {
+    return searchComposite({
+      queryText: "q",
+      intent: fixtureIntent(community),
+      storedVectors: loadVectors(db),
+      graphMetrics: FIXTURE_METRICS,
+      vitalityScores: new Map<string, number>(),
+      limit: 10,
+      config: FIXTURE_CONFIG,
+      queryVec: axisVec(0),
+    });
+  }
+
+  it("gives different notes different community scores for one query", async () => {
+    // The assertion the old code could not pass: `communityScore` was
+    // `vectorNorm(communityVec) > 0 ? 0.5 : 0`, which measured 0.5 for all
+    // 1,527 notes of the real vault and 0 for none - a constant added to
+    // every score, incapable of moving any ranking, while community_vec held
+    // 96 distinct patterns.
+    const results = await score(0.1);
+    const scores = results.map((r) => r.spaces!.community!);
+    expect(new Set(scores).size).toBeGreaterThan(1);
+  });
+
+  it("scores a note in the query's community above a note outside it", async () => {
+    const results = await score(0.1);
+    const byTitle = new Map(results.map((r) => [r.title, r]));
+
+    const near = byTitle.get("quiet near")!;
+    const far = byTitle.get("quiet far")!;
+
+    // Same text score (both orthogonal to the query), so only community
+    // separates them - and the one sharing a community with the query's best
+    // text matches wins, on the space and on the composite.
+    expect(near.spaces!.text).toBeCloseTo(far.spaces!.text!, 12);
+    expect(near.spaces!.community!).toBeGreaterThan(far.spaces!.community! + 0.5);
+    expect(near.score).toBeGreaterThan(far.score);
+
+    // The voters define the affinity, so they sit at the top of the space.
+    expect(byTitle.get("hit one")!.spaces!.community!).toBeCloseTo(
+      near.spaces!.community!,
+      12,
+    );
+  });
+
+  it("falls back to the neutral 0.5 when no note can vote", async () => {
+    // Every note tied on text means no note is evidence about the query's
+    // community. The honest answer is the old constant, not a guess and not
+    // a NaN: affinity is undefined, so every note scores the midpoint.
+    const tiedDb = initDB(path.join(tmpDir, "tied.db"));
+    for (const title of ["x", "y", "z"]) {
+      insertVectors(tiedDb, title, {
+        title: axisVec(0),
+        desc: axisVec(3),
+        body: axisVec(3),
+        type: encodeType("idea"),
+        community: title === "z" ? FAR : NEAR,
+      });
+    }
+
+    const results = await searchComposite({
+      queryText: "q",
+      intent: fixtureIntent(0.1),
+      storedVectors: loadVectors(tiedDb),
+      graphMetrics: FIXTURE_METRICS,
+      vitalityScores: new Map<string, number>(),
+      limit: 10,
+      config: FIXTURE_CONFIG,
+      queryVec: axisVec(0),
+    });
+    tiedDb.close();
+
+    for (const r of results) {
+      expect(r.spaces!.community).toBe(0.5);
+    }
+  });
+
+  it("gives a note with no community vector no community credit", async () => {
+    insertVectors(db, "vectorless", {
+      title: axisVec(1),
+      desc: axisVec(3),
+      body: axisVec(3),
+      type: encodeType("idea"),
+      community: null,
+    });
+
+    const results = await score(0.1);
+    const vectorless = results.find((r) => r.title === "vectorless")!;
+    expect(vectorless.spaces!.community).toBe(0);
+    expect(vectorless.score).toBeLessThan(
+      results.find((r) => r.title === "quiet near")!.score,
+    );
+  });
+
+  it("ignores the community space when its weight is zero", async () => {
+    const weighted = await score(0.1);
+    const unweighted = await score(0);
+
+    // Weight 0 means the space cannot move anything, so the ordering
+    // collapses back to what the other five spaces say. "quiet near" and
+    // "quiet far" are indistinguishable without it.
+    const near = unweighted.find((r) => r.title === "quiet near")!;
+    const far = unweighted.find((r) => r.title === "quiet far")!;
+    expect(near.score).toBeCloseTo(far.score, 12);
+
+    const weightedNear = weighted.find((r) => r.title === "quiet near")!;
+    const weightedFar = weighted.find((r) => r.title === "quiet far")!;
+    expect(weightedNear.score).not.toBeCloseTo(weightedFar.score, 6);
   });
 });

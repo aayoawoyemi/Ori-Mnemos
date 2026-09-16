@@ -17,6 +17,7 @@ import {
   HOMEOSTASIS_TARGET,
   BOOTSTRAP_BCS_THRESHOLD,
   BOOTSTRAP_INIT_WEIGHT,
+  BOOTSTRAP_HUB_POSTER_CAP,
 } from "../../src/core/cooccurrence.js";
 import { initQValueTables, logRetrieval } from "../../src/core/qvalue.js";
 
@@ -214,17 +215,200 @@ describe("bootstrapFromWikiLinks", () => {
     expect(edge.npmi_weight).toBeCloseTo(BOOTSTRAP_INIT_WEIGHT, 10);
   });
 
-  it("skips pairs below BCS threshold", () => {
-    // Create notes with very different link sets
+  it("creates an edge when BCS clears the threshold", () => {
     const noteLinks = new Map([
       ["note-a", new Set(["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10"])],
-      ["note-b", new Set(["t1"])], // 1 shared out of 10 and 1 → BCS = 1/sqrt(10) ≈ 0.316
+      ["note-b", new Set(["t1"])],
     ]);
 
     bootstrapFromWikiLinks(db, noteLinks);
 
-    // BCS = 0.316 > 0.1 → should create edge
-    const edges = db.prepare("SELECT * FROM co_occurrence").all() as any[];
+    // 1 shared / sqrt(10 * 1) = 0.3162 > 0.1
+    const edges = db
+      .prepare("SELECT npmi_weight FROM co_occurrence")
+      .all() as { npmi_weight: number }[];
     expect(edges).toHaveLength(1);
+    expect(edges[0].npmi_weight).toBeCloseTo(
+      (1 / Math.sqrt(10)) * BOOTSTRAP_INIT_WEIGHT,
+      12,
+    );
+  });
+
+  it("skips pairs below BCS threshold", () => {
+    // 1 shared target, both notes degree 11 → BCS = 1/sqrt(121) = 0.0909 < 0.1
+    const wide = (extra: string) =>
+      new Set(["shared", ...Array.from({ length: 10 }, (_, i) => `${extra}-${i}`)]);
+    const noteLinks = new Map([
+      ["note-a", wide("a")],
+      ["note-b", wide("b")],
+    ]);
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    expect(db.prepare("SELECT COUNT(*) AS c FROM co_occurrence").get()).toEqual({
+      c: 0,
+    });
+  });
+});
+
+/**
+ * `bootstrapFromWikiLinks` is target-inverted, not all-pairs.
+ *
+ * The all-pairs predecessor compared every ordered pair of notes and
+ * intersected their link sets. Measured against it on identical inputs
+ * (throwaway harness, both implementations writing to fresh in-memory DBs,
+ * rows compared on note_a/note_b/co_retrieval_count/npmi_weight/source with
+ * 1e-12 tolerance):
+ *
+ *   notes   old         new        rows compared   verdict
+ *     250      80.8 ms    18.3 ms      4,425       identical
+ *     500     204.4 ms    48.6 ms     11,240       identical
+ *   1,000     545.5 ms   124.9 ms     25,543       identical
+ *   1,524     832.3 ms   149.5 ms     37,954       identical
+ *   5,000   4,760.5 ms   759.8 ms    126,113       identical
+ *   1,537 real vault, hub targets removed: 438.7 ms -> 85.8 ms, 11,715 identical
+ *
+ * On the unmodified real vault (1,537 notes) the hub cap engages and the old
+ * result is NOT reproduced, deliberately: 11,425.8 ms / 620,363 rows becomes
+ * 75.0 ms / 11,326 rows. Every capped row is present in the uncapped result
+ * with a weight no lower (verified: 0 extra rows, 0 raised weights), so the
+ * cap only ever withdraws evidence. See BOOTSTRAP_HUB_POSTER_CAP.
+ */
+describe("bootstrapFromWikiLinks target inversion", () => {
+  const rows = () =>
+    db
+      .prepare(
+        "SELECT note_a, note_b, npmi_weight FROM co_occurrence ORDER BY note_a, note_b",
+      )
+      .all() as { note_a: string; note_b: string; npmi_weight: number }[];
+
+  it("writes nothing for an empty link map", () => {
+    bootstrapFromWikiLinks(db, new Map());
+    expect(rows()).toEqual([]);
+  });
+
+  it("writes nothing for a single note", () => {
+    bootstrapFromWikiLinks(db, new Map([["only", new Set(["t1", "t2"])]]));
+    expect(rows()).toEqual([]);
+  });
+
+  it("writes nothing when no two notes share a target", () => {
+    const noteLinks = new Map(
+      Array.from({ length: 40 }, (_, i) => [
+        `note-${i}`,
+        new Set([`t-${i}-x`, `t-${i}-y`]),
+      ]),
+    );
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    expect(rows()).toEqual([]);
+  });
+
+  it("never pairs a note with itself and emits each pair exactly once", () => {
+    // 6 notes all linking to "hub-lite" plus one private target each, so every
+    // one of the 15 unordered pairs co-occurs. Degrees are all 2, shared is
+    // always 1 → BCS = 1/sqrt(4) = 0.5, comfortably above threshold.
+    const noteLinks = new Map(
+      Array.from({ length: 6 }, (_, i) => [
+        `n-${i}`,
+        new Set(["hub-lite", `private-${i}`]),
+      ]),
+    );
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    const edges = rows();
+    expect(edges).toHaveLength(15); // C(6,2)
+    for (const e of edges) {
+      expect(e.note_a).not.toBe(e.note_b);
+      // Sorted ordering, so (A,B) and (B,A) can never both exist —
+      // consistent with recordCoRetrieval.
+      expect(e.note_a < e.note_b).toBe(true);
+    }
+    const keys = edges.map((e) => `${e.note_a}\u0000${e.note_b}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    // A pair double-counted during accumulation would read 2/sqrt(4) = 1.0.
+    for (const e of edges) {
+      expect(e.npmi_weight).toBeCloseTo(0.5 * BOOTSTRAP_INIT_WEIGHT, 12);
+    }
+  });
+
+  it("normalises by the geometric mean of out-degrees, not their product", () => {
+    // Asymmetric degrees so sqrt(2 * 8) = 4 is distinguishable from 2 * 8 = 16.
+    const noteLinks = new Map([
+      ["note-a", new Set(["t1", "t2"])],
+      [
+        "note-b",
+        new Set(["t1", "t2", "x3", "x4", "x5", "x6", "x7", "x8"]),
+      ],
+    ]);
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    const edges = rows();
+    expect(edges).toHaveLength(1);
+    // 2 / sqrt(2 * 8) = 0.5 → 0.075. A plain division gives 2/16 = 0.125 → 0.01875.
+    expect(edges[0].npmi_weight).toBeCloseTo(0.5 * BOOTSTRAP_INIT_WEIGHT, 12);
+  });
+
+  it("accumulates every shared target, not just the first", () => {
+    const noteLinks = new Map([
+      ["note-a", new Set(["t1", "t2", "t3", "a4"])],
+      ["note-b", new Set(["t1", "t2", "t3", "b4"])],
+    ]);
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    const edges = rows();
+    expect(edges).toHaveLength(1);
+    // 3 / sqrt(4 * 4) = 0.75
+    expect(edges[0].npmi_weight).toBeCloseTo(0.75 * BOOTSTRAP_INIT_WEIGHT, 12);
+  });
+
+  it("counts a target posted by exactly the cap, and ignores one above it", () => {
+    // Real vault measurement: 4 of 900 targets exceed the cap ("index" 1016,
+    // "relevant-map" 882, "related-note" 853, "ai agents map" 462) and hold
+    // 98.8% of all within-target pair work. The next largest posts 65.
+    const atCap = new Map(
+      Array.from({ length: BOOTSTRAP_HUB_POSTER_CAP }, (_, i) => [
+        `n-${String(i).padStart(4, "0")}`,
+        new Set(["busy"]),
+      ]),
+    );
+    bootstrapFromWikiLinks(db, atCap);
+    const n = BOOTSTRAP_HUB_POSTER_CAP;
+    expect(rows()).toHaveLength((n * (n - 1)) / 2);
+
+    db.exec("DELETE FROM co_occurrence");
+
+    // One more poster and the target stops carrying coupling evidence.
+    const overCap = new Map(atCap);
+    overCap.set("n-zzzz", new Set(["busy"]));
+    bootstrapFromWikiLinks(db, overCap);
+    expect(rows()).toEqual([]);
+  });
+
+  it("keeps coupling from ordinary targets when a hub target is ignored", () => {
+    // Every note links to the over-cap hub; two of them also share one
+    // ordinary target. Degrees (the BCS denominator) are unchanged by the cap,
+    // so the surviving edge is scored on the ordinary target alone.
+    const noteLinks = new Map(
+      Array.from({ length: BOOTSTRAP_HUB_POSTER_CAP + 1 }, (_, i) => [
+        `n-${String(i).padStart(4, "0")}`,
+        new Set(["hub"]),
+      ]),
+    );
+    noteLinks.get("n-0000")!.add("ordinary");
+    noteLinks.get("n-0001")!.add("ordinary");
+
+    bootstrapFromWikiLinks(db, noteLinks);
+
+    const edges = rows();
+    expect(edges).toHaveLength(1);
+    expect(edges[0].note_a).toBe("n-0000");
+    expect(edges[0].note_b).toBe("n-0001");
+    // shared = 1 ("ordinary" only; "hub" contributes nothing), degrees 2 and 2.
+    expect(edges[0].npmi_weight).toBeCloseTo(0.5 * BOOTSTRAP_INIT_WEIGHT, 12);
   });
 });

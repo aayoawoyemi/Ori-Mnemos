@@ -13,6 +13,11 @@ import {
   logRetrieval,
   explorationBonus,
   batchUpdateQ,
+  getQState,
+  exposureDamping,
+  applyColdStartFloor,
+  COLD_START_EPSILON,
+  MIN_EXPLORE_RETENTION,
   ALPHA,
   DEFAULT_Q,
 } from "../../src/core/qvalue.js";
@@ -199,5 +204,196 @@ describe("logRetrieval", () => {
     expect(rows[0].query_text).toBe("test query");
     expect(rows[0].note_id).toBe("note-a");
     expect(rows[0].rank).toBe(0);
+  });
+});
+
+describe("getQState (fix list item 5)", () => {
+  it("distinguishes a never-updated Q from a learned one at the same value", () => {
+    // A reward of exactly DEFAULT_Q leaves the EMA where it started:
+    // 0.5 + 0.1*(0.5 - 0.5) = 0.5. So this note has genuinely learned, and its
+    // Q-value is indistinguishable from the initialisation constant.
+    updateQ(db, "learned-note", DEFAULT_Q, "s1");
+    // This one was only ever shown. `incrementExposure` creates the row with
+    // the default q_value — the shape 707 of 717 production rows were in.
+    incrementExposure(db, "shown-note");
+
+    // The value alone cannot tell them apart. This is the defect.
+    expect(getQ(db, "learned-note")).toBe(DEFAULT_Q);
+    expect(getQ(db, "shown-note")).toBe(DEFAULT_Q);
+
+    expect(getQState(db, "learned-note").learned).toBe(true);
+    expect(getQState(db, "learned-note").updateCount).toBe(1);
+    expect(getQState(db, "shown-note").learned).toBe(false);
+    expect(getQState(db, "shown-note").updateCount).toBe(0);
+  });
+
+  it("reports an absent note as unlearned rather than as a 0.5 score", () => {
+    const state = getQState(db, "no-such-note");
+    expect(state.learned).toBe(false);
+    expect(state.q).toBe(DEFAULT_Q);
+    expect(state.decayedQ).toBe(DEFAULT_Q);
+    expect(state.exposureCount).toBe(0);
+    expect(state.lastUpdated).toBeNull();
+  });
+
+  it("does not decay a value that was never learned", () => {
+    incrementExposure(db, "shown-note");
+    db.prepare("UPDATE note_q SET last_updated = '2020-01-01 00:00:00'").run();
+    // Decaying an un-updated row would manufacture a difference between two
+    // notes that have both learned nothing, purely from when exposure created
+    // the row.
+    expect(getQState(db, "shown-note").decayedQ).toBe(DEFAULT_Q);
+    expect(getQState(db, "shown-note").learned).toBe(false);
+  });
+
+  it("canonicalizes the key like every other read", () => {
+    updateQ(db, "Some Note Title", 1.0, "s1");
+    expect(getQState(db, "some-note-title").learned).toBe(true);
+    expect(getQState(db, "Some Note Title").noteId).toBe("some-note-title");
+  });
+
+  it("carries learned and exposure through getRewardStats", () => {
+    incrementExposure(db, "shown-note");
+    incrementExposure(db, "shown-note");
+    const unlearned = getRewardStats(db, "shown-note");
+    expect(unlearned.learned).toBe(false);
+    expect(unlearned.exposure).toBe(2);
+
+    updateQ(db, "shown-note", 1.0, "s1");
+    const learned = getRewardStats(db, "shown-note");
+    expect(learned.learned).toBe(true);
+    expect(learned.exposure).toBe(2);
+    expect(learned.count).toBe(1);
+  });
+});
+
+describe("exposure-aware exploration (fix list item 8)", () => {
+  it("damps nothing when exposure is unknown", () => {
+    // Backward compatibility: callers that pass no exposure get the old value.
+    expect(exposureDamping(0)).toBe(1);
+    expect(explorationBonus({ mean: 0, variance: 0.25, count: 0 }, 100)).toBe(
+      explorationBonus(
+        { mean: 0, variance: 0.25, count: 0, exposure: 0 },
+        100,
+      ),
+    );
+  });
+
+  it("gives a never-surfaced note a strictly larger bonus than a saturated one", () => {
+    // The production degeneracy: 707 of 717 rows had count=0, so every
+    // candidate received the identical c*2.5 and the term cancelled out of the
+    // ranking entirely.
+    const cold = explorationBonus(
+      { mean: 0, variance: 0.25, count: 0, exposure: 0 },
+      500,
+    );
+    const hot = explorationBonus(
+      { mean: 0, variance: 0.25, count: 0, exposure: 200 },
+      500,
+    );
+    expect(cold).toBeGreaterThan(hot);
+    expect(hot).toBeGreaterThan(0);
+  });
+
+  it("decreases with exposure down to a floor, and never to zero", () => {
+    const bonuses = [0, 1, 10, 100].map((exposure) =>
+      explorationBonus({ mean: 0, variance: 0.25, count: 0, exposure }, 500),
+    );
+    for (let i = 1; i < bonuses.length; i++) {
+      expect(bonuses[i]!).toBeLessThan(bonuses[i - 1]!);
+    }
+    // Beyond ~225 exposures the damping is floored, so even the most saturated
+    // note in a vault keeps a bonus. The term is a gradient, never an
+    // exclusion — the same reason the stage bandit floors its epsilon.
+    const saturated = explorationBonus(
+      { mean: 0, variance: 0.25, count: 0, exposure: 100_000 },
+      500,
+    );
+    expect(saturated).toBeCloseTo(0.2 * 2.5 * MIN_EXPLORE_RETENTION, 10);
+    expect(saturated).toBeLessThan(bonuses.at(-1)!);
+  });
+});
+
+describe("applyColdStartFloor (fix list item 8)", () => {
+  const ranked = Array.from({ length: 12 }, (_, i) => ({
+    title: `note-${i}`,
+    score: 1 - i * 0.05,
+  }));
+
+  beforeEach(() => {
+    // note-0..note-8 have been surfaced; note-9..note-11 never have.
+    for (let i = 0; i <= 8; i++) incrementExposure(db, `note-${i}`);
+  });
+
+  it("promotes the best never-surfaced candidate when epsilon fires", () => {
+    const top = applyColdStartFloor(db, ranked, 8, { random: () => 0 });
+    expect(top).toHaveLength(8);
+    // note-9 is the strongest note nobody has seen; it takes the weakest slot.
+    expect(top.map((r) => r.title)).toContain("note-9");
+    expect(top[7]!.title).toBe("note-9");
+    // The head of the list is never disturbed.
+    expect(top.slice(0, 7).map((r) => r.title)).toEqual(
+      ranked.slice(0, 7).map((r) => r.title),
+    );
+  });
+
+  it("returns the plain cut when epsilon does not fire", () => {
+    const top = applyColdStartFloor(db, ranked, 8, { random: () => 1 });
+    expect(top.map((r) => r.title)).toEqual(
+      ranked.slice(0, 8).map((r) => r.title),
+    );
+  });
+
+  it("is disabled by epsilon 0", () => {
+    const top = applyColdStartFloor(db, ranked, 8, {
+      epsilon: 0,
+      random: () => 0,
+    });
+    expect(top.map((r) => r.title)).toEqual(
+      ranked.slice(0, 8).map((r) => r.title),
+    );
+  });
+
+  it("skips an already-surfaced candidate below the cut", () => {
+    // note-8 is below the cut but has been shown, so it is not a cold note and
+    // must not be promoted by the exploration floor.
+    const top = applyColdStartFloor(db, ranked.slice(0, 10), 8, {
+      random: () => 0,
+    });
+    expect(top[7]!.title).toBe("note-9");
+  });
+
+  it("leaves the cut alone when nothing below it is cold", () => {
+    for (let i = 9; i <= 11; i++) incrementExposure(db, `note-${i}`);
+    const top = applyColdStartFloor(db, ranked, 8, { random: () => 0 });
+    expect(top.map((r) => r.title)).toEqual(
+      ranked.slice(0, 8).map((r) => r.title),
+    );
+  });
+
+  it("consumes its random draw before any early exit", () => {
+    // The 2026-09-12 starvation bug was a short-circuit above the exploration
+    // check. Drawing first also keeps a caller's random stream independent of
+    // the candidate list, so behaviour does not change with vault size.
+    let draws = 0;
+    const random = () => {
+      draws++;
+      return 0;
+    };
+    applyColdStartFloor(db, ranked.slice(0, 3), 8, { random });
+    applyColdStartFloor(db, [], 8, { random });
+    expect(draws).toBe(2);
+  });
+
+  it("defaults to a 10% floor", () => {
+    expect(COLD_START_EPSILON).toBe(0.1);
+    const fires = applyColdStartFloor(db, ranked, 8, {
+      random: () => COLD_START_EPSILON - 1e-9,
+    });
+    const misses = applyColdStartFloor(db, ranked, 8, {
+      random: () => COLD_START_EPSILON,
+    });
+    expect(fires.map((r) => r.title)).toContain("note-9");
+    expect(misses.map((r) => r.title)).not.toContain("note-9");
   });
 });

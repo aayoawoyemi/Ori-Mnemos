@@ -1,8 +1,22 @@
 /**
- * Ori Mnemos — Access Tracking Tests (#17)
+ * Ori Mnemos - Access Tracking Tests (#17)
  *
- * Verifies retrieval updates access_count and last_accessed in
- * frontmatter so the ACT-R vitality model has a real usage signal.
+ * The guarantee from #17 is that RETRIEVAL RECORDS USAGE, so the ACT-R vitality
+ * model has a real signal instead of every note decaying identically.
+ *
+ * Where the counter lives mid-flight changed on 2026-09-15 and the guarantee
+ * did not. A ranked query used to read-modify-write ~11 note FILES with no lock
+ * and no atomic rename, which lost increments under concurrency, could truncate
+ * a note on a crash, and silently reserialised hand-authored YAML on every
+ * read. Counters now increment in one SQLite transaction and are folded into
+ * frontmatter by `flushAccessToFrontmatter` on a maintenance pass - which keeps
+ * #17's own durability argument ("frontmatter lives in the markdown files and
+ * survives" a deleted database) and the git-visible audit trail.
+ *
+ * So the end-to-end assertion below is query -> flush -> frontmatter, rather
+ * than query -> frontmatter. Asserting the intermediate location would pin an
+ * implementation detail and would have to be rewritten again the next time the
+ * fast path moves.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { promises as fs } from "node:fs";
@@ -12,6 +26,8 @@ import { runInit } from "../../src/cli/init.js";
 import { runQueryRanked } from "../../src/cli/search.js";
 import { runIndexBuild } from "../../src/cli/indexcmd.js";
 import { recordNoteAccess } from "../../src/core/noteindex.js";
+import Database from "better-sqlite3";
+import { flushAccessToFrontmatter, loadAccess } from "../../src/core/indexstore.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../../src/core/frontmatter.js";
 
 let tmpDir: string;
@@ -136,16 +152,35 @@ describe("runQueryRanked access tracking (#17)", () => {
     expect(result.data.results.length).toBeGreaterThan(0);
 
     const returnedTitles = result.data.results.map((r) => r.title);
-    for (const title of returnedTitles) {
-      const data = await readFm(title);
-      expect(data?.access_count).toBe(1);
+    const all = ["agent-memory-systems", "unrelated-cooking-note"];
+
+    // The query itself must not have rewritten anyone's note file.
+    for (const title of all) {
+      expect(
+        (await readFm(title))?.access_count,
+        `${title} frontmatter must be untouched by a read`,
+      ).toBe(0);
     }
 
-    // Any note NOT returned keeps access_count 0
-    const all = ["agent-memory-systems", "unrelated-cooking-note"];
+    // The usage signal exists, transactionally, for exactly the notes returned.
+    const db = new Database(path.join(tmpDir, ".ori", "embeddings.db"));
+    const counters = loadAccess(db);
+    for (const title of returnedTitles) {
+      expect(counters.get(title)?.access_count, `${title} counter`).toBe(1);
+    }
     for (const title of all.filter((t) => !returnedTitles.includes(t))) {
-      const data = await readFm(title);
-      expect(data?.access_count).toBe(0);
+      expect(counters.get(title)?.access_count ?? 0, `${title} not returned`).toBe(0);
+    }
+
+    // And it reaches the durable store on a maintenance pass, which is what
+    // #17 was actually about.
+    await flushAccessToFrontmatter(db, path.join(tmpDir, "notes"));
+    db.close();
+    for (const title of returnedTitles) {
+      expect((await readFm(title))?.access_count, `${title} after flush`).toBe(1);
+    }
+    for (const title of all.filter((t) => !returnedTitles.includes(t))) {
+      expect((await readFm(title))?.access_count, `${title} after flush`).toBe(0);
     }
   }, 60_000);
 });
