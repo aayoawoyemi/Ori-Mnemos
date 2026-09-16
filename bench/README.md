@@ -57,3 +57,27 @@ npx tsx bench/locomo-eval.ts --categories 1,2,3
 ## Results
 
 JSON output from each benchmark run stored in `results/` with timestamps.
+
+
+## eval-rrf.mjs — grep-grounded retrieval eval (2026-09-06)
+
+    node bench/eval-rrf.mjs <vaultRoot> <gold.json>          # default rrf_k
+    ORI_RRF_K=10 node bench/eval-rrf.mjs <vaultRoot> <gold.json>
+
+`gold.json` maps query -> [note titles that literally contain the needle] (build it
+with grep, not by hand). Reports hit@1 / hit@5 / MRR over `runQueryRanked`.
+Two gold sets ship in bench/data: `gold-identifiers.json` (24 proper nouns / codes)
+and `gold-semantic.json` (8 conceptual queries, loose needles).
+
+Results 2026-09-06 on the brain vault (1423 notes), after the BM25 restoration:
+
+| fusion             | rrf_k | identifiers hit@1 | semantic hit@1 |
+|--------------------|-------|-------------------|----------------|
+| score-weighted RRF | 60    | 23/24             | 7/8            |
+| score-weighted RRF | 10    | 23/24             | —              |
+| score-weighted RRF | 3     | 22/24             | —              |
+| + per-signal max-norm | 10 | **16/24**         | —              |
+
+Per-signal normalization was tried and reverted: BM25's raw scale (2-12 vs cosine
+0.3-0.6) is what makes exact matches win, and `signal_weights` were tuned while
+BM25 was disabled. Don't normalize without retuning weights against both gold sets.

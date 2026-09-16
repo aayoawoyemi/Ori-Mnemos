@@ -194,7 +194,7 @@ Zero cloud dependencies. Zero API keys required for core functionality. LLM enha
 
 **Configuration & Tracking**
 - `llm.ts` — Provider abstraction: Null, Anthropic, OpenAI-compatible
-- `tracking.ts` — IPS access logging, propensity scoring, exploration injection
+- `tracking.ts` — IPS access logging, exploration injection
 
 ### CLI Commands (16 files in src/cli/)
 

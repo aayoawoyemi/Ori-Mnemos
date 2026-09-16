@@ -327,7 +327,7 @@ ori query backlinks <note>        # What links to this note
 ori query cross-project           # Multi-project notes
 
 # Infrastructure
-ori index build [--force]         # Build embedding index
+ori index build [--force]         # Rebuild everything derived from the vault
 ori index status                  # Index statistics
 ori graph metrics                 # PageRank, centrality
 ori graph communities             # Louvain clustering
@@ -344,6 +344,29 @@ ori bridge <target> --uninstall                                        # Remove 
 
 Path-taking commands treat relative file paths as vault-relative. Absolute
 paths continue to work unchanged.
+
+### When to rebuild
+
+Everything under `.ori/` is derived from the markdown and is disposable. Three
+stores live there, and they need you at different times:
+
+| store | maintained by | needs `ori index build` when |
+|---|---|---|
+| derived index (`note`, `edge`, `note_term`, graph-metrics cache) | every query, automatically — one `stat` per file, reparse only what changed | never for an edit; `--force` if a query warns it "covers N of M notes" |
+| embeddings (semantic vectors) | `ori add` on write; queries only if the table is missing or empty | a note was written by something other than `ori add` (an editor, a sync client, a script) — it is findable by keyword and links immediately, but not by meaning until it is embedded |
+| co-occurrence bootstrap | `ori index build` only | link structure changed a lot and you want day-0 edges to reflect it |
+
+So the practical rule: **edit and query freely; run `ori index build` after
+bulk-adding notes from outside Ori, and `ori index build --force` if a query
+reports it cannot cover the vault.** Both are safe to run any time — the first
+is incremental by content hash, the second is a full reparse (about 4 s per
+1,500 notes for the index, plus embedding time for every note).
+
+Deleting `.ori/embeddings.db` outright is also fine. The next query rebuilds
+the derived index and embeds the vault before answering; it just takes as
+long as `--force` does. Learned state (Q-values, stage policies, co-retrieval
+history) lives in the same file, so prefer `--force` when you want a clean
+index without losing what the ranker has learned.
 
 ---
 
