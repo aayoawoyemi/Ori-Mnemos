@@ -54,6 +54,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run lint && npm run build && npm run smoke:bin",
     "dev": "tsc --watch",
     "test": "npm run build && vitest run --environment node",
     "test:watch": "vitest --environment node",
