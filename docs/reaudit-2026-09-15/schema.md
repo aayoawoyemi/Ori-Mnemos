@@ -1,6 +1,6 @@
 # Ori re-audit — slice `schema` (2026-09-15)
 
-Method: copied `C:/Users/aayoa/brain/.ori/embeddings.db` + `-wal` + `-shm` to `%TEMP%/ori-schema-audit.db` (222,146,560 B main; the WAL is 103 MB uncheckpointed since 09-13 and IS included in every number below). Inspected with the project's own driver (`better-sqlite3` ^12.6.2 per package.json, SQLite 3.51.2). To measure the derived index I ran the compiled `dist/core/indexstore.js` `syncIndex` against the copy with `notesDir=C:/Users/aayoa/brain/notes`. The real DB was never opened for writing.
+Method: copied `<vault>/.ori/embeddings.db` + `-wal` + `-shm` to `%TEMP%/ori-schema-audit.db` (222,146,560 B main; the WAL is 103 MB uncheckpointed since 09-13 and IS included in every number below). Inspected with the project's own driver (`better-sqlite3` ^12.6.2 per package.json, SQLite 3.51.2). To measure the derived index I ran the compiled `dist/core/indexstore.js` `syncIndex` against the copy with `notesDir=<vault>/notes`. The real DB was never opened for writing.
 
 > `local://ori-reaudit-schema.md` could not be written: this agent has no `write` tool. This `report` field is the full deliverable.
 

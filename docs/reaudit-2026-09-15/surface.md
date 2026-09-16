@@ -1,6 +1,6 @@
 # Ori re-audit 2026-09-15 — slice `surface`
 
-(Author: SurfaceAudit. Read-only. Numbers from the repo working tree and from a temp copy of `C:/Users/aayoa/brain/.ori/embeddings.db` + `-wal` + `-shm`, opened with `{readonly:true}`; the copy was deleted afterwards. NOTE: this agent has no `write` tool, so `local://ori-reaudit-surface.md` could not be created — this `report` field is the deliverable.)
+(Author: SurfaceAudit. Read-only. Numbers from the repo working tree and from a temp copy of `<vault>/.ori/embeddings.db` + `-wal` + `-shm`, opened with `{readonly:true}`; the copy was deleted afterwards. NOTE: this agent has no `write` tool, so `local://ori-reaudit-surface.md` could not be created — this `report` field is the deliverable.)
 
 ---
 

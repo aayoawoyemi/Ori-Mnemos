@@ -6,7 +6,7 @@ Ori implements human cognition as mathematical models on a knowledge graph. Acti
 
 Persistent memory across sessions, clients, and machines. Zero-infrastructure retrieval that [matches and in several cases strongly outperforms incumbents on benchmarks](#benchmarks) — and you own every byte of your data. Markdown on disk. Wiki-links as graph edges. Git as version control. No database lock-in, no cloud dependency, no vendor capture.
 
-**v0.6.0** · [npm](https://www.npmjs.com/package/ori-memory) · [Paper](https://orimnemos.com/rmh) · Apache-2.0
+**v0.7.0** · [npm](https://www.npmjs.com/package/ori-memory) · [Paper](https://orimnemos.com/rmh) · Apache-2.0
 
 ---
 

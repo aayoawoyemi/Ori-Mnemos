@@ -26,7 +26,7 @@ const BOOTSTRAP_INIT_WEIGHT = 0.15;
  * Maximum number of notes that may link to one target before that target stops
  * contributing coupling evidence in `bootstrapFromWikiLinks`.
  *
- * MEASURED, not guessed. Real vault (C:/Users/aayoa/brain, 1537 notes with
+ * MEASURED, not guessed. Real vault (<vault>, 1537 notes with
  * outgoing entries, 6850 links, 900 distinct targets) poster-list sizes:
  *
  *   1016  "index"           (a real note every note links to)
