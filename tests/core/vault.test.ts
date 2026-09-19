@@ -15,10 +15,43 @@ let tmpDir: string;
 let fakeHome: string;
 let realHomedir: typeof os.homedir;
 
+// These tests assert what `findVaultRoot` does when there is no vault. That is
+// only meaningful if no ancestor of the scratch directory is one — otherwise
+// the upward walk finds a real vault and the negative cases are untestable.
+//
+// The filesystem root satisfies that on Windows, where os.tmpdir() sits under
+// the developer's home directory and the walk can reach their actual vault.
+// On Linux it is not writable. So the base is chosen by checking both
+// properties rather than assuming either.
+async function hasVaultAncestor(dir: string): Promise<boolean> {
+  let current = path.resolve(dir);
+  for (;;) {
+    if (await isVaultRoot(current)) return true;
+    const parent = path.dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+
+async function scratchBase(): Promise<string> {
+  const candidates = [os.tmpdir(), path.parse(os.tmpdir()).root];
+  for (const candidate of candidates) {
+    try {
+      const probe = await fs.mkdtemp(path.join(candidate, "ori-probe-"));
+      const clean = !(await hasVaultAncestor(candidate));
+      await fs.rm(probe, { recursive: true, force: true });
+      if (clean) return candidate;
+    } catch {
+      // Not writable by this user. Try the next candidate.
+    }
+  }
+  throw new Error(
+    `no writable scratch directory without a .ori ancestor (tried ${candidates.join(", ")})`,
+  );
+}
+
 beforeEach(async () => {
-  // Use the filesystem root instead of os.tmpdir() so vault discovery cannot
-  // walk upward into the developer's real home vault on Windows.
-  tmpDir = await fs.mkdtemp(path.join(path.parse(os.tmpdir()).root, "ori-test-vault-"));
+  tmpDir = await fs.mkdtemp(path.join(await scratchBase(), "ori-test-vault-"));
   fakeHome = path.join(tmpDir, "fakehome");
   await fs.mkdir(fakeHome, { recursive: true });
   realHomedir = os.homedir;
@@ -27,7 +60,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   os.homedir = realHomedir;
-  await fs.rm(tmpDir, { recursive: true, force: true });
+  if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
 describe("isVaultRoot", () => {

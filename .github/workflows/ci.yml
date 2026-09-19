@@ -31,6 +31,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Cache Embedding Model
+        uses: actions/cache@v4
+        with:
+          path: node_modules/@huggingface/transformers/.cache
+          key: hf-${{ runner.os }}-all-MiniLM-L6-v2
+
+      - name: Prefetch Embedding Model
+        run: node scripts/prefetch-model.mjs
+
       - name: Test
         run: npx vitest run --reporter=basic
 

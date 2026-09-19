@@ -63,7 +63,8 @@
     "pack:check": "npm pack --dry-run --cache .npm-cache",
     "check:release": "node scripts/check-release.mjs",
     "check:v01:test": "npm run test",
-    "check:v01": "npm run lint && npm run build && npm run smoke:bin && npm run pack:check"
+    "check:v01": "npm run lint && npm run build && npm run smoke:bin && npm run pack:check",
+    "prefetch:model": "node scripts/prefetch-model.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
