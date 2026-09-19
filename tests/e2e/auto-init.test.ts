@@ -9,15 +9,14 @@ import {
   isVaultRoot,
 } from "../../src/core/vault.js";
 import { runInit } from "../../src/cli/init.js";
+import { scratchBase } from "../scratch-vault.js";
 
 let tmpDir: string;
 let fakeHome: string;
 let realHomedir: typeof os.homedir;
 
 beforeEach(async () => {
-  // Use the filesystem root instead of os.tmpdir() so vault discovery cannot
-  // walk upward into the developer's real home vault on Windows.
-  tmpDir = await fs.mkdtemp(path.join(path.parse(os.tmpdir()).root, "ori-autoinit-"));
+  tmpDir = await fs.mkdtemp(path.join(await scratchBase(), "ori-autoinit-"));
   fakeHome = path.join(tmpDir, "fakehome");
   await fs.mkdir(fakeHome, { recursive: true });
 
@@ -28,7 +27,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   os.homedir = realHomedir;
-  await fs.rm(tmpDir, { recursive: true, force: true });
+  if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
 describe("getGlobalVaultPath", () => {
