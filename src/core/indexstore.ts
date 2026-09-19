@@ -850,6 +850,7 @@ export function saveCachedGraphMetrics(
 
 export function termDocumentFrequency(db: DB): {
   documentFrequency: (term: string) => number;
+  notesContainingTerm: (term: string) => ReadonlySet<string>;
   corpusSize: number;
 } {
   const df = new Map<string, number>();
@@ -859,9 +860,31 @@ export function termDocumentFrequency(db: DB): {
     df.set(row.term, row.df);
   }
   const [size] = rows<{ c: number }>(db, "SELECT COUNT(*) AS c FROM note");
+
+  // Which notes hold a term, resolved lazily and memoised.
+  //
+  // The aggregate above is one pass and is needed for every query. This is
+  // not: a query has a handful of rare terms, and each is a single indexed
+  // lookup on note_term(term). Hydrating all 317,824 postings to answer three
+  // questions would cost more than the metric it feeds.
+  const holders = new Map<string, ReadonlySet<string>>();
+  const stmt = db.prepare(
+    "SELECT n.title FROM note_term t JOIN note n ON n.id = t.note_id WHERE t.term = ?",
+  );
+
   return {
     documentFrequency: (term: string) => df.get(term.toLowerCase()) ?? 0,
     corpusSize: size?.c ?? 0,
+    notesContainingTerm: (term: string) => {
+      const key = term.toLowerCase();
+      const hit = holders.get(key);
+      if (hit) return hit;
+      const titles = new Set(
+        (stmt.all(key) as Array<{ title: string }>).map((r) => r.title),
+      );
+      holders.set(key, titles);
+      return titles;
+    },
   };
 }
 

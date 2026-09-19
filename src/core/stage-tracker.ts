@@ -204,6 +204,20 @@ export interface LexicalProbe {
   documentFrequency: (term: string) => number;
   /** Notes in the corpus, for the rarity gate. */
   corpusSize: number;
+  /**
+   * Titles of the notes whose indexed text contains this term.
+   *
+   * Recall is a question about note CONTENT, and the ranking pipeline passes
+   * `ScoredNote`, which carries a title and no body. So for the entire life of
+   * this metric the answer came from matching rare terms against titles alone:
+   * a note that contained an identifier in its body was scored as having
+   * missed it. The postings table already knows the answer, so the metric asks
+   * the corpus instead of asking the candidates to carry text they do not have.
+   *
+   * Optional. Omitted, recall falls back to whatever text the candidates
+   * supply, which is the pre-2026-09-19 behaviour.
+   */
+  notesContainingTerm?: (term: string) => ReadonlySet<string>;
 }
 
 /** A candidate as seen by the quality metric. Text is optional and lexical-only. */
@@ -238,7 +252,12 @@ export function rareQueryTerms(probe: LexicalProbe): string[] {
 }
 
 /**
- * Fraction of the rare terms that literally appear in the candidate window.
+ * Fraction of the rare terms the candidate window actually recalled.
+ *
+ * A term counts as recalled when some candidate in the window is a note whose
+ * indexed text contains it. `postings` answers that from the corpus; without
+ * it the only evidence available is whatever text the candidates carry, which
+ * on the ranking path is the title and nothing else.
  *
  * Returns 1 for an empty term list so callers that blend it unconditionally
  * cannot be penalized by a query with no identifiers in it.
@@ -246,16 +265,38 @@ export function rareQueryTerms(probe: LexicalProbe): string[] {
 export function measureExactRecall(
   candidates: QualityCandidate[],
   terms: string[],
+  postings?: (term: string) => ReadonlySet<string>,
 ): number {
   if (terms.length === 0) return 1;
+
+  const window = candidates.slice(0, QUALITY_WINDOW);
   const found = new Set<string>();
-  for (const c of candidates.slice(0, QUALITY_WINDOW)) {
+
+  if (postings) {
+    const titles = new Set(
+      window.map((c) => c.title ?? "").filter((t) => t.length > 0),
+    );
+    for (const term of terms) {
+      for (const holder of postings(term)) {
+        if (titles.has(holder)) {
+          found.add(term);
+          break;
+        }
+      }
+    }
+    if (found.size === terms.length) return 1;
+  }
+
+  // Any term the postings could not settle - and every term, when there are no
+  // postings - falls back to the text the candidates carry.
+  for (const c of window) {
     if (found.size === terms.length) break;
     const text = `${c.title ?? ""} ${c.text ?? ""}`;
     if (text.trim().length === 0) continue;
     const tokens = new Set(tokenize(text));
     for (const t of terms) if (tokens.has(t)) found.add(t);
   }
+
   return found.size / terms.length;
 }
 
@@ -291,7 +332,7 @@ export function measureCurrentQuality(
   const terms = rareQueryTerms(probe);
   if (terms.length === 0) return concentration;
 
-  const recall = measureExactRecall(candidates, terms);
+  const recall = measureExactRecall(candidates, terms, probe.notesContainingTerm);
   const lexical = 2 * recall - 1;
   const blended =
     (1 - LEXICAL_WEIGHT) * concentration + LEXICAL_WEIGHT * lexical;

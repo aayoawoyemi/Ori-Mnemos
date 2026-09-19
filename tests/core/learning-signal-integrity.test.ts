@@ -416,6 +416,51 @@ describe("defect 6: exact-identifier recall is visible to the reward", () => {
   });
 });
 
+// Every case above puts the identifier in a TITLE, which is the assumption that
+// hid the defect: `measureExactRecall` read `title + text`, the ranking path
+// passes `ScoredNote` (title, score, signals — no text), so recall was measured
+// against titles alone. A note holding the identifier in its body scored as a
+// miss. On the real 1,574-note vault the canonical query "Resume J" measured
+// 0.000 recall against 14 notes that all genuinely contain the term.
+describe("defect 6b: recall sees identifiers that live in note bodies", () => {
+  // What the ranking path actually hands the metric.
+  const BODY_ONLY: Array<{ score: number; title: string }> = [
+    { score: 0.3, title: "Agent memory compounds" },
+    { score: 0.299, title: "Notes on agent memory" },
+    { score: 0.298, title: "Memory notes" },
+  ];
+
+  // The corpus knows what the candidates cannot say: the first note mentions
+  // the identifier in its body.
+  const postings = (term: string): ReadonlySet<string> =>
+    term === "j" ? new Set(["Agent memory compounds"]) : new Set<string>();
+
+  it("credits a body-only match that title matching cannot see", () => {
+    expect(measureExactRecall(BODY_ONLY, ["j"])).toBe(0);
+    expect(measureExactRecall(BODY_ONLY, ["j"], postings)).toBe(1);
+  });
+
+  it("still misses a term no returned note contains", () => {
+    const absent = (): ReadonlySet<string> => new Set(["Some note not returned"]);
+    expect(measureExactRecall(BODY_ONLY, ["j"], absent)).toBe(0);
+  });
+
+  it("lifts the quality of a set the old metric scored at the noise floor", () => {
+    const blind = probeFor("Resume J");
+    const seeing: LexicalProbe = { ...blind, notesContainingTerm: postings };
+    expect(measureCurrentQuality(BODY_ONLY, seeing)).toBeGreaterThan(
+      measureCurrentQuality(BODY_ONLY, blind),
+    );
+  });
+
+  it("leaves a probe without postings on its previous number", () => {
+    const probe = probeFor("Resume J");
+    expect(measureCurrentQuality(HIT, { ...probe, notesContainingTerm: undefined })).toBe(
+      measureCurrentQuality(HIT, probe),
+    );
+  });
+});
+
 describe("defect 5: the absence of a learning signal is observable", () => {
   it("counts the notes learning never reached", () => {
     for (let i = 0; i < 5; i++) incrementExposure(db, `shown-${i}`);
