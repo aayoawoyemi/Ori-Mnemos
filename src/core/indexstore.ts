@@ -30,6 +30,8 @@
  * embeddings, boosts, note_q, co_occurrence and the stage learner's tables.
  */
 import path from "node:path";
+import { initQValueTables } from "./qvalue.js";
+import { initStageTables } from "./stage-learner.js";
 import { promises as fs } from "node:fs";
 import crypto from "node:crypto";
 import type Database from "better-sqlite3";
@@ -160,6 +162,77 @@ export function initIndexStore(db: DB): void {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+  `);
+
+  // v_note joins note_q, and v_retrieval/v_session/v_stage read retrieval_log
+  // and stage_log. Those are created lazily by the learning layer on first
+  // query, so on a fresh vault the views parse but every SELECT fails with
+  // "no such table". Verified, not assumed: SQLite accepts CREATE VIEW over a
+  // missing table and only resolves names at query time, which turns a setup
+  // ordering bug into a runtime error on someone else's machine.
+  //
+  // Calling the real initialisers rather than restating their DDL here -- a
+  // second copy of a schema that must agree with the first is the failure
+  // mode the graph_metrics JSON cache was designed to avoid. One DB file,
+  // one lifecycle, one definition per table.
+  initQValueTables(db);
+  initStageTables(db);
+
+  // Views are the public contract for `ori sql` / memory_sql. Agents write
+  // queries against these names, which makes them API: once someone's prompt
+  // says "SELECT ... FROM v_note", renaming a physical column breaks them.
+  // Keeping the physical tables behind views is what lets the schema keep
+  // moving. They are derived and disposable like everything else in .ori/,
+  // so DROP-then-CREATE keeps a stale definition from surviving an upgrade -
+  // CREATE VIEW IF NOT EXISTS would silently keep the old body forever.
+  db.exec(`
+    DROP VIEW IF EXISTS v_note;
+    CREATE VIEW v_note AS
+      SELECT n.id, n.slug, n.title, n.type, n.status, n.description, n.created,
+             datetime(n.mtime_ms/1000,'unixepoch') AS modified,
+             COALESCE(a.access_count, n.fm_access_count) AS access_count,
+             a.last_accessed,
+             (SELECT COUNT(*) FROM edge e WHERE e.dst = n.id) AS inbound,
+             (SELECT COUNT(*) FROM edge e WHERE e.src = n.id) AS outbound,
+             (SELECT value FROM graph_metric g
+                WHERE g.note_id = n.id AND g.metric = 'pagerank') AS pagerank,
+             (SELECT value FROM graph_metric g
+                WHERE g.note_id = n.id AND g.metric = 'betweenness') AS betweenness,
+             q.q_value, q.update_count AS q_updates, q.exposure_count
+      FROM note n
+      LEFT JOIN note_access a ON a.slug = n.slug
+      LEFT JOIN note_q q ON q.note_id = n.slug;
+
+    DROP VIEW IF EXISTS v_link;
+    CREATE VIEW v_link AS
+      SELECT s.slug AS src, s.title AS src_title, d.slug AS dst, d.title AS dst_title
+      FROM edge e JOIN note s ON s.id = e.src JOIN note d ON d.id = e.dst;
+
+    DROP VIEW IF EXISTS v_dangling;
+    CREATE VIEW v_dangling AS
+      SELECT dl.target, COUNT(*) AS citing_notes,
+             group_concat(n.title, ' | ') AS cited_by
+      FROM dangling_link dl JOIN note n ON n.id = dl.src
+      GROUP BY dl.target;
+
+    DROP VIEW IF EXISTS v_retrieval;
+    CREATE VIEW v_retrieval AS
+      SELECT r.session_id, r.timestamp, r.query_text, r.query_type,
+             r.note_id AS slug, n.title, r.rank, r.final_score, r.q_score, r.ucb_bonus,
+             CASE WHEN r.session_id LIKE 'cli-%' THEN 'cli' ELSE 'mcp' END AS transport
+      FROM retrieval_log r LEFT JOIN note n ON n.slug = r.note_id;
+
+    DROP VIEW IF EXISTS v_session;
+    CREATE VIEW v_session AS
+      SELECT session_id, MIN(timestamp) AS started, MAX(timestamp) AS ended,
+             COUNT(DISTINCT query_text) AS queries, COUNT(*) AS retrievals
+      FROM retrieval_log GROUP BY session_id;
+
+    DROP VIEW IF EXISTS v_stage;
+    CREATE VIEW v_stage AS
+      SELECT session_id, timestamp, stage_id, decision,
+             quality_before, quality_after, compute_time_ms, reward
+      FROM stage_log;
   `);
 
   // Forward migrations for indexes created before these columns existed.

@@ -56,23 +56,22 @@ describe("tools listing", () => {
     const result = await ctx.client.listTools();
     const toolNames = result.tools.map((t) => t.name).sort();
 
+    // 21 -> 14. Removed: the three navigated-exploration tools (zero sessions in
+    // six months, heaviest descriptions in the surface, still reachable via
+    // `ori explore-start/-expand/-conclude` and covered by
+    // tests/cli/explore-steering.test.ts); ori_orient, whose onboarding moved
+    // into ori_wake; and ori_status, ori_query, ori_query_important,
+    // ori_query_fading, which were SQL queries wearing a tool costume.
     expect(toolNames).toEqual([
+      "memory_sql",
       "ori_add",
       "ori_explore",
-      "ori_explore_conclude",
-      "ori_explore_expand",
-      "ori_explore_start",
       "ori_health",
       "ori_index_build",
-      "ori_orient",
       "ori_promote",
       "ori_prune",
-      "ori_query",
-      "ori_query_fading",
-      "ori_query_important",
       "ori_query_ranked",
       "ori_query_similar",
-      "ori_status",
       "ori_update",
       "ori_update_decision",
       "ori_validate",
@@ -161,57 +160,11 @@ describe("resources", () => {
 // 4. ori_status
 // ---------------------------------------------------------------------------
 
-describe("ori_status", () => {
-  it("returns vault status with note count", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_status");
-    const data = parsed as { success: boolean; data: Record<string, unknown> };
-
-    expect(data.success).toBe(true);
-    expect(typeof data.data.noteCount).toBe("number");
-    expect(typeof data.data.inboxCount).toBe("number");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // 5. ori_orient
 // ---------------------------------------------------------------------------
 
-describe("ori_orient", () => {
-  it("returns briefing in brief mode (default)", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_orient");
-    const data = parsed as Record<string, unknown>;
-
-    expect(data).toHaveProperty("daily");
-    expect(data).toHaveProperty("reminders");
-    expect(data).toHaveProperty("vaultStatus");
-    expect(data).toHaveProperty("timestamp");
-    expect(data).toHaveProperty("goals");
-  });
-
-  it("returns full context in non-brief mode", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_orient", {
-      brief: false,
-    });
-    const data = parsed as Record<string, unknown>;
-
-    expect(data).toHaveProperty("identity");
-    expect(data).toHaveProperty("goals");
-    expect(data).toHaveProperty("methodology");
-  });
-
-  it("includes firstRun flag in response", async () => {
-    // Note: firstRun depends on whether identity has been written by earlier tests.
-    // We just verify the field exists and is a boolean.
-    const { parsed } = await callTool(ctx.client, "ori_orient");
-    const data = parsed as Record<string, unknown>;
-
-    expect(typeof data.firstRun).toBe("boolean");
-    // If firstRun is true, onboarding should be present
-    if (data.firstRun) {
-      expect(data).toHaveProperty("onboarding");
-    }
-  });
-});
 
 // ---------------------------------------------------------------------------
 // 6. ori_add
@@ -301,39 +254,6 @@ describe("ori_update", () => {
 // 8. ori_query
 // ---------------------------------------------------------------------------
 
-describe("ori_query", () => {
-  it("returns orphans list", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query", {
-      kind: "orphans",
-    });
-    expect(parsed).toBeDefined();
-  });
-
-  it("returns dangling links", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query", {
-      kind: "dangling",
-    });
-    expect(parsed).toBeDefined();
-  });
-
-  it("returns error for backlinks without note parameter", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query", {
-      kind: "backlinks",
-    });
-    const data = parsed as { success: boolean; error?: string };
-    expect(data.success).toBe(false);
-    expect(data.error).toMatch(/note required/);
-  });
-
-  it("returns error for unknown query kind", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query", {
-      kind: "nonexistent",
-    });
-    const data = parsed as { success: boolean; error?: string };
-    expect(data.success).toBe(false);
-    expect(data.error).toMatch(/unknown query kind/);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // 9. ori_health
@@ -434,48 +354,41 @@ describe("ori_validate", () => {
 // 12. ori_query_important (PageRank)
 // ---------------------------------------------------------------------------
 
-describe("ori_query_important", () => {
-  it("returns PageRank-ranked notes", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query_important", {
-      limit: 5,
-    });
-    expect(parsed).toBeDefined();
-  });
-});
 
 // ---------------------------------------------------------------------------
 // 13. ori_query_fading
 // ---------------------------------------------------------------------------
 
-describe("ori_query_fading", () => {
-  it("returns fading notes", async () => {
-    const { parsed } = await callTool(ctx.client, "ori_query_fading", {
-      threshold: 0.5,
-      limit: 10,
-    });
-    expect(parsed).toBeDefined();
-  });
-});
 
 // ---------------------------------------------------------------------------
 // 14. IDENTITY FLOW — First run → populated → no longer first run
 // ---------------------------------------------------------------------------
 
-describe("identity lifecycle", () => {
-  it("after writing identity, orient no longer reports firstRun", async () => {
-    // Write real identity content
+// ---------------------------------------------------------------------------
+// first-run onboarding (migrated from ori_orient to ori_wake)
+// ---------------------------------------------------------------------------
+
+describe("first-run onboarding", () => {
+  it("wake reports firstRun and an onboarding script on an unwritten vault", async () => {
+    // Drive the vault into the unwritten state rather than assuming the
+    // fixture is in it: a headers-only identity is what the scaffold leaves
+    // behind and is exactly what first-run detection keys on.
+    await callTool(ctx.client, "ori_update", { file: "identity", content: "# Identity\n\n" });
+
+    const { parsed } = await callTool(ctx.client, "ori_wake");
+    const data = parsed as Record<string, unknown>;
+    expect(data.firstRun).toBe(true);
+    expect(data).toHaveProperty("onboarding");
+  });
+
+  it("after writing a real identity, wake no longer reports firstRun", async () => {
     await callTool(ctx.client, "ori_update", {
       file: "identity",
-      content:
-        "# Aries\n\nI am Aries, a memory-sovereign agent. Direct, opinionated, proactive.",
+      content: "# Aries\n\nI am Aries, a memory-sovereign agent. Direct, opinionated, proactive.",
     });
 
-    // Note: the server caches instructions at startup, so firstRun detection
-    // in orient happens dynamically (it re-reads the file each call)
-    const { parsed } = await callTool(ctx.client, "ori_orient");
+    const { parsed } = await callTool(ctx.client, "ori_wake");
     const data = parsed as Record<string, unknown>;
-
-    // After writing real content, firstRun should be false
     expect(data.firstRun).toBe(false);
     expect(data).not.toHaveProperty("onboarding");
   });

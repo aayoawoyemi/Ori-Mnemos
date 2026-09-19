@@ -1,0 +1,15 @@
+[
+  { "label": "v_note full rows", "sql": "SELECT slug,title,type,status,description,created,modified,access_count,inbound,outbound,pagerank,betweenness,q_value,q_updates,exposure_count FROM v_note ORDER BY slug" },
+  { "label": "v_note null pagerank count", "sql": "SELECT COUNT(*) AS n, SUM(pagerank IS NULL) AS null_pr, SUM(betweenness IS NULL) AS null_bt, ROUND(SUM(pagerank),6) AS pr_sum FROM v_note" },
+  { "label": "v_link all edges", "sql": "SELECT src,src_title,dst,dst_title FROM v_link ORDER BY src,dst" },
+  { "label": "v_link contains dangling target?", "sql": "SELECT COUNT(*) FROM v_link WHERE dst LIKE '%nonexist%' OR dst_title LIKE '%nonexist%' OR dst IS NULL OR dst_title IS NULL" },
+  { "label": "v_dangling rows", "sql": "SELECT target,citing_notes,cited_by FROM v_dangling" },
+  { "label": "inbound vs v_link crosscheck", "sql": "SELECT n.slug, n.inbound, (SELECT COUNT(*) FROM v_link l WHERE l.dst=n.slug) AS link_in, n.outbound, (SELECT COUNT(*) FROM v_link l WHERE l.src=n.slug) AS link_out FROM v_note n ORDER BY n.slug" },
+  { "label": "v_retrieval empty select star", "sql": "SELECT * FROM v_retrieval" },
+  { "label": "v_session empty select star", "sql": "SELECT * FROM v_session" },
+  { "label": "v_stage empty select star", "sql": "SELECT * FROM v_stage" },
+  { "label": "join v_note x v_link", "sql": "SELECT a.slug, a.pagerank, l.dst FROM v_note a JOIN v_link l ON l.src=a.slug ORDER BY a.slug, l.dst" },
+  { "label": "natural join v_retrieval x v_session", "sql": "SELECT * FROM v_retrieval NATURAL JOIN v_session" },
+  { "label": "natural join v_retrieval x v_note", "sql": "SELECT COUNT(*) FROM v_retrieval NATURAL JOIN v_note" },
+  { "label": "natural join v_stage x v_session", "sql": "SELECT * FROM v_stage NATURAL JOIN v_session" }
+]

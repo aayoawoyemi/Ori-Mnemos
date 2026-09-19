@@ -1,0 +1,7 @@
+[
+  { "label": "counts after reindex", "sql": "SELECT (SELECT COUNT(*) FROM v_note) AS notes, (SELECT COUNT(*) FROM v_link) AS links, (SELECT COUNT(*) FROM v_dangling) AS dangling_targets, (SELECT COUNT(*) FROM v_retrieval) AS retrievals, (SELECT COUNT(*) FROM v_session) AS sessions, (SELECT COUNT(*) FROM v_stage) AS stages" },
+  { "label": "alpha inbound after reindex", "sql": "SELECT slug, inbound, outbound, pagerank FROM v_note WHERE slug IN ('alpha','lambda')" },
+  { "label": "dangling after reindex", "sql": "SELECT target, citing_notes, cited_by FROM v_dangling ORDER BY target" },
+  { "label": "pagerank nulls after reindex", "sql": "SELECT COUNT(*) AS n, SUM(pagerank IS NULL) AS null_pr, ROUND(SUM(pagerank),6) AS prsum FROM v_note" },
+  { "label": "new edges present", "sql": "SELECT src,dst FROM v_link WHERE src='lambda' OR dst='lambda'" }
+]

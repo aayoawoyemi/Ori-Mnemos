@@ -6,21 +6,12 @@ import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { runStatus } from "./status.js";
-import {
-  runQueryOrphans,
-  runQueryDangling,
-  runQueryBacklinks,
-  runQueryCrossProject,
-  runQueryImportant,
-  runQueryFading,
-} from "./query.js";
 import { runAdd } from "./add.js";
 import { runValidate } from "./validate.js";
 import { runHealth } from "./health.js";
 import { runPromote } from "./promote.js";
 import { runQueryRanked, runQuerySimilar, runQueryWarmth } from "./search.js";
-import { runExplore, runExploreStart, runExploreExpand, runExploreConclude, runExploreExtend } from "./explore.js";
+import { runExplore } from "./explore.js";
 import { runIndexBuild } from "./indexcmd.js";
 import { runPrune } from "./prune.js";
 import { findVaultRootWithSource, getGlobalVaultPath, getVaultPaths, type VaultPaths } from "../core/vault.js";
@@ -29,7 +20,8 @@ import { runWake } from "./wake.js";
 import { GraphCache } from "../core/graph.js";
 import { initDB } from "../core/engine.js";
 // Retrieval intelligence
-import { initQValueTables, batchUpdateQ, updateQ } from "../core/qvalue.js";
+import { initQValueTables, batchUpdateQ } from "../core/qvalue.js";
+import { runReadOnlySql, describeSchema } from "../core/sqlquery.js";
 import { SessionRewardAccumulator } from "../core/reward.js";
 import {
   initCoOccurrenceTables,
@@ -439,205 +431,23 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
 
   // ─── Tools ───
 
-  // ori_orient — session briefing
+
   server.tool(
-    "ori_orient",
-    "Session briefing. Returns daily status, reminders, vault health, and active goals. " +
-      "Use brief=false for full context including identity and methodology. " +
-      "Call at session start before doing any work. May include update_notice — relay it to the user.",
-    {
-      brief: z.boolean().optional().describe("Quick status only — skip identity and methodology (default true)"),
-    },
-    async ({ brief }) => {
-      const isBrief = brief !== false;
+    "ori_wake",
+    "Session boot: constant-size briefing, budget-capped. Call this first in a session. " +
+      "On a vault with no identity written yet it also returns an onboarding script.",
+    { budget: z.number().optional().describe("Max lines (default 96)") },
+    async ({ budget }) => {
+      const payload: Record<string, unknown> = await runWake(vaultDir, budget ?? 96);
 
-      const [daily, reminders] = await Promise.all([
-        safeReadFile(path.join(paths.ops, "daily.md")),
-        safeReadFile(path.join(paths.ops, "reminders.md")),
-      ]);
-      const status = await runStatus(vaultDir, await graphCache.get(paths.notes));
-
-      const payload: Record<string, unknown> = {
-        daily,
-        reminders,
-        vaultStatus: status.data,
-        timestamp: new Date().toISOString(),
-      };
-
-      if (!isBrief) {
-        const [identity, goals, methodology] = await Promise.all([
-          safeReadFile(path.join(paths.self, "identity.md")),
-          safeReadFile(path.join(paths.self, "goals.md")),
-          safeReadFile(path.join(paths.self, "methodology.md")),
-        ]);
-        payload.identity = identity;
-        payload.goals = goals;
-        payload.methodology = methodology;
-        payload.firstRun = isFirstRun(identity);
-      } else {
-        // Brief mode still includes goals (what you're working on)
-        const goals = await safeReadFile(path.join(paths.self, "goals.md"));
-        payload.goals = goals;
-
-        // Check first-run even in brief mode so bootstrap path works
-        const identity = await safeReadFile(path.join(paths.self, "identity.md"));
-        payload.firstRun = isFirstRun(identity);
-      }
-
-      // Quick zone scan — check boosts + index health
-      // Lightweight: do NOT recompute all vitalities during orient
-      try {
-        const dbPath = path.resolve(vaultDir, ".ori", "embeddings.db");
-        await fs.access(dbPath);
-        const { initDB } = await import("../core/engine.js");
-        const db = initDB(dbPath);
-        const boostCount = (
-          db.prepare("SELECT COUNT(*) as cnt FROM boosts").get() as { cnt: number }
-        ).cnt;
-        if (boostCount > 0) {
-          payload.activationActive = true;
-          payload.boostCount = boostCount;
-        }
-
-        // --- Warmth landscape: what's active in memory ---
-        const topBoosts = db.prepare(`
-          SELECT title, boost, updated,
-            boost * exp(-0.1 * (julianday('now') - julianday(updated))) as decayed,
-            (julianday('now') - julianday(updated)) as days_since
-          FROM boosts
-          WHERE boost * exp(-0.1 * (julianday('now') - julianday(updated))) > 0.001
-          ORDER BY decayed DESC
-          LIMIT 15
-        `).all() as Array<{ title: string; boost: number; updated: string; decayed: number; days_since: number }>;
-
-        const topQ = db.prepare(`
-          SELECT note_id, q_value, update_count
-          FROM note_q
-          WHERE q_value > 0.5
-          ORDER BY q_value DESC
-          LIMIT 10
-        `).all() as Array<{ note_id: string; q_value: number; update_count: number }>;
-
-        // Merge and deduplicate
-        const qMap = new Map(topQ.map(r => [r.note_id, r.q_value]));
-        const seen = new Set<string>();
-        const warmNotes: Array<{
-          title: string; boost: number; qValue: number;
-          warmth: number; daysSince: number; project: string[];
-        }> = [];
-
-        for (const b of topBoosts) {
-          seen.add(b.title);
-          const q = qMap.get(b.title) ?? 0.5;
-          warmNotes.push({
-            title: b.title,
-            boost: Math.round(b.decayed * 1000) / 1000,
-            qValue: Math.round(q * 1000) / 1000,
-            warmth: Math.round((0.6 * b.decayed + 0.4 * Math.max(0, q - 0.5) * 2) * 1000) / 1000,
-            daysSince: Math.round(b.days_since * 10) / 10,
-            project: [],
-          });
-        }
-        for (const q of topQ) {
-          if (seen.has(q.note_id)) continue;
-          warmNotes.push({
-            title: q.note_id,
-            boost: 0,
-            qValue: Math.round(q.q_value * 1000) / 1000,
-            warmth: Math.round(0.4 * Math.max(0, q.q_value - 0.5) * 2 * 1000) / 1000,
-            daysSince: -1,
-            project: [],
-          });
-        }
-        warmNotes.sort((a, b) => b.warmth - a.warmth);
-
-        // Read frontmatter for top warm notes to get project tags
-        const { parseFrontmatter } = await import("../core/frontmatter.js");
-        for (const note of warmNotes.slice(0, 20)) {
-          try {
-            const content = await fs.readFile(
-              path.join(paths.notes, `${note.title}.md`), "utf-8"
-            );
-            const { data } = parseFrontmatter(content);
-            note.project = Array.isArray(data?.project) ? data.project as string[] : [];
-          } catch { /* note file missing */ }
-        }
-
-        // Aggregate by project
-        const byProject: Record<string, { totalWarmth: number; noteCount: number }> = {};
-        for (const note of warmNotes) {
-          for (const proj of note.project) {
-            if (!byProject[proj]) byProject[proj] = { totalWarmth: 0, noteCount: 0 };
-            byProject[proj].totalWarmth = Math.round((byProject[proj].totalWarmth + note.warmth) * 1000) / 1000;
-            byProject[proj].noteCount++;
-          }
-        }
-
-        // Heating/cooling detection
-        const heating = warmNotes.filter(n => n.daysSince >= 0 && n.daysSince < 1 && n.boost > 0.1).map(n => n.title);
-        const cooling = warmNotes.filter(n => n.daysSince > 3).map(n => n.title);
-
-        if (warmNotes.length > 0) {
-          payload.warmthLandscape = {
-            topNotes: warmNotes.slice(0, 10).map(n => ({
-              title: n.title,
-              boost: n.boost,
-              qValue: n.qValue,
-              project: n.project,
-              daysSinceActive: n.daysSince,
-            })),
-            byProject,
-            heating,
-            cooling,
-          };
-        }
-
-        // Index health: coverage + freshness
-        const indexedCount = (
-          db.prepare("SELECT COUNT(*) as cnt FROM embeddings").get() as { cnt: number }
-        ).cnt;
-        const metaRows = db
-          .prepare("SELECT key, value FROM meta")
-          .all() as Array<{ key: string; value: string }>;
-        db.close();
-
-        const meta: Record<string, string> = {};
-        for (const row of metaRows) meta[row.key] = row.value;
-
-        // Count actual notes on disk
-        let noteFileCount = 0;
-        try {
-          const dirents = await fs.readdir(paths.notes, { withFileTypes: true });
-          noteFileCount = dirents.filter(d => d.isFile() && d.name.endsWith(".md")).length;
-        } catch { /* notes dir missing */ }
-
-        const staleCount = Math.max(0, noteFileCount - indexedCount);
-        const builtAt = meta.built_at ?? null;
-        const hoursSinceBuild = builtAt
-          ? (Date.now() - new Date(builtAt).getTime()) / 3_600_000
-          : null;
-
-        payload.indexHealth = {
-          indexed: indexedCount,
-          totalNotes: noteFileCount,
-          stale: staleCount,
-          coveragePercent: noteFileCount > 0
-            ? Math.round((indexedCount / noteFileCount) * 100)
-            : 100,
-          builtAt,
-          hoursSinceBuild: hoursSinceBuild !== null ? Math.round(hoursSinceBuild * 10) / 10 : null,
-          warning: staleCount > 10
-            ? `${staleCount} notes not indexed — warmth signal is degraded. Run ori_index_build.`
-            : hoursSinceBuild !== null && hoursSinceBuild > 48
-              ? `Index is ${Math.round(hoursSinceBuild)}h old — consider running ori_index_build.`
-              : null,
-        };
-      } catch {
-        // No DB or no boosts table yet — skip
-      }
-
-      // Include onboarding steps when first-run detected
-      if (payload.firstRun) {
+      // First-run detection and onboarding used to live in ori_orient, whose
+      // own description said "prefer ori_wake for session start". Removing
+      // orient as superseded would have silently dropped the only path that
+      // bootstraps a brand-new vault, because wake never carried this. Moving
+      // it here is what makes that supersession true rather than asserted.
+      const identity = await safeReadFile(path.join(getVaultPaths(vaultDir).self, "identity.md"));
+      payload.firstRun = isFirstRun(identity);
+      if (payload.firstRun === true) {
         payload.onboarding = {
           steps: [
             "Ask the user to NAME their agent (default: Ori)",
@@ -648,31 +458,8 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
           save_with: "Use ori_update to write identity, goals, and methodology based on their answers",
         };
       }
-
-      // Check for updates (best-effort, cached 24h)
-      try {
-        const update = await checkForUpdate();
-        if (update.updateAvailable) {
-          payload.updateAvailable = update;
-          const notice = await buildAgentNotice(update);
-          if (notice) {
-            payload.update_notice = notice;
-            noticeGate.take();
-          }
-        }
-      } catch {
-        // Never fail orient for an update check
-      }
-
       return textResult(payload);
     }
-  );
-
-  server.tool(
-    "ori_wake",
-    "Bounded session boot: constant-size briefing (budget‑capped lines). Prefer over ori_orient for session start.",
-    { budget: z.number().optional().describe("Max lines (default 96)") },
-    async ({ budget }) => textResult(await runWake(vaultDir, budget ?? 96))
   );
 
   // ori_update_decision — record the user's answer to the update question (#34 follow-on)
@@ -731,37 +518,6 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     }
   );
 
-  // ori_status
-  server.tool("ori_status", "Vault overview", {}, async () => {
-    const result = await runStatus(vaultDir, await graphCache.get(paths.notes));
-    return textResult(result);
-  });
-
-  // ori_query
-  server.tool(
-    "ori_query",
-    "Query the vault (orphans, dangling, backlinks, cross-project)",
-    {
-      kind: z.string().describe("Query kind: orphans | dangling | backlinks | cross-project"),
-      note: z.string().optional().describe("Note title (required for backlinks)"),
-    },
-    async ({ kind, note }) => {
-      const linkGraph = await graphCache.get(paths.notes);
-      switch (kind) {
-        case "orphans":
-          return textResult(await runQueryOrphans(vaultDir, linkGraph));
-        case "dangling":
-          return textResult(await runQueryDangling(vaultDir, linkGraph));
-        case "backlinks":
-          if (!note) return errorResult("note required for backlinks query");
-          return textResult(await runQueryBacklinks(vaultDir, note, linkGraph));
-        case "cross-project":
-          return textResult(await runQueryCrossProject(vaultDir));
-        default:
-          return errorResult(`unknown query kind: ${kind}`);
-      }
-    }
-  );
 
   // ori_add
   server.tool(
@@ -842,6 +598,51 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
         graphCache.invalidate();
       }
       return textResult(result);
+    }
+  );
+
+  // memory_sql
+  server.tool(
+    "memory_sql",
+    "Read-only SQL over your memory index (SQLite). Use for questions the ranking tools " +
+      "cannot express. Views: v_note (slug, title, type, modified, access_count, inbound, " +
+      "outbound, pagerank, betweenness, q_value, exposure_count), v_link (src, dst edges), " +
+      "v_dangling (missing link targets and who cites them), v_retrieval (every note ever " +
+      "returned to you: session_id, timestamp, query_text, slug, rank, final_score), " +
+      "v_session, v_stage. Also note_project(note_id, project) and co_occurrence. " +
+      "Single SELECT/WITH/EXPLAIN/VALUES only, strings in single quotes, 200 rows and 2s max. " +
+      "Pass schema=true for full DDL. Examples: notes never retrieved — " +
+      "SELECT title FROM v_note WHERE slug NOT IN (SELECT slug FROM v_retrieval); " +
+      "surfaced but never useful — SELECT title, exposure_count FROM v_note WHERE " +
+      "exposure_count > 20 AND q_updates = 0; who cites X — SELECT src_title FROM v_link " +
+      "WHERE dst LIKE '%X%'.",
+    {
+      sql: z.string().optional().describe("A single read-only statement"),
+      limit: z.number().optional().describe("Max rows (default 200, hard cap 500)"),
+      schema: z.boolean().optional().describe("Return tables, views, DDL and row counts instead of querying"),
+    },
+    async ({ sql, limit, schema }) => {
+      if (schema === true) {
+        try {
+          return textResult({ success: true, data: describeSchema(intelligenceDbPath), warnings: [] });
+        } catch {
+          // A missing index is a state the agent can fix, not a crash.
+          return errorResult("no index at " + intelligenceDbPath + "; run ori_index_build");
+        }
+      }
+      if (sql === undefined || sql.trim() === "") {
+        return errorResult("no SQL given; pass sql, or schema=true to see what is queryable");
+      }
+      const result = await runReadOnlySql(intelligenceDbPath, sql, {
+        rowCap: Math.min(limit ?? 200, 500),
+        timeoutMs: 2000,
+      });
+      const failed = result.columns.length === 0 && result.rows.length === 0 && result.warnings.length > 0;
+      return textResult({
+        success: !failed,
+        data: { columns: result.columns, rows: result.rows, truncated: result.truncated, elapsedMs: result.elapsedMs },
+        warnings: result.warnings,
+      });
     }
   );
 
@@ -1010,93 +811,8 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     }
   );
 
-  // ori_explore_start — Navigated Recursion (v0.5.1): open a steerable session
-  server.tool(
-    "ori_explore_start",
-    "Open a NAVIGATED exploration session (pass 0 only). Returns the decomposition tree, " +
-      "a frontier of candidate directions (options, not decisions), and an exploration_id. " +
-      "YOU are the navigator: read the tree, judge whether the notes answer the question, " +
-      "then steer with ori_explore_expand or finish with ori_explore_conclude. " +
-      "Dead-end nodes mean the vault does not know — that is information, report it honestly.",
-    {
-      query: z.string().describe("Natural language question to explore"),
-      budget: z.number().optional().describe("Max expansions allowed (default: config max_recursion_depth)"),
-    },
-    async ({ query, budget }) => {
-      const result = await runExploreStart(vaultDir, query, budget ?? undefined, intelligenceDb ?? undefined);
-      return textResult(result);
-    }
-  );
 
-  // ori_explore_expand — steer the exploration
-  server.tool(
-    "ori_explore_expand",
-    "Steer an open exploration session one step. Direction is exactly one of: " +
-      "sub_question (ask your own refined question), branch (deepen a tree node by id), " +
-      "or neighbors (graph-step to unvisited neighbors of a found note). " +
-      "Returns the updated tree, the NEW notes only (diff), and a fresh frontier. Consumes one budget unit.",
-    {
-      exploration_id: z.string().describe("Session id from ori_explore_start"),
-      sub_question: z.string().optional().describe("Your own sub-question to search"),
-      branch: z.string().optional().describe("Tree node id to deepen (e.g. n2)"),
-      neighbors: z.string().optional().describe("Note title whose unvisited graph neighbors to step to"),
-      extend_budget: z.number().optional().describe("Grant this many extra expansions first (ask your user before extending repeatedly)"),
-    },
-    async ({ exploration_id, sub_question, branch, neighbors, extend_budget }) => {
-      if (extend_budget) {
-        const ext = runExploreExtend(exploration_id, extend_budget);
-        if (!ext.success) return textResult(ext);
-      }
-      let direction: { subQuestion: string } | { branch: string } | { neighbors: string };
-      if (sub_question) direction = { subQuestion: sub_question };
-      else if (branch) direction = { branch };
-      else if (neighbors) direction = { neighbors };
-      else {
-        return textResult({
-          success: false, data: {},
-          warnings: ["provide exactly one of: sub_question, branch, neighbors"],
-        });
-      }
-      const result = await runExploreExpand(exploration_id, direction);
-      return textResult(result);
-    }
-  );
 
-  // ori_explore_conclude — close the loop, flush learning signals
-  server.tool(
-    "ori_explore_conclude",
-    "Close a navigated exploration. Tell Ori whether the question was answered and which " +
-      "notes you actually used — your traversal path becomes the learning signal " +
-      "(Q-values and co-occurrence edges strengthen along the route you took).",
-    {
-      exploration_id: z.string().describe("Session id from ori_explore_start"),
-      answered: z.boolean().describe("Did the exploration answer the question?"),
-      used_notes: z.array(z.string()).optional().describe("Titles of notes that contributed to the answer"),
-    },
-    async ({ exploration_id, answered, used_notes }) => {
-      const result = runExploreConclude(exploration_id, { answered, usedNotes: used_notes ?? [] });
-      // Flush learning signals from the navigator's actual path
-      if (result.success && intelligenceDb && "usedNotes" in result.data) {
-        const used = result.data.usedNotes;
-        // Unlike the two per-query proxies removed above, this IS a real
-        // outcome: the navigator explicitly reported which notes answered the
-        // question. It stays — but routed through the sanctioned source so it
-        // is auditable in q_history and cannot be mistaken for session credit.
-        // Rewards are larger than the old proxy because the signal is real:
-        // 0.15 for an answered exploration, 0.03 when the path led nowhere.
-        for (const [rank, title] of used.entries()) {
-          const reward = (result.data.answered ? 0.15 : 0.03) / Math.log2(rank + 2);
-          updateQ(intelligenceDb, title, reward, sessionId, "explore_conclude");
-        }
-        for (let i = 0; i < used.length; i++) {
-          for (let j = i + 1; j < used.length; j++) {
-            recordCoRetrieval(intelligenceDb, used[i], used[j]);
-          }
-        }
-      }
-      return textResult(result);
-    }
-  );
 
   // ori_warmth
   server.tool(
@@ -1138,41 +854,7 @@ export async function runServeMcp(startDir: string, vaultOverride?: string) {
     }
   );
 
-  // ori_query_important
-  server.tool(
-    "ori_query_important",
-    "Notes ranked by PageRank importance — structural authority in the knowledge graph.",
-    {
-      limit: z.number().optional().describe("Max results (default 10)"),
-    },
-    async ({ limit }) => {
-      const result = await runQueryImportant(
-        vaultDir,
-        limit,
-        await graphCache.get(paths.notes),
-      );
-      return textResult(result);
-    }
-  );
 
-  // ori_query_fading (limit bug fixed)
-  server.tool(
-    "ori_query_fading",
-    "Notes losing vitality — candidates for archival or reconnection. Use ori_prune for full topology analysis.",
-    {
-      threshold: z.number().optional().describe("Vitality threshold (default 0.3)"),
-      limit: z.number().optional().describe("Max results (default 20)"),
-    },
-    async ({ threshold, limit }) => {
-      const result = await runQueryFading(
-        vaultDir,
-        threshold,
-        limit,
-        await graphCache.get(paths.notes),
-      );
-      return textResult(result);
-    }
-  );
 
   // ori_prune
   server.tool(

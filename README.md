@@ -85,7 +85,7 @@ ori bridge codex --vault ~/brain                       # ~/.codex/config.toml
 ori bridge generic --vault ~/brain                     # prints config for manual setup
 ```
 
-Claude Code, Hermes Agent, and OpenCode get full lifecycle integration — the agent orients at session start, captures insights at session end, and validates notes on write. Cursor, Codex, and other MCP clients get access to all 21 tools but manage their own session lifecycle.
+Claude Code, Hermes Agent, and OpenCode get full lifecycle integration — the agent orients at session start, captures insights at session end, and validates notes on write. Cursor, Codex, and other MCP clients get access to all 14 tools but manage their own session lifecycle.
 
 Manual MCP config (works with any client that speaks MCP):
 
@@ -219,7 +219,7 @@ All updates happen in a single SQLite transaction at session end, in order: co-o
 ## The Stack
 
 ```
-Layer 6: MCP Server                    21 tools, 5 resources — any agent talks to this
+Layer 6: MCP Server                    14 tools, 5 resources — any agent talks to this
 Layer 5: Recursive Exploration         PPR graph traversal, sub-question decomposition, convergence detection
 Layer 4: Retrieval Intelligence        Q-value reranking, co-occurrence learning, stage meta-optimization
 Layer 3: Dampening Pipeline            gravity, hub, resolution — ablation-validated
@@ -228,7 +228,7 @@ Layer 1: Knowledge Graph + Vitality    wiki-links, ACT-R decay, spreading activa
 Layer 0: Markdown files on disk        git-friendly, human-readable, portable
 ```
 
-21 MCP tools · 5 resources · 18 CLI commands · 885 tests
+14 MCP tools · 5 resources · 19 CLI commands · 874 tests
 
 ---
 
@@ -295,22 +295,39 @@ A typical session costs **~$0.10** with Ori. Without it: **~$6.00+**.
 
 | Tool | What it does |
 |------|-------------|
-| `ori_orient` | Session briefing: daily status, goals, reminders, vault health, index freshness |
+| `ori_wake` | Session boot: bounded briefing, plus onboarding on a fresh vault |
 | `ori_update` | Write to identity, goals, methodology, daily, or reminders |
-| `ori_status` | Vault overview |
+| `ori_update_decision` | Record the user's answer to an update notice |
+| `memory_sql` | Read-only SQL over the index — anything the ranking tools cannot express |
 | `ori_health` | Full diagnostics |
 | `ori_add` | Capture to inbox |
 | `ori_promote` | Promote with classification, linking, and area assignment |
 | `ori_validate` | Schema validation |
-| `ori_query` | Graph queries: orphans, dangling, backlinks, cross-project |
 | `ori_query_ranked` | Full retrieval with Q-value reranking, co-occurrence PPR, and stage meta-learning |
-| `ori_warmth` | Inspect the associative warmth field |
 | `ori_query_similar` | Semantic search (vector only, faster) |
-| `ori_query_important` | PageRank authority ranking |
-| `ori_query_fading` | Vitality-based decay detection |
+| `ori_warmth` | Inspect the associative warmth field |
 | `ori_explore` | Recursive graph traversal — PPR, sub-question decomposition, convergence detection |
 | `ori_prune` | Activation topology analysis and archive candidates |
 | `ori_index_build` | Build/update embedding index and bootstrap co-occurrence edges |
+
+Five tools were removed in favour of `memory_sql`, which answers their
+questions in one statement and is 20–46× faster because it reads the index
+instead of re-walking the vault from disk:
+
+| was | now |
+|---|---|
+| `ori_status` | `SELECT COUNT(*) FROM v_note` |
+| `ori_query orphans` | `SELECT title FROM v_note WHERE inbound = 0` |
+| `ori_query dangling` | `SELECT * FROM v_dangling` |
+| `ori_query backlinks` | `SELECT src_title FROM v_link WHERE dst = '…'` |
+| `ori_query cross-project` | `SELECT n.title FROM v_note n JOIN note_project p ON p.note_id = n.id GROUP BY n.id HAVING COUNT(DISTINCT p.project) > 1` |
+| `ori_query_important` | `SELECT title, pagerank FROM v_note ORDER BY pagerank DESC` |
+| `ori_query_fading` | `ori_prune`, which its own description already deferred to |
+
+The three navigated-exploration tools (`explore_start` / `_expand` /
+`_conclude`) were removed from MCP after six months with zero recorded
+sessions. They remain available as `ori explore-start`, `ori explore-expand`
+and `ori explore-conclude`.
 
 ---
 
@@ -426,7 +443,7 @@ Every file is plain markdown. Open it in any text editor, Obsidian, or your file
 Ori separates three install concepts:
 
 - `scope`: `global` follows one vault across the machine, `project` stays inside one repo/workspace
-- `activation`: `auto` runs `ori_orient` at session start where the adapter supports it, `manual` leaves tools available but does not auto-orient
+- `activation`: `auto` runs `ori_wake` at session start where the adapter supports it, `manual` leaves tools available but does not auto-orient
 - `vault`: explicit `--vault` wins; otherwise Ori resolves by install scope
 
 Precedence rules:

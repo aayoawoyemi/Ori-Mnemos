@@ -16,6 +16,7 @@ import {
   runQueryFading,
 } from "./cli/query.js";
 import { runValidate } from "./cli/validate.js";
+import { runSql } from "./cli/sqlcmd.js";
 import { runAdd } from "./cli/add.js";
 import { runPromote } from "./cli/promote.js";
 import { runArchive } from "./cli/archive.js";
@@ -84,6 +85,30 @@ program
   .action(async () => {
     const result = await runHealth(process.cwd());
     console.log(JSON.stringify(result));
+  });
+
+program
+  .command("sql")
+  .description("Read-only SQL over the memory index")
+  .argument("[query]", "a single SELECT/WITH/EXPLAIN/VALUES statement; omit with --schema")
+  .option("--limit <n>", "max rows returned", "1000")
+  .option("--timeout <ms>", "abort after this many milliseconds", "2000")
+  .option("--schema", "describe tables and views instead of running a query")
+  .option("--stdin", "read the query from stdin")
+  .action(async (query, options) => {
+    let sql = query;
+    if (options.stdin === true) {
+      const chunks = [];
+      for await (const chunk of process.stdin) chunks.push(chunk);
+      sql = Buffer.concat(chunks).toString("utf8");
+    }
+    const result = await runSql(process.cwd(), sql, {
+      limit: Number(options.limit),
+      timeoutMs: Number(options.timeout),
+      schema: options.schema === true,
+    });
+    console.log(JSON.stringify(result));
+    if (!result.success) process.exitCode = 1;
   });
 
 program

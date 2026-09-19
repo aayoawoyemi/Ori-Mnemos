@@ -46,12 +46,34 @@ describe("README advertises the surface that exists", () => {
     for (const claimed of claims) expect(claimed).toBe(commandCount);
   });
 
-  // A tool the README names but serve.ts does not register is worse than a
-  // wrong total: an agent reading the docs will call it and get an error.
-  it("names no tool that is not registered", () => {
-    const named = new Set(readme.match(/\bori_[a-z_]+/g) ?? []);
+  // A tool the README *offers* but serve.ts does not register is worse than a
+  // wrong total: an agent reading the table will call it and get an error.
+  //
+  // Scoped to table rows, not the whole file. The first version of this test
+  // checked every mention and immediately failed on the migration table that
+  // documents which tools were removed and what replaced them -- naming a
+  // dead tool in order to say it is dead is the opposite of the failure being
+  // guarded against. A row is `| \`ori_x\` | description |`; prose is prose.
+  it("offers no tool in its table that is not registered", () => {
+    // The README holds two tables of the same shape: what is offered, and a
+    // migration table naming removed tools so readers can find the
+    // replacement. Naming a dead tool to say it is dead is the opposite of
+    // the failure being guarded against, so the scan stops where the
+    // removal section begins.
+    const start = readme.indexOf("## MCP Tools");
+    const end = readme.indexOf("Five tools were removed", start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+
     const registered = new Set(serve.match(/ori_[a-z_]+/g) ?? []);
-    const phantom = [...named].filter((t) => !registered.has(t));
+    const offered = [
+      ...readme.slice(start, end).matchAll(/^\|\s*`(ori_[a-z_]+|memory_sql)`\s*\|/gm),
+    ].map((m) => m[1]);
+
+    expect(offered.length).toBeGreaterThan(5);
+    const phantom = [...new Set(offered)].filter(
+      (t) => t !== "memory_sql" && !registered.has(t),
+    );
     expect(phantom).toEqual([]);
   });
 });
