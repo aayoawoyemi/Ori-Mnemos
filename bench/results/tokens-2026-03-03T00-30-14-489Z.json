@@ -1,0 +1,249 @@
+{
+  "timestamp": "2026-03-03T00:30:14.489Z",
+  "pricing": {
+    "input_per_mtok": 3,
+    "output_per_mtok": 15
+  },
+  "measurements": [
+    {
+      "noteCount": 5,
+      "operations": [
+        {
+          "operation": "ori_status",
+          "inputTokens": 1,
+          "outputTokens": 40,
+          "totalTokens": 41,
+          "durationMs": 6
+        },
+        {
+          "operation": "ori_health",
+          "inputTokens": 1,
+          "outputTokens": 39,
+          "totalTokens": 40,
+          "durationMs": 55
+        },
+        {
+          "operation": "ori_query_ranked",
+          "inputTokens": 17,
+          "outputTokens": 609,
+          "totalTokens": 626,
+          "durationMs": 36
+        },
+        {
+          "operation": "ori_query_ranked (cross-domain)",
+          "inputTokens": 17,
+          "outputTokens": 600,
+          "totalTokens": 617,
+          "durationMs": 40
+        },
+        {
+          "operation": "ori_add",
+          "inputTokens": 38,
+          "outputTokens": 123,
+          "totalTokens": 161,
+          "durationMs": 41
+        },
+        {
+          "operation": "ori_promote",
+          "inputTokens": 17,
+          "outputTokens": 165,
+          "totalTokens": 182,
+          "durationMs": 20
+        },
+        {
+          "operation": "ori_orient (brief=true)",
+          "inputTokens": 4,
+          "outputTokens": 238,
+          "totalTokens": 242,
+          "durationMs": 6
+        },
+        {
+          "operation": "ori_orient (brief=false)",
+          "inputTokens": 4,
+          "outputTokens": 381,
+          "totalTokens": 385,
+          "durationMs": 6
+        },
+        {
+          "operation": "raw: read entire vault",
+          "inputTokens": 0,
+          "outputTokens": 1047,
+          "totalTokens": 1047,
+          "durationMs": 0
+        }
+      ],
+      "sessionSimulation": {
+        "totalTokens": 2624,
+        "operations": [
+          "ori_orient (brief=true)",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_add",
+          "ori_add",
+          "ori_promote"
+        ]
+      }
+    },
+    {
+      "noteCount": 50,
+      "operations": [
+        {
+          "operation": "ori_status",
+          "inputTokens": 1,
+          "outputTokens": 41,
+          "totalTokens": 42,
+          "durationMs": 19
+        },
+        {
+          "operation": "ori_health",
+          "inputTokens": 1,
+          "outputTokens": 1196,
+          "totalTokens": 1197,
+          "durationMs": 189
+        },
+        {
+          "operation": "ori_query_ranked",
+          "inputTokens": 17,
+          "outputTokens": 935,
+          "totalTokens": 952,
+          "durationMs": 129
+        },
+        {
+          "operation": "ori_query_ranked (cross-domain)",
+          "inputTokens": 17,
+          "outputTokens": 963,
+          "totalTokens": 980,
+          "durationMs": 131
+        },
+        {
+          "operation": "ori_add",
+          "inputTokens": 38,
+          "outputTokens": 123,
+          "totalTokens": 161,
+          "durationMs": 70
+        },
+        {
+          "operation": "ori_promote",
+          "inputTokens": 17,
+          "outputTokens": 166,
+          "totalTokens": 183,
+          "durationMs": 76
+        },
+        {
+          "operation": "ori_orient (brief=true)",
+          "inputTokens": 4,
+          "outputTokens": 239,
+          "totalTokens": 243,
+          "durationMs": 24
+        },
+        {
+          "operation": "ori_orient (brief=false)",
+          "inputTokens": 4,
+          "outputTokens": 382,
+          "totalTokens": 386,
+          "durationMs": 24
+        },
+        {
+          "operation": "raw: read entire vault",
+          "inputTokens": 0,
+          "outputTokens": 10200,
+          "totalTokens": 10200,
+          "durationMs": 0
+        }
+      ],
+      "sessionSimulation": {
+        "totalTokens": 3604,
+        "operations": [
+          "ori_orient (brief=true)",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_add",
+          "ori_add",
+          "ori_promote"
+        ]
+      }
+    },
+    {
+      "noteCount": 200,
+      "operations": [
+        {
+          "operation": "ori_status",
+          "inputTokens": 1,
+          "outputTokens": 41,
+          "totalTokens": 42,
+          "durationMs": 84
+        },
+        {
+          "operation": "ori_health",
+          "inputTokens": 1,
+          "outputTokens": 7097,
+          "totalTokens": 7098,
+          "durationMs": 755
+        },
+        {
+          "operation": "ori_query_ranked",
+          "inputTokens": 17,
+          "outputTokens": 686,
+          "totalTokens": 703,
+          "durationMs": 543
+        },
+        {
+          "operation": "ori_query_ranked (cross-domain)",
+          "inputTokens": 17,
+          "outputTokens": 959,
+          "totalTokens": 976,
+          "durationMs": 531
+        },
+        {
+          "operation": "ori_add",
+          "inputTokens": 38,
+          "outputTokens": 123,
+          "totalTokens": 161,
+          "durationMs": 280
+        },
+        {
+          "operation": "ori_promote",
+          "inputTokens": 17,
+          "outputTokens": 166,
+          "totalTokens": 183,
+          "durationMs": 266
+        },
+        {
+          "operation": "ori_orient (brief=true)",
+          "inputTokens": 4,
+          "outputTokens": 239,
+          "totalTokens": 243,
+          "durationMs": 107
+        },
+        {
+          "operation": "ori_orient (brief=false)",
+          "inputTokens": 4,
+          "outputTokens": 382,
+          "totalTokens": 386,
+          "durationMs": 107
+        },
+        {
+          "operation": "raw: read entire vault",
+          "inputTokens": 0,
+          "outputTokens": 40445,
+          "totalTokens": 40445,
+          "durationMs": 0
+        }
+      ],
+      "sessionSimulation": {
+        "totalTokens": 2857,
+        "operations": [
+          "ori_orient (brief=true)",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_query_ranked",
+          "ori_add",
+          "ori_add",
+          "ori_promote"
+        ]
+      }
+    }
+  ]
+}

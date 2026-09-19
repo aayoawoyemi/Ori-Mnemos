@@ -14,36 +14,50 @@ Persistent memory across sessions, clients, and machines. Zero-infrastructure re
 
 ### HotpotQA — Multi-Hop Retrieval
 
-Head-to-head against [Mem0](https://github.com/mem0ai/mem0), the most widely adopted agent memory system. HotpotQA tests multi-hop reasoning — questions that require connecting information across multiple documents to answer.
+Head-to-head against [Mem0](https://github.com/mem0ai/mem0). Both systems indexed the
+same documents and answered the same questions in the same run.
 
-| Metric | Ori Mnemos | Mem0 | Δ |
-|--------|:----------:|:----:|:-:|
-| Recall@5 | **90%** | 29% | **3.1×** |
-| F1 Score | **0.68** | 0.33 | **2.1×** |
-| Latency (avg) | **120ms** | 1,140ms | **9.5× faster** |
+| Metric | Ori Mnemos | Mem0 1.0.6 | Δ |
+|--------|:----------:|:----------:|:-:|
+| Recall@5 | **0.87** | 0.29 | **3.0×** |
+| MRR | **0.91** | 0.42 | **2.2×** |
+| Retrieval F1 | **0.51** | 0.26 | **2.0×** |
+| Answer proxy | **0.73** | 0.34 | **2.1×** |
 | Infrastructure | Markdown + SQLite | Redis + Qdrant + cloud | — |
 
-Ori retrieves the right information 3× more often, scores 2× higher on answer quality, and does it 9.5× faster — on markdown files with a SQLite index. No cloud services. No API keys. Full evaluation code in [`bench/`](./bench/).
+`n = 50`, single run, no seed averaging, `topK = 5`. Mem0 at **1.0.6** (March 2026);
+**2.x is not yet re-run**, so read this as a point-in-time comparison, not a current
+one. Raw output: [`bench/results/`](./bench/results/), reproduce with
+[`bench/hotpotqa-eval.ts`](./bench/hotpotqa-eval.ts) and
+[`bench/mem0-hotpotqa.py`](./bench/mem0-hotpotqa.py).
+
+Latency is not reported here. The evaluation harness does not record it, so any
+number would be recalled rather than measured. What is measured is that Ori answers
+from markdown plus a local SQLite index with **no API key and no network**.
 
 ### LoCoMo — Long-Term Conversational Memory
 
-Evaluated on [LoCoMo](https://github.com/snap-research/locomo) (Maharana et al., 2024) — the standard benchmark for long-term conversational memory. 10 conversations, 695 questions across single-hop, multi-hop, and temporal reasoning.
+695 questions over 10 conversations, GPT-4.1-mini for answer generation, BM25 +
+embedding + PageRank fusion for retrieval.
 
-| System | Single-hop | Multi-hop | Infrastructure |
-|--------|:----------:|:---------:|----------------|
-| MemoryBank | 5.00 | — | Custom server |
-| ReadAgent | 9.15 | — | LLM-based |
-| A-Mem | 20.76 | — | Cloud APIs |
-| MemGPT / Letta | 26.65 | — | PostgreSQL + cloud |
-| LangMem | 35.51 | 26.04 | Cloud APIs |
-| OpenAI Memory | 34.30 | — | OpenAI proprietary |
-| Zep | 35.74 | 19.37 | PostgreSQL + cloud |
-| **Mem0** | **38.72** | **28.64** | Redis + Qdrant + cloud |
-| **Ori Mnemos** | **37.69** | **29.31** | **Markdown on disk** |
+| Category | Answer F1 | Recall | MRR | n |
+|---|:---:|:---:|:---:|:---:|
+| single-hop | **0.757** | 0.864 | 0.728 | 321 |
+| multi-hop | **0.670** | 0.530 | 0.603 | 282 |
+| temporal | **0.479** | 0.550 | 0.486 | 92 |
+| overall | **0.685** | 0.687 | 0.645 | 695 |
 
-Baseline numbers from [Mem0 paper](https://arxiv.org/abs/2504.19413) (Table 1). Ori evaluated with GPT-4.1-mini for answer generation, BM25 + embedding + PageRank fusion for retrieval.
+Temporal is the weak category and is reported as such. Raw output:
+`bench/results/locomo-eval-2026-03-20T06-16-41-585Z.json`.
 
-More benchmarks coming — including [LoCoMo-Plus](https://github.com/snap-research/locomo) (Level-2 cognitive memory) and adversarial refusal evaluation.
+**No comparison table against published LoCoMo leaderboards is given, on purpose.**
+Those numbers are an LLM-judge score; the above is answer F1. They are different
+quantities and putting them in one column would invent a ranking rather than report
+one. A previous version of this README did exactly that.
+
+LoCoMo itself also has known defects — 6.4% of questions carry wrong answer keys, and
+the standard judge accepts a majority of wrong answers — so a close result on it is
+weak evidence in either direction.
 
 ---
 

@@ -1,0 +1,676 @@
+{
+ "kdefault": {
+  "k": "default",
+  "n": 24,
+  "hit1": 23,
+  "hit5": 24,
+  "mrr": 0.979,
+  "rows": [
+   [
+    "Resume J",
+    0,
+    "vault-retrieval-audit-2026-09-06-stale-index-no-lexical",
+    0.0399
+   ],
+   [
+    "Marvel Rivals",
+    0,
+    "vault-retrieval-audit-2026-09-06-stale-index-no-lexical",
+    0.0464
+   ],
+   [
+    "Walnut Grove",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.0417
+   ],
+   [
+    "Ibukun Awoyemi",
+    0,
+    "ibk-college-resume-intake-round-1",
+    0.0454
+   ],
+   [
+    "Zenodo DOI",
+    1,
+    "upload-rmh-paper-to-zenodo-and-ssrn-tomorrow-for-formal",
+    0.0535
+   ],
+   [
+    "ligature fix",
+    0,
+    "ats-research-2026-and-the-ligature-fix-that-recovered-s",
+    0.0467
+   ],
+   [
+    "Tectonic",
+    0,
+    "overleaf-cli-options-for-resume-iteration",
+    0.0296
+   ],
+   [
+    "Sean Akadiri",
+    0,
+    "sean-akadiri-spoke-at-aayos-org-event-in-may-and-dmed-h",
+    0.0734
+   ],
+   [
+    "AgBoost",
+    0,
+    "the-agboost-role-is-operations-manager-reporting-to-the",
+    0.0353
+   ],
+   [
+    "Black Business Network",
+    0,
+    "bbn-was-founded-at-ou-to-address-fragmentation-among-bl",
+    0.0587
+   ],
+   [
+    "Smallville reflection",
+    0,
+    "smallville-reflection-trigger-fires-when-importance-acc",
+    0.0631
+   ],
+   [
+    "graphology",
+    0,
+    "graphology is the right TypeScript library for Ori grap",
+    0.0405
+   ],
+   [
+    "LinUCB",
+    0,
+    "twenty-four-stage-meta-learning-sources-cover-linucb-co",
+    0.0262
+   ],
+   [
+    "MiniLM",
+    0,
+    "embedding-model-upgrade-path-moves-from-minilm-to-bge-s",
+    0.0304
+   ],
+   [
+    "Pearson VUE",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.0361
+   ],
+   [
+    "Jubilee GHL",
+    0,
+    "jubilee-vault-schema-has-four-zones-business-dna-knowle",
+    0.0632
+   ],
+   [
+    "PRISM metric",
+    0,
+    "luma-arc-rename-architecture-and-seo-migration-plan",
+    0.0464
+   ],
+   [
+    "Court Coin AMM",
+    0,
+    "court-coin-pre-launch-amm-simulation-belongs-in-litesvm",
+    0.0727
+   ],
+   [
+    "OOTP baseball",
+    0,
+    "ootp-baseball-26-league-balance-follows-nba-style-hiera",
+    0.0739
+   ],
+   [
+    "Polymarket agents",
+    0,
+    "polymarket-architecture-is-off-chain-clob-matching-with",
+    0.0328
+   ],
+   [
+    "Kimi K2.5",
+    0,
+    "summary-kimi-k25-tech-blog-visual-agentic-intelligence-",
+    0.06
+   ],
+   [
+    "Terminal-Bench",
+    0,
+    "terminal-bench-and-harbor-framework-are-the-standardize",
+    0.041
+   ],
+   [
+    "A-MEM zettelkasten",
+    0,
+    "collision-as-enrichment means duplicates merge contradi",
+    0.046
+   ],
+   [
+    "Ebbinghaus decay",
+    0,
+    "Ebbinghaus forgetting curve is validated in both biolog",
+    0.0487
+   ]
+  ],
+  "secs": 108.1
+ },
+ "k10": {
+  "k": "10",
+  "n": 24,
+  "hit1": 23,
+  "hit5": 24,
+  "mrr": 0.979,
+  "rows": [
+   [
+    "Resume J",
+    0,
+    "vault-retrieval-audit-2026-09-06-stale-index-no-lexical",
+    0.2202
+   ],
+   [
+    "Marvel Rivals",
+    0,
+    "vault-retrieval-audit-2026-09-06-stale-index-no-lexical",
+    0.2571
+   ],
+   [
+    "Walnut Grove",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.2275
+   ],
+   [
+    "Ibukun Awoyemi",
+    0,
+    "ibk-college-resume-intake-round-1",
+    0.2519
+   ],
+   [
+    "Zenodo DOI",
+    1,
+    "upload-rmh-paper-to-zenodo-and-ssrn-tomorrow-for-formal",
+    0.2957
+   ],
+   [
+    "ligature fix",
+    0,
+    "ats-research-2026-and-the-ligature-fix-that-recovered-s",
+    0.2587
+   ],
+   [
+    "Tectonic",
+    0,
+    "overleaf-cli-options-for-resume-iteration",
+    0.1644
+   ],
+   [
+    "Sean Akadiri",
+    0,
+    "sean-akadiri-spoke-at-aayos-org-event-in-may-and-dmed-h",
+    0.2022
+   ],
+   [
+    "AgBoost",
+    0,
+    "agboost-runs-laravel-on-nginx-behind-a-webflow-marketin",
+    0.1657
+   ],
+   [
+    "Black Business Network",
+    0,
+    "aayos-work-history-is-only-the-analytics-internship-and",
+    0.2583
+   ],
+   [
+    "Smallville reflection",
+    0,
+    "smallville-reflection-trigger-fires-when-importance-acc",
+    0.3499
+   ],
+   [
+    "graphology",
+    0,
+    "graphology is the right TypeScript library for Ori grap",
+    0.223
+   ],
+   [
+    "LinUCB",
+    0,
+    "twenty-four-stage-meta-learning-sources-cover-linucb-co",
+    0.1455
+   ],
+   [
+    "MiniLM",
+    0,
+    "embedding-model-upgrade-path-moves-from-minilm-to-bge-s",
+    0.1637
+   ],
+   [
+    "Pearson VUE",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.2003
+   ],
+   [
+    "Jubilee GHL",
+    0,
+    "jubilee-vault-schema-has-four-zones-business-dna-knowle",
+    0.3435
+   ],
+   [
+    "PRISM metric",
+    0,
+    "luma-arc-rename-architecture-and-seo-migration-plan",
+    0.2574
+   ],
+   [
+    "Court Coin AMM",
+    0,
+    "court-coin-pre-launch-amm-simulation-belongs-in-litesvm",
+    0.3694
+   ],
+   [
+    "OOTP baseball",
+    0,
+    "session-continuity-check-2026-04-13",
+    0.2855
+   ],
+   [
+    "Polymarket agents",
+    0,
+    "polymarket-architecture-is-off-chain-clob-matching-with",
+    0.1636
+   ],
+   [
+    "Kimi K2.5",
+    0,
+    "summary-kimi-k25-tech-blog-visual-agentic-intelligence-",
+    0.3284
+   ],
+   [
+    "Terminal-Bench",
+    0,
+    "terminal-bench-and-harbor-framework-are-the-standardize",
+    0.2273
+   ],
+   [
+    "A-MEM zettelkasten",
+    0,
+    "A-MEM is the closest published architecture to Ori beca",
+    0.2435
+   ],
+   [
+    "Ebbinghaus decay",
+    0,
+    "Ebbinghaus forgetting curve is validated in both biolog",
+    0.2682
+   ]
+  ],
+  "secs": 70.0
+ },
+ "k3": {
+  "k": "3",
+  "n": 24,
+  "hit1": 22,
+  "hit5": 24,
+  "mrr": 0.958,
+  "rows": [
+   [
+    "Resume J",
+    0,
+    "retrieval-fix-shipped-2026-09-06-the-bandit-had-learned",
+    0.3075
+   ],
+   [
+    "Marvel Rivals",
+    0,
+    "retrieval-fix-shipped-2026-09-06-the-bandit-had-learned",
+    0.3613
+   ],
+   [
+    "Walnut Grove",
+    1,
+    "ori-needs-a-full-inkreact-tui-app-not-just-cli-formatti",
+    0.3391
+   ],
+   [
+    "Ibukun Awoyemi",
+    0,
+    "ibk-college-resume-intake-round-1",
+    0.3464
+   ],
+   [
+    "Zenodo DOI",
+    1,
+    "upload-rmh-paper-to-zenodo-and-ssrn-tomorrow-for-formal",
+    0.4042
+   ],
+   [
+    "ligature fix",
+    0,
+    "ats-research-2026-and-the-ligature-fix-that-recovered-s",
+    0.3558
+   ],
+   [
+    "Tectonic",
+    0,
+    "compaction-at-2026-08-28t034356047z-6-insights-saved",
+    0.3239
+   ],
+   [
+    "Sean Akadiri",
+    0,
+    "sean-akadiri-spoke-at-aayos-org-event-in-may-and-dmed-h",
+    0.5502
+   ],
+   [
+    "AgBoost",
+    0,
+    "sean-akadiri-spoke-at-aayos-org-event-in-may-and-dmed-h",
+    0.3407
+   ],
+   [
+    "Black Business Network",
+    0,
+    "bbn-was-founded-at-ou-to-address-fragmentation-among-bl",
+    0.4479
+   ],
+   [
+    "Smallville reflection",
+    0,
+    "smallville-reflection-trigger-fires-when-importance-acc",
+    0.4811
+   ],
+   [
+    "graphology",
+    0,
+    "graphology is the right TypeScript library for Ori grap",
+    0.6058
+   ],
+   [
+    "LinUCB",
+    0,
+    "ori-retrieval-intelligence-final-build-plan-synthesizes",
+    0.2249
+   ],
+   [
+    "MiniLM",
+    0,
+    "ai-researcher-code-analysis-reveals-latex-targz-ingesti",
+    0.2582
+   ],
+   [
+    "Pearson VUE",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.2754
+   ],
+   [
+    "Jubilee GHL",
+    0,
+    "jubilee-vault-schema-has-four-zones-business-dna-knowle",
+    0.4631
+   ],
+   [
+    "PRISM metric",
+    0,
+    "luma-arc-rename-architecture-and-seo-migration-plan",
+    0.354
+   ],
+   [
+    "Court Coin AMM",
+    0,
+    "court-coin-long-term-vision-is-cc-as-protocol-infrastru",
+    0.4411
+   ],
+   [
+    "OOTP baseball",
+    0,
+    "ootp-baseball-26-league-balance-follows-nba-style-hiera",
+    0.5549
+   ],
+   [
+    "Polymarket agents",
+    0,
+    "Polymarket but for AI agents where autonomous agents ar",
+    0.4252
+   ],
+   [
+    "Kimi K2.5",
+    0,
+    "summary-kimi-k25-tech-blog-visual-agentic-intelligence-",
+    0.4444
+   ],
+   [
+    "Terminal-Bench",
+    0,
+    "terminal-bench-and-harbor-framework-are-the-standardize",
+    0.3125
+   ],
+   [
+    "A-MEM zettelkasten",
+    0,
+    "A-MEM is the closest published architecture to Ori beca",
+    0.6695
+   ],
+   [
+    "Ebbinghaus decay",
+    0,
+    "Ebbinghaus forgetting curve is validated in both biolog",
+    0.7291
+   ]
+  ],
+  "secs": 71.0
+ },
+ "norm_k10": {
+  "k": "10",
+  "n": 24,
+  "hit1": 16,
+  "hit5": 20,
+  "mrr": 0.729,
+  "rows": [
+   [
+    "Resume J",
+    0,
+    "ibk-college-resume-v2-one-page-ut-dallas-cs-2030",
+    0.0582
+   ],
+   [
+    "Marvel Rivals",
+    -1,
+    "derived-ev-box-plus-beats-shipped-by-sixty-seven-percen",
+    0.03
+   ],
+   [
+    "Walnut Grove",
+    3,
+    "agboost-is-a-five-person-norman-oklahoma-company-so-exp",
+    0.0339
+   ],
+   [
+    "Ibukun Awoyemi",
+    0,
+    "ibk-college-resume-intake-round-1",
+    0.0455
+   ],
+   [
+    "Zenodo DOI",
+    1,
+    "upload-rmh-paper-to-zenodo-and-ssrn-tomorrow-for-formal",
+    0.0684
+   ],
+   [
+    "ligature fix",
+    0,
+    "ats-research-2026-and-the-ligature-fix-that-recovered-s",
+    0.0727
+   ],
+   [
+    "Tectonic",
+    -1,
+    "compaction-at-2026-07-25t030623937z-0-insights-saved",
+    0.0375
+   ],
+   [
+    "Sean Akadiri",
+    0,
+    "sean-akadiri-spoke-at-aayos-org-event-in-may-and-dmed-h",
+    0.0759
+   ],
+   [
+    "AgBoost",
+    0,
+    "agboost-is-a-five-person-norman-oklahoma-company-so-exp",
+    0.0808
+   ],
+   [
+    "Black Business Network",
+    0,
+    "bbn-was-founded-at-ou-to-address-fragmentation-among-bl",
+    0.0727
+   ],
+   [
+    "Smallville reflection",
+    0,
+    "smallville-reflection-trigger-fires-when-importance-acc",
+    0.0909
+   ],
+   [
+    "graphology",
+    0,
+    "graphology is the right TypeScript library for Ori grap",
+    0.0804
+   ],
+   [
+    "LinUCB",
+    -1,
+    "fs-memory-literature-detailed-reading-notes-byterover-c",
+    0.0307
+   ],
+   [
+    "MiniLM",
+    0,
+    "embedding-model-upgrade-path-moves-from-minilm-to-bge-s",
+    0.0382
+   ],
+   [
+    "Pearson VUE",
+    -1,
+    "data-workshop-deep-dive-2-ai-searchgeo-citation-mechani",
+    0.03
+   ],
+   [
+    "Jubilee GHL",
+    0,
+    "jubilee-ghl-v2-deep-probe-success-full-business-map-inb",
+    0.0816
+   ],
+   [
+    "PRISM metric",
+    3,
+    "prism-research-lab-founding-principles-and-operational-",
+    0.0639
+   ],
+   [
+    "Court Coin AMM",
+    0,
+    "court-coin-launch-framing-should-be-prove-you-know-ball",
+    0.0659
+   ],
+   [
+    "OOTP baseball",
+    0,
+    "ootp-baseball-26-league-balance-follows-nba-style-hiera",
+    0.0808
+   ],
+   [
+    "Polymarket agents",
+    0,
+    "Polymarket but for AI agents where autonomous agents ar",
+    0.0685
+   ],
+   [
+    "Kimi K2.5",
+    1,
+    "summary-kimi-k25---google-search",
+    0.0841
+   ],
+   [
+    "Terminal-Bench",
+    0,
+    "terminal-bench-and-harbor-framework-are-the-standardize",
+    0.0727
+   ],
+   [
+    "A-MEM zettelkasten",
+    0,
+    "A-MEM is the closest published architecture to Ori beca",
+    0.0452
+   ],
+   [
+    "Ebbinghaus decay",
+    0,
+    "memory-bear-unifies-act-r-base-level-learning-with-ebbi",
+    0.0703
+   ]
+  ],
+  "secs": 107.7
+ },
+ "sem_kdefault": {
+  "k": "default",
+  "n": 8,
+  "hit1": 7,
+  "hit5": 8,
+  "mrr": 0.938,
+  "rows": [
+   [
+    "how should an agent forget old memories",
+    0,
+    "FadeMem implements Ebbinghaus forgetting curve for prin",
+    0.0472
+   ],
+   [
+    "retention product for mortgage brokers after closing",
+    0,
+    "mortgage-crm-agent-is-the-first-concrete-vertical-provi",
+    0.0592
+   ],
+   [
+    "why code-acting agents beat tool calling",
+    0,
+    "code-acting-agents-beat-tool-calling-agents-by-20-perce",
+    0.098
+   ],
+   [
+    "measuring player impact from lineup data",
+    0,
+    "identity-split-normalization-dry-run-with-lineup-collis",
+    0.0389
+   ],
+   [
+    "when a memory system learns from its own usage",
+    0,
+    "degenerate feedback loops make auto-classification self",
+    0.0362
+   ],
+   [
+    "how I position myself for basketball analytics jobs",
+    1,
+    "summary-think-anywhere-in-code-generation",
+    0.0491
+   ],
+   [
+    "structure of the note vault and its zones",
+    0,
+    "jubilee-vault-schema-has-four-zones-business-dna-knowle",
+    0.0411
+   ],
+   [
+    "athlete share trading on solana",
+    0,
+    "court-coin-long-term-vision-is-cc-as-protocol-infrastru",
+    0.0516
+   ]
+  ],
+  "secs": 21.6
+ }
+}

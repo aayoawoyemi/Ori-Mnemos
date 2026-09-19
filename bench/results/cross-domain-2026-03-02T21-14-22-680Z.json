@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-03-02T21:14:22.680Z",
+  "noteCount": 20,
+  "queryCount": 10,
+  "topK": 5,
+  "embeddingsAvailable": true,
+  "aggregate": {
+    "overall": {
+      "meanPrecision": 0.4800000000000001,
+      "meanRecall": 0.7916666666666667,
+      "meanF1": 0.5793650793650793,
+      "meanMRR": 0.95
+    },
+    "crossDomain": {
+      "meanF1": 0.6269841269841271,
+      "meanMRR": 0.9285714285714286
+    },
+    "singleDomain": {
+      "meanF1": 0.46825396825396837,
+      "meanMRR": 1
+    }
+  },
+  "perQuery": [
+    {
+      "query": "how do token incentives improve basketball court engagement",
+      "crossDomain": true,
+      "precision": 0.4,
+      "recall": 0.5,
+      "f1": 0.4444444444444445,
+      "mrr": 1
+    },
+    {
+      "query": "how can reputation scores work across different platforms",
+      "crossDomain": true,
+      "precision": 0.8,
+      "recall": 1,
+      "f1": 0.888888888888889,
+      "mrr": 1
+    },
+    {
+      "query": "why does anonymous voting matter for community governance",
+      "crossDomain": true,
+      "precision": 0.8,
+      "recall": 1,
+      "f1": 0.888888888888889,
+      "mrr": 1
+    },
+    {
+      "query": "how should AI agents earn trust over time",
+      "crossDomain": true,
+      "precision": 0.6,
+      "recall": 1,
+      "f1": 0.7499999999999999,
+      "mrr": 1
+    },
+    {
+      "query": "what prevents reward farming and gaming the system",
+      "crossDomain": true,
+      "precision": 0.6,
+      "recall": 0.75,
+      "f1": 0.6666666666666665,
+      "mrr": 1
+    },
+    {
+      "query": "how can Discord channel history improve agent memory",
+      "crossDomain": true,
+      "precision": 0.4,
+      "recall": 0.6666666666666666,
+      "f1": 0.5,
+      "mrr": 1
+    },
+    {
+      "query": "what is the best way to match basketball players by skill",
+      "crossDomain": false,
+      "precision": 0.4,
+      "recall": 1,
+      "f1": 0.5714285714285715,
+      "mrr": 1
+    },
+    {
+      "query": "how does semantic search compare to keyword search for retrieval",
+      "crossDomain": false,
+      "precision": 0.4,
+      "recall": 0.6666666666666666,
+      "f1": 0.5,
+      "mrr": 1
+    },
+    {
+      "query": "how does governance capture happen and how to prevent it",
+      "crossDomain": true,
+      "precision": 0.2,
+      "recall": 0.3333333333333333,
+      "f1": 0.25,
+      "mrr": 0.5
+    },
+    {
+      "query": "what role does weather play in court booking",
+      "crossDomain": false,
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    }
+  ]
+}

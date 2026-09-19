@@ -43,10 +43,13 @@ ROADMAP.md
 .mcpregistry_registry_token
 mcp-publisher.exe
 
-# Benchmark data (large datasets)
+# Benchmark INPUTS only. Public datasets, 48MB, fetched not authored:
+#   bench/data/hotpotqa-dev.json  https://hotpotqa.github.io/  (44MB)
+#   bench/data/locomo10.json      https://github.com/snap-research/locomo
 bench/data/
-# Benchmark results (local runs)
-bench/results/
+
+# bench/results/ is deliberately NOT ignored. The README quotes those numbers,
+# and a benchmark claim whose output nobody can open is a claim on trust. 3.5MB.
 
 # Local agent scratch (Aries session state, REPL traces)
 .aries/

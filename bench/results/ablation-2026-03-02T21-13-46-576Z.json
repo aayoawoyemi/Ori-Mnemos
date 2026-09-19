@@ -1,0 +1,303 @@
+{
+  "timestamp": "2026-03-02T21:13:46.577Z",
+  "topK": 5,
+  "noteCount": 18,
+  "queryCount": 12,
+  "embeddingsAvailable": false,
+  "results": [
+    {
+      "config": "BM25 only",
+      "mask": {
+        "composite": false,
+        "keyword": true,
+        "graph": false
+      },
+      "meanPrecision": 0.4666666666666668,
+      "meanRecall": 0.861111111111111,
+      "meanF1": 0.599537037037037,
+      "meanMRR": 0.9583333333333334,
+      "perQuery": [
+        {
+          "query": "how does agent memory handle temporal context",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what is BM25 and why do we use keyword search",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how does personalized pagerank work in retrieval",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 1
+        },
+        {
+          "query": "why did we choose score weighted RRF over simple fusion",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how can kashi tokens improve courtshare engagement",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "why did the fake point system fail for user retention",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what are bridge notes and why do they matter",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "how does vitality decay work for notes",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what connects crypto and courtshare projects",
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444444444444445,
+          "mrr": 1
+        },
+        {
+          "query": "how does the discord bot route messages to agents",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 1
+        },
+        {
+          "query": "what blocks the real time court booking feature",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how are communities detected in the knowledge graph",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 0.5
+        }
+      ]
+    },
+    {
+      "config": "Graph only",
+      "mask": {
+        "composite": false,
+        "keyword": false,
+        "graph": true
+      },
+      "meanPrecision": 0.26666666666666666,
+      "meanRecall": 0.48611111111111116,
+      "meanF1": 0.3406084656084656,
+      "meanMRR": 0.5930555555555556,
+      "perQuery": [
+        {
+          "query": "how does agent memory handle temporal context",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 1
+        },
+        {
+          "query": "what is BM25 and why do we use keyword search",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 1
+        },
+        {
+          "query": "how does personalized pagerank work in retrieval",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 1
+        },
+        {
+          "query": "why did we choose score weighted RRF over simple fusion",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 0.3333333333333333
+        },
+        {
+          "query": "how can kashi tokens improve courtshare engagement",
+          "precision": 0.2,
+          "recall": 0.3333333333333333,
+          "f1": 0.25,
+          "mrr": 0.5
+        },
+        {
+          "query": "why did the fake point system fail for user retention",
+          "precision": 0.2,
+          "recall": 0.3333333333333333,
+          "f1": 0.25,
+          "mrr": 0.5
+        },
+        {
+          "query": "what are bridge notes and why do they matter",
+          "precision": 0.2,
+          "recall": 0.3333333333333333,
+          "f1": 0.25,
+          "mrr": 0.2
+        },
+        {
+          "query": "how does vitality decay work for notes",
+          "precision": 0.2,
+          "recall": 0.3333333333333333,
+          "f1": 0.25,
+          "mrr": 0.25
+        },
+        {
+          "query": "what connects crypto and courtshare projects",
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444444444444445,
+          "mrr": 0.5
+        },
+        {
+          "query": "how does the discord bot route messages to agents",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 1
+        },
+        {
+          "query": "what blocks the real time court booking feature",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 0.5
+        },
+        {
+          "query": "how are communities detected in the knowledge graph",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 0.3333333333333333
+        }
+      ]
+    },
+    {
+      "config": "BM25 + Graph",
+      "mask": {
+        "composite": false,
+        "keyword": true,
+        "graph": true
+      },
+      "meanPrecision": 0.4666666666666668,
+      "meanRecall": 0.861111111111111,
+      "meanF1": 0.599537037037037,
+      "meanMRR": 0.9583333333333334,
+      "perQuery": [
+        {
+          "query": "how does agent memory handle temporal context",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what is BM25 and why do we use keyword search",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how does personalized pagerank work in retrieval",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 1
+        },
+        {
+          "query": "why did we choose score weighted RRF over simple fusion",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how can kashi tokens improve courtshare engagement",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "why did the fake point system fail for user retention",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what are bridge notes and why do they matter",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "how does vitality decay work for notes",
+          "precision": 0.6,
+          "recall": 1,
+          "f1": 0.7499999999999999,
+          "mrr": 1
+        },
+        {
+          "query": "what connects crypto and courtshare projects",
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444444444444445,
+          "mrr": 1
+        },
+        {
+          "query": "how does the discord bot route messages to agents",
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "mrr": 1
+        },
+        {
+          "query": "what blocks the real time court booking feature",
+          "precision": 0.4,
+          "recall": 1,
+          "f1": 0.5714285714285715,
+          "mrr": 1
+        },
+        {
+          "query": "how are communities detected in the knowledge graph",
+          "precision": 0.4,
+          "recall": 0.6666666666666666,
+          "f1": 0.5,
+          "mrr": 0.5
+        }
+      ]
+    }
+  ]
+}

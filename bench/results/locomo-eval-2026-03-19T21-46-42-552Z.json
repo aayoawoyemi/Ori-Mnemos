@@ -1,0 +1,432 @@
+{
+  "timestamp": "2026-03-19T21:46:42.552Z",
+  "topK": 5,
+  "embeddingsUsed": true,
+  "totalQuestions": 20,
+  "aggregate": {
+    "meanPrecision": 0.13,
+    "meanRecall": 0.5166666666666667,
+    "meanF1": 0.2029761904761905,
+    "meanMRR": 0.525
+  },
+  "byCategory": [
+    {
+      "category": 2,
+      "name": "single-hop",
+      "count": 10,
+      "meanPrecision": 0.15999999999999998,
+      "meanRecall": 0.8,
+      "meanF1": 0.2666666666666667,
+      "meanMRR": 0.7
+    },
+    {
+      "category": 3,
+      "name": "temporal",
+      "count": 2,
+      "meanPrecision": 0.1,
+      "meanRecall": 0.25,
+      "meanF1": 0.14285714285714288,
+      "meanMRR": 0.5
+    },
+    {
+      "category": 1,
+      "name": "multi-hop",
+      "count": 8,
+      "meanPrecision": 0.1,
+      "meanRecall": 0.22916666666666666,
+      "meanF1": 0.13839285714285715,
+      "meanMRR": 0.3125
+    }
+  ],
+  "perQuery": [
+    {
+      "sampleId": "conv-26",
+      "question": "When did Caroline go to the LGBTQ support group?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-1",
+        "conv-26-session-10",
+        "conv-26-session-13",
+        "conv-26-session-12",
+        "conv-26-session-5"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When did Melanie paint a sunrise?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-1",
+        "conv-26-session-13",
+        "conv-26-session-14",
+        "conv-26-session-17",
+        "conv-26-session-18"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What fields would Caroline be likely to pursue in her educaton?",
+      "category": 3,
+      "evidenceSessions": [
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-7",
+        "conv-26-session-13",
+        "conv-26-session-18",
+        "conv-26-session-17",
+        "conv-26-session-2"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What did Caroline research?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-2"
+      ],
+      "retrieved": [
+        "conv-26-session-1",
+        "conv-26-session-17",
+        "conv-26-session-8",
+        "conv-26-session-13",
+        "conv-26-session-14"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What is Caroline's identity?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-13",
+        "conv-26-session-11",
+        "conv-26-session-16",
+        "conv-26-session-3",
+        "conv-26-session-9"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When did Melanie run a charity race?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-2"
+      ],
+      "retrieved": [
+        "conv-26-session-2",
+        "conv-26-session-18",
+        "conv-26-session-13",
+        "conv-26-session-14",
+        "conv-26-session-15"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When is Melanie planning on going camping?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-2"
+      ],
+      "retrieved": [
+        "conv-26-session-14",
+        "conv-26-session-18",
+        "conv-26-session-9",
+        "conv-26-session-6",
+        "conv-26-session-4"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What is Caroline's relationship status?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-3",
+        "conv-26-session-2"
+      ],
+      "retrieved": [
+        "conv-26-session-1",
+        "conv-26-session-17",
+        "conv-26-session-6",
+        "conv-26-session-7",
+        "conv-26-session-9"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When did Caroline give a speech at a school?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-3"
+      ],
+      "retrieved": [
+        "conv-26-session-3",
+        "conv-26-session-18",
+        "conv-26-session-13",
+        "conv-26-session-2",
+        "conv-26-session-5"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When did Caroline meet up with her friends, family, and mentors?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-3"
+      ],
+      "retrieved": [
+        "conv-26-session-2",
+        "conv-26-session-3",
+        "conv-26-session-7",
+        "conv-26-session-16",
+        "conv-26-session-10"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 0.5
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "How long has Caroline had her current group of friends for?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-3"
+      ],
+      "retrieved": [
+        "conv-26-session-10",
+        "conv-26-session-1",
+        "conv-26-session-17",
+        "conv-26-session-2",
+        "conv-26-session-12"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "Where did Caroline move from 4 years ago?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-3",
+        "conv-26-session-4"
+      ],
+      "retrieved": [
+        "conv-26-session-3",
+        "conv-26-session-8",
+        "conv-26-session-15",
+        "conv-26-session-16",
+        "conv-26-session-14"
+      ],
+      "precision": 0.2,
+      "recall": 0.5,
+      "f1": 0.28571428571428575,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "How long ago was Caroline's 18th birthday?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-4"
+      ],
+      "retrieved": [
+        "conv-26-session-4",
+        "conv-26-session-11",
+        "conv-26-session-16",
+        "conv-26-session-15",
+        "conv-26-session-3"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What career path has Caroline decided to persue?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-4",
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-4",
+        "conv-26-session-7",
+        "conv-26-session-1",
+        "conv-26-session-16",
+        "conv-26-session-2"
+      ],
+      "precision": 0.4,
+      "recall": 1,
+      "f1": 0.5714285714285715,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "Would Caroline still want to pursue counseling as a career if she hadn't received support growing up?",
+      "category": 3,
+      "evidenceSessions": [
+        "conv-26-session-4",
+        "conv-26-session-3"
+      ],
+      "retrieved": [
+        "conv-26-session-4",
+        "conv-26-session-7",
+        "conv-26-session-17",
+        "conv-26-session-1",
+        "conv-26-session-5"
+      ],
+      "precision": 0.2,
+      "recall": 0.5,
+      "f1": 0.28571428571428575,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What activities does Melanie partake in?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-5",
+        "conv-26-session-9",
+        "conv-26-session-1"
+      ],
+      "retrieved": [
+        "conv-26-session-13",
+        "conv-26-session-5",
+        "conv-26-session-15",
+        "conv-26-session-11",
+        "conv-26-session-17"
+      ],
+      "precision": 0.2,
+      "recall": 0.3333333333333333,
+      "f1": 0.25,
+      "mrr": 0.5
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When did Melanie sign up for a pottery class?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-5"
+      ],
+      "retrieved": [
+        "conv-26-session-16",
+        "conv-26-session-5",
+        "conv-26-session-14",
+        "conv-26-session-12",
+        "conv-26-session-8"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 0.5
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "When is Caroline going to the transgender conference?",
+      "category": 2,
+      "evidenceSessions": [
+        "conv-26-session-5"
+      ],
+      "retrieved": [
+        "conv-26-session-5",
+        "conv-26-session-9",
+        "conv-26-session-7",
+        "conv-26-session-14",
+        "conv-26-session-3"
+      ],
+      "precision": 0.2,
+      "recall": 1,
+      "f1": 0.33333333333333337,
+      "mrr": 1
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "Where has Melanie camped?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-6",
+        "conv-26-session-4",
+        "conv-26-session-8"
+      ],
+      "retrieved": [
+        "conv-26-session-14",
+        "conv-26-session-10",
+        "conv-26-session-5",
+        "conv-26-session-17",
+        "conv-26-session-7"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    },
+    {
+      "sampleId": "conv-26",
+      "question": "What do Melanie's kids like?",
+      "category": 1,
+      "evidenceSessions": [
+        "conv-26-session-6",
+        "conv-26-session-4"
+      ],
+      "retrieved": [
+        "conv-26-session-8",
+        "conv-26-session-10",
+        "conv-26-session-15",
+        "conv-26-session-18",
+        "conv-26-session-17"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "mrr": 0
+    }
+  ]
+}

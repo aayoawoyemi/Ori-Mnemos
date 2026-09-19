@@ -1,0 +1,1007 @@
+{
+  "timestamp": "2026-03-20T19:51:38.606398+00:00",
+  "system": "mem0",
+  "version": "1.0.6",
+  "n": 50,
+  "topK": 5,
+  "mem0": {
+    "R": 0.29,
+    "F1": 0.25742857142857145,
+    "MRR": 0.41666666666666663,
+    "AnsProxy": 0.3436666666666667,
+    "LLM_F1": 0.18800254589041773
+  },
+  "per_question": [
+    {
+      "id": "5a8b57f25542995d1e6f1371",
+      "question": "Were Scott Derrickson and Ed Wood of the same nationality?",
+      "answer": "yes",
+      "qtype": "comparison",
+      "gold": [
+        "Scott Derrickson",
+        "Ed Wood"
+      ],
+      "retrieved": [
+        "Deliver Us from Evil (2014 film)",
+        "Ed Wood",
+        "Tyler Bates"
+      ],
+      "R": 0.5,
+      "P": 0.3333333333333333,
+      "F1": 0.4,
+      "MRR": 0.5,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a8c7595554299585d9e36b6",
+      "question": "What government position was held by the woman who portrayed Corliss Archer in the film Kiss and Tell?",
+      "answer": "Chief of Protocol",
+      "qtype": "bridge",
+      "gold": [
+        "Shirley Temple",
+        "Kiss and Tell (1945 film)"
+      ],
+      "retrieved": [
+        "Janet Waldo",
+        "Kiss and Tell (1945 film)"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 0.5,
+      "AnsProxy": 0.3333333333333333,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a85ea095542994775f606a8",
+      "question": "What science fantasy young adult series, told in first person, has a set of companion books narrating the stories of enslaved worlds and alien species?",
+      "answer": "Animorphs",
+      "qtype": "bridge",
+      "gold": [
+        "Animorphs",
+        "The Hork-Bajir Chronicles"
+      ],
+      "retrieved": [
+        "Animorphs",
+        "The Hork-Bajir Chronicles",
+        "Etiquette &amp; Espionage"
+      ],
+      "R": 1.0,
+      "P": 0.6666666666666666,
+      "F1": 0.8,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.4
+    },
+    {
+      "id": "5adbf0a255429947ff17385a",
+      "question": "Are the Laleli Mosque and Esma Sultan Mansion located in the same neighborhood?",
+      "answer": "no",
+      "qtype": "comparison",
+      "gold": [
+        "Laleli Mosque",
+        "Esma Sultan Mansion"
+      ],
+      "retrieved": [
+        "Esma Sultan Mansion",
+        "Laleli Mosque",
+        "Esma Sultan",
+        "Esma Sultan (daughter of Ahmed III)"
+      ],
+      "R": 1.0,
+      "P": 0.5,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.09523809523809523
+    },
+    {
+      "id": "5a8e3ea95542995a26add48d",
+      "question": "The director of the romantic comedy \"Big Stone Gap\" is based in what New York city?",
+      "answer": "Greenwich Village, New York City",
+      "qtype": "bridge",
+      "gold": [
+        "Adriana Trigiani",
+        "Big Stone Gap (film)"
+      ],
+      "retrieved": [
+        "Just Another Romantic Wrestling Comedy",
+        "Kingston Morning"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.6,
+      "LLM": 0.0
+    },
+    {
+      "id": "5abd94525542992ac4f382d2",
+      "question": "2014 S/S is the debut album of a South Korean boy group that was formed by who?",
+      "answer": "YG Entertainment",
+      "qtype": "bridge",
+      "gold": [
+        "Winner (band)",
+        "2014 S_S"
+      ],
+      "retrieved": [
+        "Winner (band)",
+        "Madtown"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a85b2d95542997b5ce40028",
+      "question": "Who was known by his stage name Aladin and helped organizations improve their performance as a consultant?",
+      "answer": "Eenasul Fateh",
+      "qtype": "bridge",
+      "gold": [
+        "Management consulting",
+        "Eenasul Fateh"
+      ],
+      "retrieved": [
+        "Eenasul Fateh",
+        "Amaruk Kayshapanta"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.21052631578947367
+    },
+    {
+      "id": "5a87ab905542996e4f3088c1",
+      "question": "The arena where the Lewiston Maineiacs played their home games can seat how many people?",
+      "answer": "3,677 seated",
+      "qtype": "bridge",
+      "gold": [
+        "Lewiston Maineiacs",
+        "Androscoggin Bank Colis\u00e9e"
+      ],
+      "retrieved": [
+        "Billings Bulls"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a7bbb64554299042af8f7cc",
+      "question": "Who is older, Annie Morton or Terry Richardson?",
+      "answer": "Terry Richardson",
+      "qtype": "bridge",
+      "gold": [
+        "Terry Richardson",
+        "Annie Morton"
+      ],
+      "retrieved": [
+        "Kenton Richardson",
+        "Snoecks"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a8db19d5542994ba4e3dd00",
+      "question": "Are Local H and For Against both from the United States?",
+      "answer": "yes",
+      "qtype": "comparison",
+      "gold": [
+        "For Against",
+        "Local H"
+      ],
+      "retrieved": [
+        "For Against",
+        "Local H",
+        "Amherst, Massachusetts",
+        "Hallelujah! I'm a Bum (album)"
+      ],
+      "R": 1.0,
+      "P": 0.5,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.16666666666666669
+    },
+    {
+      "id": "5a7166395542994082a3e814",
+      "question": "What is the name of the fight song of the university whose main campus is in Lawrence, Kansas and whose branch campuses are in the Kansas City metropolitan area?",
+      "answer": "Kansas Song",
+      "qtype": "bridge",
+      "gold": [
+        "University of Kansas",
+        "Kansas Song"
+      ],
+      "retrieved": [
+        "University of the Incarnate Word"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a877e5d5542993e715abf7d",
+      "question": "What screenwriter with credits for \"Evolution\" co-wrote a film starring Nicolas Cage and T\u00e9a Leoni?",
+      "answer": "David Weissman",
+      "qtype": "bridge",
+      "gold": [
+        "The Family Man",
+        "David Weissman"
+      ],
+      "retrieved": [
+        "Ungod"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab3b0bf5542992ade7c6e39",
+      "question": "What year did Guns N Roses perform a promo for a movie starring Arnold Schwarzenegger as a former New York Police detective?",
+      "answer": "1999",
+      "qtype": "bridge",
+      "gold": [
+        "Oh My God (Guns N' Roses song)",
+        "End of Days (film)"
+      ],
+      "retrieved": [
+        "Faction Punk"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab56e32554299637185c594",
+      "question": "Are Random House Tower and 888 7th Avenue both used for real estate?",
+      "answer": "no",
+      "qtype": "comparison",
+      "gold": [
+        "888 7th Avenue",
+        "Random House Tower"
+      ],
+      "retrieved": [
+        "Loan modification in the United States"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab6d09255429954757d337d",
+      "question": "The football manager who recruited David Beckham managed Manchester United during what timeframe?",
+      "answer": "from 1986 to 2013",
+      "qtype": "bridge",
+      "gold": [
+        "1995\u201396 Manchester United F.C. season",
+        "Alex Ferguson"
+      ],
+      "retrieved": [
+        "Matt Busby",
+        "1995\u201396 Manchester United F.C. season",
+        "Ernest Mangnall"
+      ],
+      "R": 0.5,
+      "P": 0.3333333333333333,
+      "F1": 0.4,
+      "MRR": 0.5,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a75e05c55429976ec32bc5f",
+      "question": "Brown State Fishing Lake is in a country that has a population of how many inhabitants ?",
+      "answer": "9,984",
+      "qtype": "bridge",
+      "gold": [
+        "Brown State Fishing Lake",
+        "Brown County, Kansas"
+      ],
+      "retrieved": [
+        "Shawnee State Fishing Lake",
+        "Narrow Hills Provincial Park"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab3e45655429976abd1bcd4",
+      "question": "The Vermont Catamounts men's soccer team currently competes in a conference that was formerly known as what from 1988 to 1996?",
+      "answer": "the North Atlantic Conference",
+      "qtype": "bridge",
+      "gold": [
+        "Vermont Catamounts men's soccer",
+        "America East Conference"
+      ],
+      "retrieved": [
+        "Vermont Catamounts men's soccer",
+        "Vermont Catamounts men's basketball",
+        "America East Conference",
+        "2012\u201313 Vermont Catamounts men's basketball team"
+      ],
+      "R": 1.0,
+      "P": 0.5,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 1.0
+    },
+    {
+      "id": "5ab29c24554299449642c932",
+      "question": "Are Giuseppe Verdi and Ambroise Thomas both Opera composers ?",
+      "answer": "yes",
+      "qtype": "comparison",
+      "gold": [
+        "Ambroise Thomas",
+        "Giuseppe Verdi"
+      ],
+      "retrieved": [
+        "Giuseppe Verdi"
+      ],
+      "R": 0.5,
+      "P": 1.0,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ae0d4c9554299603e418468",
+      "question": "Roger O. Egeberg was Assistant Secretary for Health and Scientific Affairs during the administration of a president that served during what years?",
+      "answer": "1969 until 1974",
+      "qtype": "bridge",
+      "gold": [
+        "Roger O. Egeberg",
+        "Richard Nixon"
+      ],
+      "retrieved": [],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a8133725542995ce29dcbdb",
+      "question": "Which writer was from England, Henry Roth or Robert Erskine Childers?",
+      "answer": "Robert Erskine Childers DSC",
+      "qtype": "comparison",
+      "gold": [
+        "Henry Roth",
+        "Robert Erskine Childers"
+      ],
+      "retrieved": [
+        "Molly Childers",
+        "Robert Barton"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.75,
+      "LLM": 0.8571428571428571
+    },
+    {
+      "id": "5ae7a8175542993210983ed8",
+      "question": "Which other Mexican Formula One race car driver has held the podium besides the Force India driver born in 1990?",
+      "answer": "Pedro Rodr\u00edguez",
+      "qtype": "bridge",
+      "gold": [
+        "Sergio P\u00e9rez",
+        "Formula One drivers from Mexico"
+      ],
+      "retrieved": [
+        "Formula One drivers from Mexico",
+        "Sergio P\u00e9rez"
+      ],
+      "R": 1.0,
+      "P": 1.0,
+      "F1": 1.0,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 1.0
+    },
+    {
+      "id": "5ae6050f55429929b0807a5e",
+      "question": "This singer of A Rather Blustery Day also voiced what hedgehog?",
+      "answer": "Sonic",
+      "qtype": "bridge",
+      "gold": [
+        "A Rather Blustery Day",
+        "Jim Cummings"
+      ],
+      "retrieved": [
+        "A Rather Blustery Day",
+        "Kate Higgins"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5adddccd5542997dc7907069",
+      "question": "Aside from the Apple Remote, what other device can control the program Apple Remote was originally designed to interact with?",
+      "answer": "keyboard function keys",
+      "qtype": "bridge",
+      "gold": [
+        "Apple Remote",
+        "Front Row (software)"
+      ],
+      "retrieved": [],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ae2070a5542994d89d5b313",
+      "question": "Which performance act has a higher instrument to person ratio, Badly Drawn Boy or Wolf Alice? ",
+      "answer": "Badly Drawn Boy",
+      "qtype": "comparison",
+      "gold": [
+        "Wolf Alice",
+        "Badly Drawn Boy"
+      ],
+      "retrieved": [
+        "Wolf Alice",
+        "About a Boy (soundtrack)"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.25
+    },
+    {
+      "id": "5ae22b8d554299234fd0440f",
+      "question": "What was the father of Kasper Schmeichel voted to be by the IFFHS in 1992?",
+      "answer": "World's Best Goalkeeper",
+      "qtype": "bridge",
+      "gold": [
+        "Kasper Schmeichel",
+        "Peter Schmeichel"
+      ],
+      "retrieved": [
+        "Kasper Schmeichel"
+      ],
+      "R": 0.5,
+      "P": 1.0,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 0.25,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a722b8655429971e9dc9329",
+      "question": "Who was the writer of These Boots Are Made for Walkin' and who died in 2007?",
+      "answer": "Barton Lee Hazlewood",
+      "qtype": "bridge",
+      "gold": [
+        "These Boots Are Made for Walkin'",
+        "Lee Hazlewood"
+      ],
+      "retrieved": [
+        "Nancy Sinatra",
+        "The Twenty-fifth Anniversary Anthology"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5adf37a95542995ec70e8f97",
+      "question": "The 2011\u201312 VCU Rams men's basketball team, led by third year head coach Shaka Smart, represented Virginia Commonwealth University which was founded in what year?",
+      "answer": "1838",
+      "qtype": "bridge",
+      "gold": [
+        "Virginia Commonwealth University",
+        "2011\u201312 VCU Rams men's basketball team"
+      ],
+      "retrieved": [
+        "1995\u201396 VCU Rams men's basketball team",
+        "2012\u201313 VCU Rams men's basketball team",
+        "2013\u201314 VCU Rams men's basketball team",
+        "2015\u201316 VCU Rams men's basketball team"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5abd259d55429924427fcf1a",
+      "question": "Are both Dictyosperma, and Huernia described as a genus?",
+      "answer": "yes",
+      "qtype": "comparison",
+      "gold": [
+        "Huernia",
+        "Dictyosperma"
+      ],
+      "retrieved": [],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.19999999999999998
+    },
+    {
+      "id": "5a828c8355429966c78a6a50",
+      "question": "Kaiser Ventures corporation was founded by an American industrialist who became known as the father of modern American shipbuilding?",
+      "answer": "Henry J. Kaiser",
+      "qtype": "bridge",
+      "gold": [
+        "Kaiser Ventures",
+        "Henry J. Kaiser"
+      ],
+      "retrieved": [
+        "Kaiser Ventures",
+        "Edgar Kaiser Sr."
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.34782608695652173
+    },
+    {
+      "id": "5a8a3e745542996c9b8d5e70",
+      "question": "What is the name for the adventure in \"Tunnels and Trolls\", a game designed by Ken St. Andre?",
+      "answer": "Arena of Khazan",
+      "qtype": "bridge",
+      "gold": [
+        "Tunnels &amp; Trolls",
+        "Arena of Khazan"
+      ],
+      "retrieved": [
+        "Arena of Khazan",
+        "Ken St. Andre"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 1.0
+    },
+    {
+      "id": "5ac23ff0554299636651994d",
+      "question": "When was Poison's album \"Shut Up, Make Love\" released?",
+      "answer": "2000",
+      "qtype": "bridge",
+      "gold": [
+        "Shut Up, Make Love",
+        "Poison (American band)"
+      ],
+      "retrieved": [
+        "Poison (American band)"
+      ],
+      "R": 0.5,
+      "P": 1.0,
+      "F1": 0.6666666666666666,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ae4a3265542995ad6573de5",
+      "question": "Hayden is a singer-songwriter from Canada, but where does Buck-Tick hail from?",
+      "answer": "Fujioka, Gunma",
+      "qtype": "comparison",
+      "gold": [
+        "Buck-Tick",
+        "Hayden (musician)"
+      ],
+      "retrieved": [
+        "Hayden (musician)",
+        "Skyscraper National Park",
+        "Mild and Hazy"
+      ],
+      "R": 0.5,
+      "P": 0.3333333333333333,
+      "F1": 0.4,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ae0361155429925eb1afc2c",
+      "question": "Which  French ace pilot and adventurer fly L'Oiseau Blanc",
+      "answer": "Charles Eug\u00e8ne",
+      "qtype": "bridge",
+      "gold": [
+        "L'Oiseau Blanc",
+        "Charles Nungesser"
+      ],
+      "retrieved": [
+        "Fran\u00e7ois Coli",
+        "Levasseur PL.8",
+        "Charles Nungesser"
+      ],
+      "R": 0.5,
+      "P": 0.3333333333333333,
+      "F1": 0.4,
+      "MRR": 0.3333333333333333,
+      "AnsProxy": 1.0,
+      "LLM": 0.3636363636363636
+    },
+    {
+      "id": "5abc0a5d5542993f40c73c64",
+      "question": "Are Freakonomics and In the Realm of the Hackers both American documentaries?",
+      "answer": "no",
+      "qtype": "comparison",
+      "gold": [
+        "In the Realm of the Hackers",
+        "Freakonomics (film)"
+      ],
+      "retrieved": [
+        "Robin Goldstein",
+        "Heidi Ewing"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a7cc50e554299452d57ba3e",
+      "question": "Which band, Letters to Cleo or Screaming Trees, had more members?",
+      "answer": "Letters to Cleo",
+      "qtype": "comparison",
+      "gold": [
+        "Letters to Cleo",
+        "Screaming Trees"
+      ],
+      "retrieved": [
+        "Gary Lee Conner",
+        "Change Has Come"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5abf63f15542997ec76fd3ea",
+      "question": "Alexander Kerensky was defeated and destroyed by the Bolsheviks in the course of a civil war that ended when ?",
+      "answer": "October 1922",
+      "qtype": "bridge",
+      "gold": [
+        "Socialist Revolutionary Party",
+        "Russian Civil War"
+      ],
+      "retrieved": [
+        "Alexander Kerensky"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.5,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a8ef2a75542995a26add583",
+      "question": "Seven Brief Lessons on Physics was written by an Italian physicist that has worked in France since what year?",
+      "answer": "2000",
+      "qtype": "bridge",
+      "gold": [
+        "Seven Brief Lessons on Physics",
+        "Carlo Rovelli"
+      ],
+      "retrieved": [
+        "Guido Caldarelli",
+        "Chiara Nappi"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a80721b554299485f5985ef",
+      "question": "The Livesey Hal War Memorial commemorates the fallen of which war, that had over 60 million casualties?",
+      "answer": "World War II",
+      "qtype": "bridge",
+      "gold": [
+        "Livesey Hall War Memorial",
+        "World War II casualties"
+      ],
+      "retrieved": [
+        "Rainham War Memorial"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab51dae5542991779162d82",
+      "question": "Are both Elko Regional Airport and Gerald R. Ford International Airport located in Michigan?",
+      "answer": "no",
+      "qtype": "comparison",
+      "gold": [
+        "Elko Regional Airport",
+        "Gerald R. Ford International Airport"
+      ],
+      "retrieved": [],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 1.0
+    },
+    {
+      "id": "5a7571135542992d0ec05f98",
+      "question": "Ralph Hefferline was a psychology professor at a university that is located in what city?",
+      "answer": "New York City",
+      "qtype": "bridge",
+      "gold": [
+        "Columbia University",
+        "Ralph Hefferline"
+      ],
+      "retrieved": [
+        "Ralph Hefferline",
+        "Princeton Neuroscience Institute"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.5454545454545454
+    },
+    {
+      "id": "5a7a0e1e5542990783324e1a",
+      "question": "Which dog's ancestors include Gordon and Irish Setters: the Manchester Terrier or the Scotch Collie?",
+      "answer": "Scotch Collie",
+      "qtype": "comparison",
+      "gold": [
+        "Manchester Terrier",
+        "Scotch Collie"
+      ],
+      "retrieved": [
+        "Collie",
+        "Florence Nagle"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.5,
+      "LLM": 0.3636363636363636
+    },
+    {
+      "id": "5a74106b55429979e288289e",
+      "question": "Where is the company that Sachin Warrier worked for as a software engineer headquartered? ",
+      "answer": "Mumbai",
+      "qtype": "bridge",
+      "gold": [
+        "Tata Consultancy Services",
+        "Sachin Warrier"
+      ],
+      "retrieved": [
+        "Alec Muffett",
+        "William Connolley",
+        "Kanave Kalayathe",
+        "Muthuchippi Poloru",
+        "Divya S. Menon"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a79311755429970f5fffe67",
+      "question": "A Japanese manga series based on a 16 year old high school student Ichitaka Seto, is written and illustrated by someone born in what year?",
+      "answer": "1962",
+      "qtype": "bridge",
+      "gold": [
+        "I&quot;s",
+        "Masakazu Katsura"
+      ],
+      "retrieved": [
+        "Masakazu Katsura",
+        "I&quot;s",
+        "Haven't You Heard_ I'm Sakamoto",
+        "Silver Spoon (manga)",
+        "Neuro_ Supernatural Detective"
+      ],
+      "R": 1.0,
+      "P": 0.4,
+      "F1": 0.5714285714285715,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 1.0
+    },
+    {
+      "id": "5ab2d3df554299194fa9352c",
+      "question": "The battle in which Giuseppe Arimondi lost his life secured what for Ethiopia?",
+      "answer": "sovereignty",
+      "qtype": "bridge",
+      "gold": [
+        "Giuseppe Arimondi",
+        "Battle of Adwa"
+      ],
+      "retrieved": [
+        "Battle of Adwa",
+        "Ethiopia\u2013Japan relations",
+        "Ephigenia of Ethiopia"
+      ],
+      "R": 0.5,
+      "P": 0.3333333333333333,
+      "F1": 0.4,
+      "MRR": 1.0,
+      "AnsProxy": 1.0,
+      "LLM": 0.4
+    },
+    {
+      "id": "5a760ab65542994ccc918697",
+      "question": "Alfred Balk served as the secretary of the Committee on the Employment of Minority Groups in the News Media under which United States Vice President?",
+      "answer": "Nelson Rockefeller",
+      "qtype": "bridge",
+      "gold": [
+        "Alfred Balk",
+        "Nelson Rockefeller"
+      ],
+      "retrieved": [
+        "Robert Nyce"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a7d54165542995f4f402256",
+      "question": "A medieval fortress in Dirleton, East Lothian, Scotland borders on the south side of what coastal area?",
+      "answer": "Yellowcraig",
+      "qtype": "bridge",
+      "gold": [
+        "Dirleton Castle",
+        "Yellowcraigs"
+      ],
+      "retrieved": [
+        "Dirleton Kirk"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5ab859a955429934fafe6d7b",
+      "question": "Who is the writer of this song that was inspired by words on a tombstone and was the first track on the box set Back to Mono?",
+      "answer": "Phil Spector",
+      "qtype": "bridge",
+      "gold": [
+        "To Know Him Is to Love Him",
+        "Back to Mono (1958\u20131969)"
+      ],
+      "retrieved": [],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    },
+    {
+      "id": "5add61d65542995b365fab21",
+      "question": "What type of forum did a former Soviet statesman initiate?",
+      "answer": "Organizations could come together to address global issues",
+      "qtype": "bridge",
+      "gold": [
+        "World Summit of Nobel Peace Laureates",
+        "Mikhail Gorbachev"
+      ],
+      "retrieved": [
+        "David Waksberg"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.25,
+      "LLM": 0.0
+    },
+    {
+      "id": "5a8e068b5542995085b37384",
+      "question": "Are Ferocactus and Silene both types of plant?",
+      "answer": "yes",
+      "qtype": "comparison",
+      "gold": [
+        "Ferocactus",
+        "Silene"
+      ],
+      "retrieved": [
+        "Ferocactus",
+        "Silene tomentosa"
+      ],
+      "R": 0.5,
+      "P": 0.5,
+      "F1": 0.5,
+      "MRR": 1.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.19999999999999998
+    },
+    {
+      "id": "5abbf698554299114383a0b5",
+      "question": "Which British first-generation jet-powered medium bomber was used in the South West Pacific theatre of World War II?",
+      "answer": "English Electric Canberra",
+      "qtype": "bridge",
+      "gold": [
+        "No. 2 Squadron RAAF",
+        "English Electric Canberra"
+      ],
+      "retrieved": [
+        "Savoia-Marchetti SM.79"
+      ],
+      "R": 0.0,
+      "P": 0.0,
+      "F1": 0.0,
+      "MRR": 0.0,
+      "AnsProxy": 0.0,
+      "LLM": 0.0
+    }
+  ]
+}
