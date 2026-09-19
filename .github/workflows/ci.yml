@@ -39,3 +39,27 @@ jobs:
 
       - name: Pack Check
         run: npm run pack:check
+
+  release-gate:
+    # A version bump that never reaches npm is invisible: the repository looks
+    # shipped and every `npm i ori-memory` serves the older build. 0.7.0 sat
+    # unpublished for 51 days that way. Only meaningful against the real
+    # registry, so `main` only — forks and PRs would fail on a name they do not
+    # own.
+    if: github.event_name == 'push' && github.repository == 'aayoawoyemi/Ori-Mnemos'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The gate dates the bump from the commit that introduced the version
+          # string. A shallow clone cannot find it.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Release Gate
+        run: npm run check:release
