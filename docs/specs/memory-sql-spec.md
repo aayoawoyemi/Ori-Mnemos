@@ -98,9 +98,9 @@ critical finding.
   larger `limit` is clamped, not honoured. Exceeding the cap sets
   `truncated: true` and adds a warning.
 - **Time**: 2000 ms default. On timeout, `success: false`, and a warning naming
-  the timeout. The implementation is expected to state honestly that
-  cancellation lands at a row boundary, so one very long single step may still
-  be running after the caller is answered.
+  the timeout. The query runs in a child process which is SIGKILLed, so
+  cancellation is real even for a single monolithic step. The caller must
+  return promptly and must not be left with a running query.
 - **Cell size**: text longer than 4096 bytes is truncated with a marker giving
   the true byte length. A BLOB is never returned raw — it becomes
   `{"blob_bytes": n}`. (The index stores 1.5 KB float32 vectors; returning them
@@ -154,7 +154,7 @@ Requirements:
 
 These are not defects. Reporting them as such is a false positive.
 
-- Timeout cancellation is checked between rows.
+- Cancellation kills a child process; an in-flight statement is lost, not rolled back (nothing is written, so there is nothing to roll back).
 - The validator is a parser and parsers can be wrong; it exists for good error
   messages. The read-only connection is the actual guarantee.
 - Views are recreated on every index build.

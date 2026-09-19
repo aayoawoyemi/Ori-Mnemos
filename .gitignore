@@ -55,3 +55,4 @@ bench/data/
 .aries/
 # Pre-release dist snapshots taken by hand
 dist.bak-*/
+ops-falsify/

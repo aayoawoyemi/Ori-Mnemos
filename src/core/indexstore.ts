@@ -225,7 +225,14 @@ export function initIndexStore(db: DB): void {
     DROP VIEW IF EXISTS v_session;
     CREATE VIEW v_session AS
       SELECT session_id, MIN(timestamp) AS started, MAX(timestamp) AS ended,
-             COUNT(DISTINCT query_text) AS queries, COUNT(*) AS retrievals
+             -- A query EVENT, not a distinct string. Two identical searches
+             -- three seconds apart are two queries; counting DISTINCT
+             -- query_text reported one. retrieval_log holds one row per
+             -- (session, query, note), so an event is identified by the text
+             -- and the instant it ran.
+             COUNT(DISTINCT query_text || char(31) || timestamp) AS queries,
+             COUNT(DISTINCT query_text) AS distinct_queries,
+             COUNT(*) AS retrievals
       FROM retrieval_log GROUP BY session_id;
 
     DROP VIEW IF EXISTS v_stage;

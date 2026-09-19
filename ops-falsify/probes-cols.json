@@ -1,8 +1,0 @@
-[
-  { "label": "v_note columns", "sql": "SELECT * FROM v_note WHERE 0" },
-  { "label": "v_link columns", "sql": "SELECT * FROM v_link WHERE 0" },
-  { "label": "v_dangling columns", "sql": "SELECT * FROM v_dangling WHERE 0" },
-  { "label": "v_retrieval columns", "sql": "SELECT * FROM v_retrieval WHERE 0" },
-  { "label": "v_session columns", "sql": "SELECT * FROM v_session WHERE 0" },
-  { "label": "v_stage columns", "sql": "SELECT * FROM v_stage WHERE 0" }
-]

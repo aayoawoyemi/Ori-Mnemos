@@ -107,8 +107,17 @@ program
       timeoutMs: Number(options.timeout),
       schema: options.schema === true,
     });
-    console.log(JSON.stringify(result));
-    if (!result.success) process.exitCode = 1;
+    // Write, flush, then exit explicitly.
+    //
+    // A query that times out leaves a worker parked inside one synchronous
+    // SQLite call. It ignores terminate(), and unref() was not enough to let
+    // the process go: the correct JSON appeared at ~1.5 s and the CLI then
+    // sat forever burning a core, which hangs any script or CI job that
+    // shells out. Exiting from the write callback guarantees stdout is
+    // drained first -- process.exit() on its own can truncate a pending pipe
+    // write on Windows.
+    const code = result.success ? 0 : 1;
+    process.stdout.write(JSON.stringify(result) + "\n", () => process.exit(code));
   });
 
 program
@@ -603,8 +612,38 @@ async function maybeNotifyUpdate(): Promise<void> {
   }
 }
 
+// A statement may legitimately begin with a `--` line comment. The spec allows
+// it; commander parses it as an unknown option, so the CLI printed a commander
+// error to stderr and no JSON at all -- breaking the output contract for a
+// documented input, while the same SQL through --stdin worked fine.
+//
+// Commander treats a bare `--` as end-of-options, but everything after one is
+// positional. The first version of this guard inserted the separator before
+// the first non-option argument, which silently killed every option written
+// *after* the statement -- `ori sql "<q>" --limit 1` returned all rows with
+// warnings:[] -- and the spec's own synopsis puts them there. So the
+// separator goes in only immediately before an argument that actually looks
+// like an option and is not one of ours; a plain statement is left alone.
+const argv = process.argv.slice();
+if (argv[2] === "sql" && !argv.includes("--")) {
+  const TAKES_VALUE = new Set(["--limit", "--timeout"]);
+  const FLAGS = new Set(["--schema", "--stdin"]);
+  for (let i = 3; i < argv.length; i++) {
+    const a = argv[i];
+    if (TAKES_VALUE.has(a)) { i++; continue; }
+    if (FLAGS.has(a)) continue;
+    if (a.startsWith("--limit=") || a.startsWith("--timeout=")) continue;
+    // Only an argument that commander would mistake for an unknown option
+    // needs protecting. Anything else is already parsed correctly.
+    if (a.startsWith("-")) {
+      argv.splice(i, 0, "--");
+    }
+    break;
+  }
+}
+
 program
-  .parseAsync(process.argv)
+  .parseAsync(argv)
   .then(maybeNotifyUpdate)
   .catch((err) => {
     console.error(String(err));

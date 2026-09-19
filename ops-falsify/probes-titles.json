@@ -1,9 +1,0 @@
-[
-  { "label": "v_note titles + byte lengths", "sql": "SELECT slug, length(title) AS chars, length(CAST(title AS BLOB)) AS bytes, title, inbound, outbound, pagerank IS NULL AS pr_null FROM v_note WHERE slug NOT LIKE 'citer-%' ORDER BY slug" },
-  { "label": "v_note longdesc cell", "sql": "SELECT slug, length(description) AS desc_chars, substr(description,1,40) AS head, substr(description,-60) AS tail FROM v_note WHERE slug='longdesc'" },
-  { "label": "anchor inbound", "sql": "SELECT slug, inbound, outbound FROM v_note WHERE slug='anchor'" },
-  { "label": "v_link full", "sql": "SELECT src, dst FROM v_link ORDER BY src" },
-  { "label": "v_dangling full", "sql": "SELECT target, citing_notes, length(cited_by) AS cb_chars, cited_by FROM v_dangling ORDER BY target" },
-  { "label": "v_note round-trip unicode via hex", "sql": "SELECT slug, hex(title) FROM v_note WHERE slug LIKE 'na%'" },
-  { "label": "SELECT * FROM v_note whole vault", "sql": "SELECT * FROM v_note ORDER BY slug" }
-]

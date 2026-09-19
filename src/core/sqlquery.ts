@@ -24,7 +24,7 @@
  * message, not to be the guarantee. Layers 2 and 3 are the guarantee.
  */
 
-import { Worker } from "node:worker_threads";
+import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 
@@ -86,22 +86,45 @@ function stripLiteralsAndComments(sql: string): { code: string; unterminated: bo
       while (i <= end + 1) { out += " "; i++; }
       continue;
     }
-    // '…' string, "…" identifier, […] identifier, `…` identifier.
-    if (c === "'" || c === '"' || c === "[" || c === "`") {
-      const close = c === "[" ? "]" : c;
+    // Only a single-quoted string is *data*. SQLite also accepts "…", […]
+    // and `…` as quoted identifiers, and blanking those hid a real bypass:
+    // SELECT "load_extension"('x') reached the engine and was stopped only by
+    // the authorizer, one layer in from where it should have died. A quoted
+    // identifier is still a name, so it is unquoted in place and stays
+    // visible to the keyword scan.
+    if (c === "'") {
       out += " ";
       i++;
       let closed = false;
       while (i < sql.length) {
-        if (sql[i] === close) {
+        if (sql[i] === "'") {
           // '' inside a '…' literal is an escaped quote, not the end.
-          if (close !== "]" && sql[i + 1] === close) { out += "  "; i += 2; continue; }
+          if (sql[i + 1] === "'") { out += "  "; i += 2; continue; }
           out += " ";
           i++;
           closed = true;
           break;
         }
         out += " ";
+        i++;
+      }
+      if (!closed) unterminated = true;
+      continue;
+    }
+    if (c === '"' || c === "[" || c === "`") {
+      const close = c === "[" ? "]" : c;
+      out += " ";               // the opening quote becomes a word boundary
+      i++;
+      let closed = false;
+      while (i < sql.length) {
+        if (sql[i] === close) {
+          if (close !== "]" && sql[i + 1] === close) { out += sql[i] + sql[i + 1]; i += 2; continue; }
+          out += " ";           // and so does the closing quote
+          i++;
+          closed = true;
+          break;
+        }
+        out += sql[i];          // identifier text kept, so the scan can see it
         i++;
       }
       if (!closed) unterminated = true;
@@ -166,65 +189,85 @@ export async function runReadOnlySql(
     return { columns: [], rows: [], truncated: false, elapsedMs: 0, warnings: [validation.reason] };
   }
 
+  // A child process, not a worker thread.
+  //
+  // Worker.terminate() only lands between operations, so a worker parked
+  // inside one synchronous SQLite call -- `WITH RECURSIVE ... SELECT COUNT(*)`
+  // is the easy example -- ignores it forever. unref() did not help either:
+  // Node would not exit while that thread spun, so the CLI printed the
+  // correct timeout JSON at 1.5 s and then sat burning a core until killed.
+  // Observed every time.
+  //
+  // Killing the process was not an option, because the MCP server calls this
+  // same function and would take the whole server down with it. A child
+  // process can be SIGKILLed: the runaway query dies, the caller lives, and
+  // the timeout means what it says.
   return new Promise<SqlResult>((resolve) => {
     let settled = false;
     const finish = (r: SqlResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      void worker.terminate();
+      child.removeAllListeners();
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
       resolve(r);
     };
 
-    const worker = new Worker(fileURLToPath(WORKER_URL), {
-      workerData: {
-        dbPath,
-        sql: validation.sql,
-        rowCap: opts.rowCap,
-        maxCellBytes: opts.maxCellBytes ?? 4096,
+    const child = fork(fileURLToPath(WORKER_URL), [], {
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      env: {
+        ...process.env,
+        ORI_SQL_JOB: JSON.stringify({
+          dbPath,
+          sql: validation.sql,
+          rowCap: opts.rowCap,
+          maxCellBytes: opts.maxCellBytes ?? 4096,
+        }),
       },
     });
 
-    // terminate() lands at the next row boundary. A single monolithic step --
-    // COUNT(*) over a cross join, say -- runs until SQLite finishes it. The
-    // caller stays responsive; the thread does not die on schedule. That is
-    // the ceiling of what this driver allows and pretending otherwise would
-    // be worse than saying so.
     const timer = setTimeout(() => {
       finish({
         columns: [], rows: [], truncated: false,
         elapsedMs: Date.now() - started,
-        warnings: [
-          `SQL timed out after ${opts.timeoutMs} ms`,
-          "the worker is terminated at the next row boundary, so a single long step may still be running",
-        ],
+        warnings: [`SQL timed out after ${opts.timeoutMs} ms`],
       });
     }, opts.timeoutMs);
 
-    worker.on("message", (msg: SqlResult & { error?: string }) => {
-      if (msg.error) {
+    child.on("message", (msg) => {
+      // IPC payload: shape is fixed by the child we spawned, not by a caller.
+      const m = msg as SqlResult & { error?: string };
+      if (m.error !== undefined) {
         finish({
           columns: [], rows: [], truncated: false,
-          elapsedMs: Date.now() - started, warnings: [msg.error],
+          elapsedMs: Date.now() - started, warnings: [m.error],
         });
         return;
       }
-      finish({ ...msg, elapsedMs: Date.now() - started });
+      finish({ ...m, elapsedMs: Date.now() - started });
     });
-    worker.on("error", (err) => {
+
+    let stderr = "";
+    child.stderr?.on("data", (d: Buffer) => { stderr += d.toString(); });
+
+    child.on("error", (err) => {
       finish({
         columns: [], rows: [], truncated: false,
         elapsedMs: Date.now() - started, warnings: [err.message],
       });
     });
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        finish({
-          columns: [], rows: [], truncated: false,
-          elapsedMs: Date.now() - started,
-          warnings: [`sql worker exited with code ${code}`],
-        });
-      }
+
+    child.on("exit", (code, signal) => {
+      if (settled) return;
+      const detail = stderr.trim().split("\n").pop() ?? "";
+      finish({
+        columns: [], rows: [], truncated: false,
+        elapsedMs: Date.now() - started,
+        warnings: [
+          `sql child exited ${signal !== null ? `on ${signal}` : `with code ${code}`}` +
+            (detail ? `: ${detail}` : ""),
+        ],
+      });
     });
   });
 }

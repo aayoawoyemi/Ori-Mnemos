@@ -56,13 +56,31 @@ export function buildGraphologyGraph(linkGraph: LinkGraph): Graph {
 
 /**
  * Compute PageRank scores for all nodes.
+ *
+ * A graph with no nodes is not an error condition, it is a new vault.
+ * graphology's power iteration throws "failed to converge" on one, which
+ * aborted `ori index build` before any view or table was created and left a
+ * 4 KB empty database behind -- so every later query answered "no such table:
+ * v_note". The same crash hit a re-index after the last note was deleted,
+ * leaving the index still reporting the deleted note with no warning.
  */
 export function computePageRank(
   graph: Graph,
   alpha: number = 0.85
 ): Map<string, number> {
-  const scores = pagerank(graph, { alpha, getEdgeWeight: null });
   const result = new Map<string, number>();
+  if (graph.order === 0) return result;
+
+  // A single isolated node, or nodes with no edges at all, is likewise
+  // degenerate for power iteration: the uniform distribution is already the
+  // answer, so return it rather than letting the solver decide it diverged.
+  if (graph.size === 0) {
+    const uniform = 1 / graph.order;
+    graph.forEachNode((node) => result.set(node, uniform));
+    return result;
+  }
+
+  const scores = pagerank(graph, { alpha, getEdgeWeight: null });
   graph.forEachNode((node) => {
     result.set(node, scores[node] ?? 0);
   });
@@ -210,6 +228,25 @@ export function computeGraphMetrics(
   noteIndex?: NoteIndex
 ): GraphMetrics {
   const graph = buildGraphologyGraph(linkGraph);
+
+  // An empty vault is a state, not an error. Every algorithm below assumes at
+  // least one node: pagerank reports "failed to converge", and Louvain and
+  // betweenness allocate a fixed stack sized from the node count and throw
+  // "capacity should be a positive number". Guarding each one individually
+  // would be four places to forget; the graph is empty, so the answer is
+  // empty. Without this, `ori index build` aborted on a brand-new vault
+  // before creating any table, and every later query answered "no such
+  // table: v_note".
+  if (graph.order === 0) {
+    return {
+      pagerank: new Map(),
+      communities: new Map(),
+      bridges: new Set(),
+      betweenness: new Map(),
+      communityStats: new Map(),
+    };
+  }
+
   const pr = computePageRank(graph);
   const communities = detectCommunities(graph);
   const bridges = findBridgeNotes(graph, noteIndex);
