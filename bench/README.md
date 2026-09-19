@@ -40,14 +40,23 @@ npx tsx bench/locomo-eval.ts --categories 1,2,3
 | Ori explore | 90.0% | 52.3% | 41.0% | 142s | None (local) |
 | Mem0 | 29.0% | 25.7% | 18.8% | 1347s | ~500 LLM calls |
 
-### LoCoMo (695 questions)
+### LoCoMo (1,536 questions)
 
-| Category | Count | Recall | F1 | MRR | AnsF1 |
-|---|---|---|---|---|---|
-| Single-hop | 321 | 55.6% | 19.9% | 29.9% | 70.6% |
-| Multi-hop | 282 | 38.2% | 24.6% | 38.8% | 61.3% |
-| Temporal | 92 | 26.6% | 12.5% | 21.8% | 45.5% |
-| **Overall** | **695** | **44.7%** | **20.8%** | **32.4%** | **63.5%** |
+| Category | Count | Recall | Answer F1 |
+|---|---|---|---|
+| open-domain | 841 | 94.3% | 92.9% |
+| single-hop | 321 | 86.3% | 75.8% |
+| multi-hop | 282 | 52.8% | 67.0% |
+| temporal | 92 | 56.5% | 47.8% |
+| **Overall** | **1,536** | **82.7%** | **81.9%** |
+
+Run `bench/results/locomo-eval-2026-09-19T22-37-31-698Z.json`; MRR 0.729,
+precision 0.201 at top-5, 48 s.
+
+This table previously reported 695 questions at 44.7% overall recall. Those
+figures reproduce nothing in the current harness, and the 695-question subset
+excluded the open-domain category — 841 of the 1,536 questions. The 2026-09-19
+run reproduces the 2026-07-22 run to three decimals.
 
 ## Data
 

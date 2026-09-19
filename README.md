@@ -37,27 +37,48 @@ from markdown plus a local SQLite index with **no API key and no network**.
 
 ### LoCoMo — Long-Term Conversational Memory
 
-695 questions over 10 conversations, GPT-4.1-mini for answer generation, BM25 +
-embedding + PageRank fusion for retrieval.
+**1,536 questions over 10 conversations.** Retrieval is BM25 + embedding +
+PageRank fusion at top-5. No API key and no network: the answer column is an
+extractive proxy, token recall of the ground-truth answer against retrieved
+text, not a generated answer.
 
-| Category | Answer F1 | Recall | MRR | n |
+| Category | Recall | Answer F1 | MRR | n |
 |---|:---:|:---:|:---:|:---:|
-| single-hop | **0.757** | 0.864 | 0.728 | 321 |
-| multi-hop | **0.670** | 0.530 | 0.603 | 282 |
-| temporal | **0.479** | 0.550 | 0.486 | 92 |
-| overall | **0.685** | 0.687 | 0.645 | 695 |
+| open-domain | 0.943 | 0.929 | — | 841 |
+| single-hop | 0.863 | 0.758 | — | 321 |
+| multi-hop | 0.528 | 0.670 | — | 282 |
+| temporal | 0.565 | 0.478 | — | 92 |
+| **overall** | **0.827** | **0.819** | **0.729** | **1,536** |
 
-Temporal is the weak category and is reported as such. Raw output:
-`bench/results/locomo-eval-2026-03-20T06-16-41-585Z.json`.
+Raw output: `bench/results/locomo-eval-2026-09-19T22-37-31-698Z.json`.
+Reproduce with `npx tsx bench/locomo-eval.ts --json`; the run takes 48 s.
+
+Multi-hop and temporal are the weak categories and are reported as such.
+
+Two corrections to earlier versions of this file, both found on 2026-09-19:
+
+- It previously reported **695** questions and an overall recall of 0.687. That
+  subset silently excluded the open-domain category, which is 841 of the 1,536
+  questions — more than half the benchmark. The per-category figures were close
+  to correct; the "overall" was an average over a hand-picked three categories.
+  `bench/README.md` carried a third set of numbers again (44.7% recall) that
+  reproduces nothing in the current harness. One number now, with the run file
+  beside it.
+- The 2026-09-19 run reproduces the 2026-07-22 run to three decimals, so these
+  figures are stable across the retrieval-metric repair in `09ac45d` and the
+  lambda change in `72fdd13`.
 
 **No comparison table against published LoCoMo leaderboards is given, on purpose.**
-Those numbers are an LLM-judge score; the above is answer F1. They are different
-quantities and putting them in one column would invent a ranking rather than report
-one. A previous version of this README did exactly that.
+Those are LLM-judge scores; the above is token F1. They are different quantities
+and putting them in one column would invent a ranking rather than report one. A
+previous version of this README did exactly that.
 
-LoCoMo itself also has known defects — 6.4% of questions carry wrong answer keys, and
-the standard judge accepts a majority of wrong answers — so a close result on it is
-weak evidence in either direction.
+LoCoMo itself has known defects. An independent audit found 6.4% of questions
+carry wrong answer keys, putting the theoretical ceiling at 93.57%, and the
+standard gpt-4o-mini judge accepts 62.81% of deliberately wrong answers. At
+least one published score exceeds the mathematical ceiling. A close result on
+this benchmark is weak evidence in either direction, which is why it is reported
+here and not led with.
 
 ---
 
