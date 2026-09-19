@@ -798,8 +798,11 @@ export function graphFingerprint(db: DB): string {
  * exactly the shape of issue #32, where a node/edge key mismatch meant no edge
  * ever resolved. One encoder, one decoder, one representation.
  *
- * `saveGraphMetrics`/`loadGraphMetrics` remain for the numeric-only case that
- * `ori health` reports.
+ * `saveGraphMetrics`/`loadGraphMetrics` write the numeric projection into
+ * `graph_metric` so SQL surfaces can reach pagerank and betweenness, which a
+ * JSON blob in `index_meta` cannot expose. This comment previously claimed
+ * they existed for a case `ori health` reported; health.ts has never
+ * referenced either function, and the table held 0 rows until 2026-09-19.
  */
 export function loadCachedGraphMetrics(db: DB, fingerprint: string): GraphMetrics | undefined {
   const [row] = rows<{ value: string }>(
@@ -846,6 +849,26 @@ export function saveCachedGraphMetrics(
     "INSERT INTO index_meta (key, value) VALUES ('graph_metrics', ?) " +
     "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   ).run(payload);
+
+  // Project the numeric metrics into graph_metric in the same call, from the
+  // same object. The table existed with a CREATE, a writer, a reader, two
+  // tests and a comment claiming `ori health` consumed it -- and 0 rows in a
+  // 1,545-note vault, because nothing ever called the writer. SQL surfaces
+  // cannot read the JSON blob, so anything querying pagerank got NULL.
+  //
+  // This is one derivation with two projections, not the two-derivations
+  // hazard the JSON cache was chosen to avoid: communityStats keeps a member
+  // list per community and stays JSON-only, while pagerank and betweenness
+  // are plain numbers keyed by slug and cannot disagree with themselves.
+  saveGraphMetrics(
+    db,
+    new Map(
+      [...metrics.pagerank].map(([slug, pagerank]) => [
+        slug,
+        { pagerank, betweenness: metrics.betweenness.get(slug) ?? 0 },
+      ]),
+    ),
+  );
 }
 
 export function termDocumentFrequency(db: DB): {

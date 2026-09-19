@@ -18,6 +18,7 @@ import {
   initIndexStore, syncIndex, loadNoteIndex, loadLinkGraph,
   recordAccess, loadAccess, flushAccessToFrontmatter,
   saveGraphMetrics, loadGraphMetrics, hygiene, openSyncedIndex,
+  saveCachedGraphMetrics, graphFingerprint,
 } from "../../src/core/indexstore.js";
 import { buildGraph } from "../../src/core/graph.js";
 import { buildNoteIndex } from "../../src/core/noteindex.js";
@@ -231,6 +232,30 @@ describe("graph metrics cache", () => {
     const back = loadGraphMetrics(db);
     expect(back.get("a")).toEqual({ pagerank: 0.25, betweenness: 1.5 });
     expect(back.get("b")?.pagerank).toBe(0.75);
+  });
+
+  // The two tests above call saveGraphMetrics directly, which is exactly why
+  // graph_metric sat at 0 rows in a 1,545-note vault while they passed: they
+  // prove the function works, not that anything reaches it. This one asserts
+  // the production path populates the table.
+  it("populates graph_metric from the cached-metrics write path", async () => {
+    await note("a", "status: active", "[[b]]");
+    await note("b", "status: active", "");
+    await syncIndex(db, notesDir);
+    expect(loadGraphMetrics(db).size).toBe(0);
+
+    saveCachedGraphMetrics(db, graphFingerprint(db), {
+      pagerank: new Map([["a", 0.6], ["b", 0.4]]),
+      communities: new Map([["a", 0], ["b", 0]]),
+      bridges: new Set<string>(),
+      betweenness: new Map([["a", 2]]),
+      communityStats: new Map(),
+    });
+
+    const back = loadGraphMetrics(db);
+    expect(back.get("a")).toEqual({ pagerank: 0.6, betweenness: 2 });
+    // Absent from the betweenness map, not absent from the projection.
+    expect(back.get("b")).toEqual({ pagerank: 0.4, betweenness: 0 });
   });
 
   it("drops metrics for notes that no longer exist", async () => {
