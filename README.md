@@ -80,6 +80,60 @@ least one published score exceeds the mathematical ceiling. A close result on
 this benchmark is weak evidence in either direction, which is why it is reported
 here and not led with.
 
+### LongMemEval-S — Retrieval, 500 Questions
+
+Session granularity, 470 scored (the official scorer excludes the 30
+abstention questions). **No API key, no network, no LLM judge** — the
+benchmark's own scorer imports `sys`, `json` and `numpy` and nothing else.
+
+| | recall_any@k | recall_all@k | ndcg_any@k |
+|---|:---:|:---:|:---:|
+| @1 | 0.866 | 0.300 | 0.866 |
+| @5 | **0.966** | **0.830** | **0.884** |
+| @10 | 0.981 | 0.904 | 0.898 |
+
+`recall_all@k` requires *every* gold session in the top k; `recall_any@k`
+requires one. The official summary reports `recall_all@5` and `ndcg_any@5`.
+
+Against published figures on the same benchmark using the same embedder, all
+three zero-API-call:
+
+| System | Embedder | R@1 | R@5 | R@10 |
+|---|---|:---:|:---:|:---:|
+| MemPalace (raw) | all-MiniLM-L6-v2 | 80.6% | 96.6% | 98.2% |
+| Lethe v1 | all-MiniLM-L6-v2 | 85.4% | **97.4%** | **99.0%** |
+| **Ori Mnemos** | Xenova/all-MiniLM-L6-v2 | **86.6%** | 96.6% | 98.1% |
+
+Ori leads at @1 and is at parity by @10. **That is a smaller claim than it
+looks.** An independent analysis of MemPalace
+([arXiv:2604.21284](https://arxiv.org/abs/2604.21284)) concluded its 96.6% R@5
+"is the performance of ChromaDB's default embedding model (all-MiniLM-L6-v2)
+applied to verbatim text chunks" and is reproducible with a minimal ChromaDB
+setup. At k=5 this metric is saturated and mostly measures the embedder, which
+is the same one in all three rows. The honest reading is that Ori's retrieval
+is not the bottleneck and this axis no longer separates systems.
+
+Ori's `recall_any@5` of 0.9660 and MemPalace's published 96.6% agree to three
+significant figures. That is a coincidence, not a copied number; the full
+per-question output is committed.
+
+Weak categories, consistent with LoCoMo: multi-session 0.653 and
+temporal-reasoning 0.772 `recall_all@5`, against 1.000 for both single-session
+types. Multi-hop and temporal are where Ori loses on both benchmarks, which is
+two independent measurements agreeing rather than noise.
+
+Reproduce:
+
+```bash
+npx tsx bench/longmemeval-eval.ts --data <longmemeval_s_cleaned.json>
+python bench/longmemeval-score.py <rankings.json> <path/to/LongMemEval>
+python <LongMemEval>/src/evaluation/print_retrieval_metrics.py <rankings.jsonl>
+```
+
+11 minutes, 500 questions, $0.00. `bench/longmemeval-score.py` imports the
+benchmark's own `evaluate_retrieval` rather than reimplementing `recall_all@k`,
+so these are the authors' metric definitions.
+
 ---
 
 ## Quick Start
