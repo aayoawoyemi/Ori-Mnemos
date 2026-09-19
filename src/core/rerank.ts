@@ -23,18 +23,33 @@ import {
 
 // Constants
 const LAMBDA_MIN = 0.15;
-const LAMBDA_MAX = 0.50;
+// Measured, not chosen. bench/lambda-sweep.mjs replays 1,653 real query
+// instances from retrieval_log at every lambda in [0, 0.6] -- both blend
+// inputs are logged per candidate, so the re-ranking is exact rather than
+// simulated. Term-coverage recall@5 is flat from 0 to 0.35 and then declines
+// monotonically. Paired bootstrap over the same instances, 5000 resamples:
+//
+//     0.35  0.5618            best
+//     0.40  -0.0048  CI [-0.0067, -0.0037]   significant
+//     0.55  -0.0179  CI [-0.0254, -0.0149]   significant
+//     0.60  -0.0262  CI [-0.0332, -0.0210]   significant
+//
+// A QUERY_TYPE_SHIFTS table used to sit here adding -0.10 semantic, +0.15
+// procedural, +0.05 decision, 0 episodic. Every entry moved lambda away from
+// the optimum and the two positive shifts landed on the two worst points
+// measured. It also mis-stated itself: base was already LAMBDA_MAX at
+// maturity, so procedural's +0.15 hit the hard 0.6 clamp and delivered +0.10.
+// And it could not have been earning its keep either way -- query_type is
+// "semantic" on 15,463 of 15,892 logged rows, a 0.0047 traffic-weighted
+// deviation from a constant.
+//
+// Intent still drives the type-space vector (engine.ts buildQueryTypeVec) and
+// the space/split weight profiles (intent.ts). It no longer moves lambda.
+const LAMBDA_MAX = 0.35;
 const LAMBDA_MATURITY = 200;
 const MAX_CUMULATIVE_BIAS = 3.0;
 const EXCESS_COMPRESSION = 0.3;
 const K2 = 8;
-
-const QUERY_TYPE_SHIFTS: Record<string, number> = {
-  semantic: -0.10,
-  procedural: 0.15,
-  decision: 0.05,
-  episodic: 0.0,
-};
 
 // --- Z-score normalization ---
 
@@ -49,16 +64,14 @@ export function zNormalize(values: number[]): number[] {
 
 // --- Lambda ---
 
-export function computeLambda(
-  totalQUpdates: number,
-  queryType: string,
-): number {
-  const base =
-    LAMBDA_MIN +
-    (LAMBDA_MAX - LAMBDA_MIN) *
-      Math.min(totalQUpdates / LAMBDA_MATURITY, 1.0);
-  const shift = QUERY_TYPE_SHIFTS[queryType] ?? 0;
-  return Math.max(0.1, Math.min(0.6, base + shift));
+export function computeLambda(totalQUpdates: number): number {
+  // Warm-up ramp only: trust similarity until enough Q-updates exist to mean
+  // anything, then hold at LAMBDA_MAX. Clamping t rather than the result keeps
+  // the output inside [LAMBDA_MIN, LAMBDA_MAX] by construction, so no later
+  // clamp can silently truncate a configured value the way the old 0.6 bound
+  // truncated procedural's +0.15 down to +0.10.
+  const t = Math.min(Math.max(totalQUpdates / LAMBDA_MATURITY, 0), 1);
+  return LAMBDA_MIN + (LAMBDA_MAX - LAMBDA_MIN) * t;
 }
 
 // --- Phase B ---
@@ -75,7 +88,7 @@ export function phaseB(
 
   const totalUpdates = getTotalQUpdates(db);
   const totalQueries = getTotalQueryCount(db);
-  const lambda = computeLambda(totalUpdates, queryType);
+  const lambda = computeLambda(totalUpdates);
 
   // Get raw scores
   const simRaw = candidates.map((c) => c.score);

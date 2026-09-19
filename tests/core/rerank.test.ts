@@ -44,34 +44,47 @@ describe("zNormalize", () => {
 
 describe("computeLambda", () => {
   it("starts at LAMBDA_MIN with no Q updates", () => {
-    const lambda = computeLambda(0, "semantic");
-    // base = 0.15 + 0*0.35 = 0.15, shift for semantic = -0.10
-    // result = max(0.1, min(0.6, 0.15 - 0.10)) = max(0.1, 0.05) = 0.1
-    expect(lambda).toBeCloseTo(0.1, 10);
+    expect(computeLambda(0)).toBeCloseTo(LAMBDA_MIN, 10);
   });
 
-  it("reaches LAMBDA_MAX at maturity", () => {
-    const lambda = computeLambda(LAMBDA_MATURITY, "episodic");
-    // base = 0.15 + 1.0*0.35 = 0.50, shift for episodic = 0
-    expect(lambda).toBeCloseTo(0.50, 10);
+  it("reaches LAMBDA_MAX at maturity and holds there", () => {
+    expect(computeLambda(LAMBDA_MATURITY)).toBeCloseTo(LAMBDA_MAX, 10);
+    expect(computeLambda(LAMBDA_MATURITY * 50)).toBeCloseTo(LAMBDA_MAX, 10);
   });
 
   it("ramps linearly between min and max", () => {
-    const halfwayLambda = computeLambda(LAMBDA_MATURITY / 2, "episodic");
-    const expectedBase =
-      LAMBDA_MIN + 0.5 * (LAMBDA_MAX - LAMBDA_MIN);
-    expect(halfwayLambda).toBeCloseTo(expectedBase, 10);
+    expect(computeLambda(LAMBDA_MATURITY / 2)).toBeCloseTo(
+      LAMBDA_MIN + 0.5 * (LAMBDA_MAX - LAMBDA_MIN),
+      10,
+    );
   });
 
-  it("shifts higher for procedural queries (trust Q more)", () => {
-    const semantic = computeLambda(100, "semantic");
-    const procedural = computeLambda(100, "procedural");
-    expect(procedural).toBeGreaterThan(semantic);
+  // The old bound was a literal [0.1, 0.6] that did not track the constants,
+  // so a configured shift could exceed it and be silently truncated -- which
+  // is what happened to procedural's +0.15. Range must follow the constants.
+  it("never escapes [LAMBDA_MIN, LAMBDA_MAX] for any update count", () => {
+    for (const n of [-1e9, -1, 0, 1, 199, 200, 201, 1e9, Number.MAX_SAFE_INTEGER]) {
+      const lambda = computeLambda(n);
+      expect(lambda).toBeGreaterThanOrEqual(LAMBDA_MIN);
+      expect(lambda).toBeLessThanOrEqual(LAMBDA_MAX);
+    }
   });
 
-  it("clamps to [0.1, 0.6]", () => {
-    expect(computeLambda(0, "semantic")).toBeGreaterThanOrEqual(0.1);
-    expect(computeLambda(10000, "procedural")).toBeLessThanOrEqual(0.6);
+  it("is monotonically non-decreasing in update count", () => {
+    let prev = -Infinity;
+    for (let n = 0; n <= 400; n += 25) {
+      const lambda = computeLambda(n);
+      expect(lambda).toBeGreaterThanOrEqual(prev);
+      prev = lambda;
+    }
+  });
+
+  // lambda-sweep.mjs measured term-coverage recall@5 declining monotonically
+  // above 0.35 on 1,653 replayed queries: -0.0048 at 0.40 and -0.0262 at 0.60,
+  // both with bootstrap CIs excluding zero. Nothing may raise lambda past the
+  // measured optimum without redoing that sweep.
+  it("caps at the lambda measured optimal on the real query log", () => {
+    expect(LAMBDA_MAX).toBeLessThanOrEqual(0.35);
   });
 });
 
@@ -99,22 +112,33 @@ describe("phaseB", () => {
   });
 
   it("changes ordering when Q-values differ", () => {
-    // Give note-d a very high Q-value (many positive updates)
-    for (let i = 0; i < 50; i++) {
-      updateQ(db, "note-d", 1.0, "s0");
-    }
-    // Give note-a a negative Q-value
-    for (let i = 0; i < 50; i++) {
-      updateQ(db, "note-a", -0.5, "s0");
-    }
+    // note-d: strongly positive Q. note-a: strongly negative.
+    for (let i = 0; i < 50; i++) updateQ(db, "note-d", 1.0, "s0");
+    for (let i = 0; i < 50; i++) updateQ(db, "note-a", -0.5, "s0");
 
-    const result = phaseB(db, candidates, "query", "procedural", "s1");
-    const titles = result.map((r) => r.title);
-    // note-d should move up from its original 4th position
-    const dIdx = titles.indexOf("note-d");
-    const aIdx = titles.indexOf("note-a");
-    // With strong Q signal and procedural shift (+0.15 lambda), note-d should beat note-a
-    expect(dIdx).toBeLessThan(aIdx);
+    const simOnly = [...candidates].sort((x, y) => y.score - x.score).map((c) => c.title);
+    const titles = phaseB(db, candidates, "query", "procedural", "s1").map((r) => r.title);
+
+    // Q must participate in the ordering.
+    expect(titles).not.toEqual(simOnly.slice(0, titles.length));
+    // The top similarity hit carries a strongly negative learned Q and must
+    // lose ground because of it.
+    expect(titles.indexOf("note-a")).toBeGreaterThan(simOnly.indexOf("note-a"));
+
+    // Deliberately NOT asserted: that note-d overtakes note-a. Both signals
+    // are z-normalized, so that flip is scale-free and needs lambda >= 0.427
+    // for this fixture whatever the Q magnitudes -- reachable only via the
+    // deleted +0.15 procedural shift. bench/lambda-sweep.mjs measures
+    // recall@5 significantly down by 0.40 (-0.0048, CI [-0.0067, -0.0037]),
+    // so the old assertion pinned a setting the real query log rejects.
+    //
+    // Also NOT asserted: that note-d rises. It cannot here, and not because
+    // of lambda. phaseB scores blended + ucb, and notes with no Q history
+    // take a flat +0.5 exploration bonus while note-d's whole exploitation
+    // term is lambda * qNorm = 0.25 * 1.2247 = 0.306. Exploration outweighs a
+    // fully-learned positive Q roughly 2:1 at this maturity. That is UCB
+    // working as written, but it means a note cannot climb on learned value
+    // alone while any unexplored candidate is in the set.
   });
 
   it("respects cumulative bias cap", () => {
