@@ -3,6 +3,7 @@ import {
   computePromotion,
   injectFooters,
   isTemplatePlaceholder,
+  resolveAreas,
   type PromoteInput,
 } from "../../src/core/promote.js";
 import type { VaultIndex } from "../../src/core/linkdetect.js";
@@ -287,5 +288,72 @@ describe("isTemplatePlaceholder", () => {
 
   it("returns false for empty string", () => {
     expect(isTemplatePlaceholder("")).toBe(false);
+  });
+});
+
+describe("resolveAreas", () => {
+  // Real map titles from a 1,548-note vault: mixed space and hyphen spellings.
+  const MAPS = [
+    "ai agents map",
+    "courtshare map",
+    "crypto map",
+    "basketball-sim-map",
+    "read-your-bookmarks-map",
+    "agent memory map",
+  ];
+
+  // The defect this replaces: resolveAreas compared a raw project tag against
+  // a raw map title with String.includes. "ai agents map".includes("ai-agents")
+  // is false, so the largest project tag in the vault -- 314 notes -- routed
+  // to the default on every promotion while its map sat right there.
+  it("matches a hyphenated project tag to a space-separated map title", () => {
+    const r = resolveAreas(["ai-agents"], {}, MAPS, "index");
+    expect(r.areas).toEqual(["ai agents map"]);
+    expect(r.usedDefault).toBe(false);
+  });
+
+  it("matches a space-separated project to a hyphenated map title", () => {
+    const r = resolveAreas(["read your bookmarks"], {}, MAPS, "index");
+    expect(r.areas).toEqual(["read-your-bookmarks-map"]);
+    expect(r.usedDefault).toBe(false);
+  });
+
+  // The fallback is not a failure, but it must be reported as one. Filing
+  // under the hub makes a note look mapped to every orphan check while it
+  // belongs to no map -- 823 of 883 mapless notes in the vault got there
+  // exactly this way.
+  it("reports usedDefault when no map matches", () => {
+    const r = resolveAreas(["university"], {}, MAPS, "index");
+    expect(r.areas).toEqual(["index"]);
+    expect(r.usedDefault).toBe(true);
+  });
+
+  it("does not report usedDefault when a map matched", () => {
+    expect(resolveAreas(["crypto"], {}, MAPS, "index").usedDefault).toBe(false);
+  });
+
+  it("prefers explicit routing config over slug matching", () => {
+    const r = resolveAreas(["meta"], { meta: "builder map" }, MAPS, "index");
+    expect(r.areas).toEqual(["builder map"]);
+    expect(r.usedDefault).toBe(false);
+  });
+
+  // The old test for "is this a map" was title.includes("map"), which is true
+  // of "roadmap". A note could be filed under a roadmap and count as mapped.
+  it("does not treat a title ending in roadmap as a map", () => {
+    const r = resolveAreas(["ori"], {}, ["ori roadmap", "ori design doc"], "index");
+    expect(r.areas).toEqual(["index"]);
+    expect(r.usedDefault).toBe(true);
+  });
+
+  it("dedupes when two projects route to the same map", () => {
+    const r = resolveAreas(["ai-agents", "ai agents"], {}, MAPS, "index");
+    expect(r.areas).toEqual(["ai agents map"]);
+  });
+
+  it("collects one area per matching project", () => {
+    const r = resolveAreas(["crypto", "courtshare"], {}, MAPS, "index");
+    expect(r.areas).toEqual(["crypto map", "courtshare map"]);
+    expect(r.usedDefault).toBe(false);
   });
 });

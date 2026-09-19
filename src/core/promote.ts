@@ -12,6 +12,7 @@ import {
   type LinkSuggestion,
   type VaultIndex,
 } from "./linkdetect.js";
+import { slugify } from "./slug.js";
 
 export type PromoteOverrides = {
   type?: string;
@@ -195,39 +196,49 @@ export function injectFooters(
 
 /**
  * Resolve areas for a note based on project tags and map routing config.
- * Fallback chain: config routing → keyword match on map titles → defaultArea.
+ * Fallback chain: config routing -> slug match on map titles -> defaultArea.
+ *
+ * Returns the areas plus whether the default had to be used, because the
+ * default is not a map and a caller that cannot tell the difference will
+ * report a note as filed when it is not.
  */
-function resolveAreas(
+export function resolveAreas(
   projects: string[],
   mapRouting: Record<string, string>,
   existingTitles: string[],
   defaultArea: string
-): string[] {
+): { areas: string[]; usedDefault: boolean } {
   const areas: string[] = [];
 
-  for (const project of projects) {
-    // Direct config routing
-    if (mapRouting[project]) {
-      areas.push(mapRouting[project]);
+  // Compare slugs, not raw strings. A project tag is hyphenated ("ai-agents")
+  // and a map title is usually spaced ("ai agents map"), so the old
+  // title.includes(project) test was false for the largest tag in a 1,548-note
+  // vault -- 314 notes, every one of them silently routed to the default. The
+  // map existed the whole time. Measured: 395 of 535 project-tagged slots
+  // (73.8%) took the fallback, 314 of them from this one separator mismatch.
+  const needles = projects.map((p) => ({ raw: p, slug: slugify(p) }));
+  const haystacks = existingTitles
+    .filter((t) => /(^|[-\s])map$/i.test(t.trim()))
+    .map((t) => ({ title: t, slug: slugify(t) }));
+
+  for (const { raw, slug } of needles) {
+    if (mapRouting[raw]) {
+      areas.push(mapRouting[raw]);
       continue;
     }
-    // Keyword match against existing map titles (titles containing "map")
-    const mapTitle = existingTitles.find(
-      (t) =>
-        t.toLowerCase().includes(project.toLowerCase()) &&
-        t.toLowerCase().includes("map")
-    );
-    if (mapTitle) {
-      areas.push(mapTitle);
-    }
+    const hit = haystacks.find((h) => h.slug.includes(slug));
+    if (hit) areas.push(hit.title);
   }
 
-  // Ensure at least one area — zero orphans from promotion
-  if (areas.length === 0) {
-    areas.push(defaultArea);
-  }
+  // Ensure at least one area -- zero orphans from promotion. This guard is
+  // why the mismatch above stayed invisible: it turns "no map matched" into
+  // an Areas footer that looks filled, so every downstream orphan check
+  // passes while the note is filed under the hub rather than any map.
+  // usedDefault is the signal that this happened.
+  const usedDefault = areas.length === 0;
+  if (usedDefault) areas.push(defaultArea);
 
-  return [...new Set(areas)];
+  return { areas: [...new Set(areas)], usedDefault };
 }
 
 /**
@@ -330,13 +341,21 @@ export function computePromotion(input: PromoteInput): PromoteResult {
   }
 
   // 6. Resolve areas
-  const suggestedAreas = resolveAreas(
+  const { areas: suggestedAreas, usedDefault: areaFellBack } = resolveAreas(
     projects,
     mapRouting,
     existingTitles,
     defaultArea
   );
   changes.push(`assigned to area(s): ${suggestedAreas.join(", ")}`);
+  if (areaFellBack) {
+    warnings.push(
+      `No map matched ${projects.length > 0 ? `project(s) ${projects.join(", ")}` : "this note"}; ` +
+        `filed under "${defaultArea}", which is a hub and not a map. Add a ` +
+        `promote.project_map_routing entry or create the map. The note will ` +
+        `pass orphan checks without belonging to any map.`
+    );
+  }
 
   // 7. Inject footers (idempotent)
   const allLinks = [
