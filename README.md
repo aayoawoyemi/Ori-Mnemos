@@ -71,6 +71,10 @@ templates. The optional LLM hook is `llm=None` by default and was not used.
 | drift | **198 / 200** | two supersessions in sequence, only the last survives |
 | **overall** | **978 / 1000 (97.8%)** | 1,000 generated cases, seed 42 |
 
+Not fitted to the suite: unseen seeds give **97.2%** (seed 7) and **98.0%**
+(seed 123). The fixes were structural bugs in the matcher, not case-specific
+patches.
+
 | System | template | adversarial |
 |---|:---:|:---:|
 | LangMem | 99.5 | — |
@@ -85,19 +89,47 @@ operations, `supersede`, `release` and `purge`, and Ori had none of them:
 zero source hits across `src/`. Every case was N/A. The ACT-R decay and
 Ebbinghaus curves Ori already had are ranking-time priors, and no benchmark
 measures those; ForgetEval's "decay" family means an explicit `release(query)`
-call. `src/core/forget.ts` is what closed the gap.
+call. `src/core/forget.ts` is 305 lines and closed the whole gap in a day,
+which is the most informative number on this page.
 
-**Read the adversarial column with a specific caveat.** ForgetEval is
-authored by the team that ships Lethe, a competing system. It survives
-scrutiny better than most vendor benchmarks — deterministic scoring, no
-judge, MIT, runnable — but **253 of its 385 adversarial cases were admitted
-only if the vendor's own system passed them**, annotated in
+**That table is not a ranking, and "third" would be a bad way to read it.**
+
+ForgetEval's code lives inside `deeplethe/lethe` — the benchmark and its
+top-scoring system are the same org, in a repo with 14 stars. The template
+column has four entries, one of which (MemPalace) scores 0 by construction
+because it exposes no deletion primitive at all. Two of the rest saturate.
+On the adversarial layer Ori is 5th of 14 configurations and lands inside
+the 63–68% band the paper's own McNemar test calls noise (χ²=0.125,
+p=0.724); the paper's words are "the bench reads the trade-off, not a
+winner." The one comparison that is statistically real is Ori vs Lethe on
+template, z=2.81, p=0.005 — Lethe is genuinely ahead.
+
+**Who is missing matters more than who placed.** Supermemory (30.6k stars,
+$2.6M seed) ships `POST /v4/memories/forget-matching` — natural-language
+forgetting with `dryRun`, `threshold`, `maxForget` and an audit handle —
+plus versioned `PATCH` supersession. That is a better-specified control
+plane than anything scored here, and it maps onto the adapter protocol
+almost verbatim. It has never been benchmarked. Neither have Hindsight
+(24.0k), Cognee (30.8k, excluded for API incompatibility), MemOS (11.5k) or
+Honcho (7.3k).
+
+So the honest claim is not that Ori forgets better than the field. It is
+that **Ori forgets offline, with no API key**, and that the field has no
+idea how well it forgets:
+
+> Fifteen agent-memory systems were checked. **Zero publish a forgetting
+> benchmark for their own system.** Five such benchmarks exist — ForgetEval,
+> Memora/FAMA, MemoryAgentBench-SF, StateMemBench, MemLeak — and vendors
+> cite none of them. Every forgetting number in existence was produced by a
+> rival or an outsider.
+
+**Read the adversarial column with one more caveat.** 253 of its 385 cases
+were admitted only if the vendor's own system passed them, annotated in
 `adversarial.py` as "Oracle-validated (Lethe / Lethe+LLM passes the case)".
 The authors' own blind 77-case external subset drops the whole field from
 the 63–68% band to 28–33%, which says the in-house suite is materially
 easier. A benchmark whose admission filter is "the measurer's system solves
-it" cannot rank the measurer. The template suite has no such filter and is
-the number to trust.
+it" cannot rank the measurer.
 
 Reproduce:
 
