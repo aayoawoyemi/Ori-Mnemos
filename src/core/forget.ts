@@ -258,8 +258,17 @@ async function setStatus(file: string, status: string, extra: Record<string, unk
  * for a while; this is the same idea, arrived at from the other direction.
  */
 export interface ForgetOptions {
-  /** Match and report, change nothing. */
-  dryRun?: boolean;
+  /**
+   * Actually change something. DEFAULT FALSE — every forget call is a dry run
+   * until the caller opts in, matching `ori prune`, which has always required
+   * `--apply` and previews otherwise.
+   *
+   * Defaulting the other way is indefensible for an operation whose failure
+   * mode is silent data loss: the matcher scored 97.8% on ForgetEval while
+   * being willing to delete 159 notes from a real vault, and a caller who
+   * mistypes a query should get a report, not a hole.
+   */
+  apply?: boolean;
   /**
    * Refuse the call if it would touch more than this many notes. Default 10.
    * `Infinity` disables the guard, and the caller has to type that.
@@ -292,7 +301,7 @@ export async function release(
 ): Promise<ForgetResult> {
   const matched = await matchForForget(notesDir, query, config);
   guardBlastRadius(query, matched, opts);
-  if (opts.dryRun) return { matched, count: 0 };
+  if (!opts.apply) return { matched, count: 0 }; // dry run is the default
   for (const m of matched) {
     await setStatus(m.file, "released", { released_by: query, released: new Date().toISOString().slice(0, 10) });
   }
@@ -308,7 +317,7 @@ export async function purge(
 ): Promise<ForgetResult> {
   const matched = await matchForForget(notesDir, query, config);
   guardBlastRadius(query, matched, opts);
-  if (opts.dryRun) return { matched, count: 0 };
+  if (!opts.apply) return { matched, count: 0 }; // dry run is the default
   for (const m of matched) {
     await fs.rm(m.file, { force: true });
   }
@@ -333,8 +342,10 @@ export async function supersede(
   newText: string,
   config: EngineConfig,
   writeNote: (slug: string, text: string, frontmatter: Record<string, unknown>) => Promise<void>,
+  opts: ForgetOptions = {},
 ): Promise<ForgetResult> {
   const matched = await matchForForget(notesDir, oldQuery, config, { limit: 1 });
+  if (!opts.apply) return { matched, count: 0 }; // dry run is the default
   const replaced = matched.map((m) => m.slug);
   for (const m of matched) {
     await setStatus(m.file, "superseded", { superseded_by_query: oldQuery });

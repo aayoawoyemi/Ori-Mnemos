@@ -119,18 +119,18 @@ for await (const line of rl) {
         const r = await supersede(notesDir(), req.old, req.new, cfg, async (slug, text, fm) => {
           seen.set(slug, text);
           writeFileSync(join(notesDir(), `${slug}.md`), frontmatter(fm) + text + "\n", "utf8");
-        });
+        }, { apply: true, maxForget: Infinity });
         say({ ok: true, count: r.count });
         break;
       }
       case "release": {
-        const r = await release(notesDir(), req.query, await config());
+        const r = await release(notesDir(), req.query, await config(), { apply: true, maxForget: Infinity });
         for (const m of r.matched) seen.delete(m.slug);
         say({ ok: true, count: r.count });
         break;
       }
       case "purge": {
-        const r = await purge(notesDir(), req.query, await config());
+        const r = await purge(notesDir(), req.query, await config(), { apply: true, maxForget: Infinity });
         for (const m of r.matched) seen.delete(m.slug);
         say({ ok: true, count: r.count });
         break;

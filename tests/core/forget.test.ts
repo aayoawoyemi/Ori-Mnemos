@@ -93,7 +93,7 @@ describe("release and purge", () => {
   it("release keeps the file and marks it, so it survives a rebuilt index", async () => {
     note("otp", "Session OTP for Bob: 211755.");
     note("coffee", "Bob likes iced coffee in the afternoon.");
-    const r = await release(notes, "OTP login session code 211755", config);
+    const r = await release(notes, "OTP login session code 211755", config, { apply: true });
     expect(r.count).toBe(1);
     const file = join(notes, "otp.md");
     expect(existsSync(file)).toBe(true);
@@ -105,7 +105,7 @@ describe("release and purge", () => {
   it("purge unlinks the file", async () => {
     note("key", "API key issued to ops: sk-zzpqk51fpk-secret.");
     note("bike", "The bicycle rack near the lobby was repainted.");
-    const r = await purge(notes, "API key sk-zzpqk51fpk", config);
+    const r = await purge(notes, "API key sk-zzpqk51fpk", config, { apply: true });
     expect(r.count).toBe(1);
     expect(existsSync(join(notes, "key.md"))).toBe(false);
     expect(existsSync(join(notes, "bike.md"))).toBe(true);
@@ -123,7 +123,7 @@ describe("blast radius", () => {
 
   it("refuses a release wider than maxForget instead of doing it", async () => {
     manyMatching();
-    await expect(release(notes, "Grace paella preferences", config)).rejects.toThrow(
+    await expect(release(notes, "Grace paella preferences", config, { apply: true })).rejects.toThrow(
       /addresses \d+ notes, over the maxForget cap of 10/,
     );
     // Nothing was written before the throw.
@@ -132,13 +132,13 @@ describe("blast radius", () => {
 
   it("refuses a purge the same way, and deletes nothing", async () => {
     manyMatching();
-    await expect(purge(notes, "Grace paella preferences", config)).rejects.toThrow(ForgetBlastRadiusError);
+    await expect(purge(notes, "Grace paella preferences", config, { apply: true })).rejects.toThrow(ForgetBlastRadiusError);
     expect(existsSync(join(notes, "grace-0.md"))).toBe(true);
   });
 
-  it("dryRun reports matches and changes nothing", async () => {
+  it("changes nothing unless the caller passes apply", async () => {
     note("otp", "Session OTP for Bob: 211755.");
-    const r = await release(notes, "OTP login session code 211755", config, { dryRun: true });
+    const r = await release(notes, "OTP login session code 211755", config);
     expect(r.matched).toHaveLength(1);
     expect(r.count).toBe(0);
     expect(readFileSync(join(notes, "otp.md"), "utf8")).not.toContain("status: released");
@@ -146,7 +146,7 @@ describe("blast radius", () => {
 
   it("an explicit cap lets a wide call through — the caller has to say so", async () => {
     manyMatching();
-    const r = await release(notes, "Grace paella preferences", config, { maxForget: Infinity });
+    const r = await release(notes, "Grace paella preferences", config, { apply: true, maxForget: Infinity });
     expect(r.count).toBeGreaterThan(10);
   });
 });
