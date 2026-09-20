@@ -13,7 +13,8 @@ Persistent memory across sessions, clients, and machines. Zero-infrastructure re
 ## Use
 
 Ori is three surfaces over one index. The markdown is the truth; the index is
-derived and disposable (`rm -rf .ori/ && ori index build` rebuilds it).
+derived. The learned half — Q-values, LinUCB arms, retrieval history — is not,
+so export it before deleting anything (see [When to rebuild](#when-to-rebuild)).
 
 **CLI**
 
@@ -489,8 +490,9 @@ paths continue to work unchanged.
 
 ### When to rebuild
 
-Everything under `.ori/` is derived from the markdown and is disposable. Three
-stores live there, and they need you at different times:
+`.ori/` holds two different things, and only one of them is disposable.
+
+**Derived** — rebuilt from the markdown on demand:
 
 | store | maintained by | needs `ori index build` when |
 |---|---|---|
@@ -498,17 +500,42 @@ stores live there, and they need you at different times:
 | embeddings (semantic vectors) | `ori add` on write; queries only if the table is missing or empty | a note was written by something other than `ori add` (an editor, a sync client, a script) — it is findable by keyword and links immediately, but not by meaning until it is embedded |
 | co-occurrence bootstrap | `ori index build` only | link structure changed a lot and you want day-0 edges to reflect it |
 
-So the practical rule: **edit and query freely; run `ori index build` after
-bulk-adding notes from outside Ori, and `ori index build --force` if a query
-reports it cannot cover the vault.** Both are safe to run any time — the first
-is incremental by content hash, the second is a full reparse (about 4 s per
-1,500 notes for the index, plus embedding time for every note).
+**Accumulated** — nowhere else, and a rebuild destroys it:
 
-Deleting `.ori/embeddings.db` outright is also fine. The next query rebuilds
-the derived index and embeds the vault before answering; it just takes as
-long as `--force` does. Learned state (Q-values, stage policies, co-retrieval
-history) lives in the same file, so prefer `--force` when you want a clean
-index without losing what the ranker has learned.
+`retrieval_log`, `note_q`, `q_history`, `q_history_genuine`, `stage_q`,
+`stage_log`, `boosts`, `note_access`, `memory_events`, and the `retrieval`
+rows of `co_occurrence`.
+
+Measured on a 1,548-note vault: `rm -rf .ori/ && ori index build` empties
+**eight** of those tables — six months of retrieval history across 564
+sessions, 1,427 learned Q-values, and the eight live LinUCB arms that decide
+which ranking stages run. Two of them, `q_history_genuine` and
+`memory_events`, are created by no production code at all and cannot be
+reconstructed by anything.
+
+So export before you delete:
+
+```bash
+ori index export-learned          # -> ops/ori-learned.ndjson
+rm -rf .ori/
+ori index build
+ori index import-learned
+```
+
+That round-trip is verified lossless on a real vault by
+`bench/learned-roundtrip.mjs`, which compares row counts *and* a digest over
+the Q-values themselves, because counts matching while values drift is a pass
+that means nothing. The export is NDJSON, deterministically ordered, ~23 MB
+for 56,850 rows against a 243 MB binary — small enough and diffable enough to
+commit, which the binary is not.
+
+The practical rule: **edit and query freely; run `ori index build` after
+bulk-adding notes from outside Ori, and `ori index build --force` if a query
+reports it cannot cover the vault.** `--force` is a full reparse that keeps
+accumulated state; only deleting the file loses it.
+
+Earlier versions of this README said everything under `.ori/` was derived and
+disposable. That was wrong, and following it cost six months of learning.
 
 ---
 

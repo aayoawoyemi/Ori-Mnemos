@@ -24,7 +24,7 @@ import { runBridgeClaudeCode, runBridgeClaudeCodeGlobal, runBridgeCodex, runBrid
 import { runServeMcp } from "./cli/serve.js";
 import { runQueryRanked, runQuerySimilar, runQueryWarmthAudit } from "./cli/search.js";
 import { runWake } from "./cli/wake.js";
-import { runIndexBuild, runIndexStatus } from "./cli/indexcmd.js";
+import { runIndexBuild, runIndexStatus, runIndexExportLearned, runIndexImportLearned } from "./cli/indexcmd.js";
 import { runGraphMetrics, runGraphCommunities } from "./cli/graphcmd.js";
 import { runPrune } from "./cli/prune.js";
 import { runExplore, runExploreStartCli, runExploreExpandCli, runExploreConcludeCli, runExploreExtendCli } from "./cli/explore.js";
@@ -423,9 +423,10 @@ program
 
 program
   .command("index")
-  .argument("<action>", "build | status")
+  .argument("<action>", "build | status | export-learned | import-learned")
   .option("--force", "rebuild all embeddings")
-  .action(async (action: string, options: { force?: boolean }) => {
+  .option("--file <path>", "export/import path (default ops/ori-learned.ndjson)")
+  .action(async (action: string, options: { force?: boolean; file?: string }) => {
     let result;
     switch (action) {
       case "build":
@@ -433,6 +434,14 @@ program
         break;
       case "status":
         result = await runIndexStatus(process.cwd());
+        break;
+      // The index is only disposable if the learning has somewhere else to
+      // live. These two are what make `rm -rf .ori/` a safe instruction.
+      case "export-learned":
+        result = await runIndexExportLearned(process.cwd(), options.file);
+        break;
+      case "import-learned":
+        result = await runIndexImportLearned(process.cwd(), options.file);
         break;
       default:
         throw new Error(`Unknown index action: ${action}`);

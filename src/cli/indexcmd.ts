@@ -11,6 +11,7 @@ import { initCoOccurrenceTables, bootstrapFromWikiLinks } from "../core/cooccurr
 import { loadConfig } from "../core/config.js";
 import { buildIndex, initDB } from "../core/engine.js";
 import type { IndexStats } from "../core/engine.js";
+import { exportLearned, importLearned } from "../core/learned.js";
 
 export type DerivedIndexStats = {
   scanned: number;
@@ -176,4 +177,76 @@ export async function runIndexStatus(
     },
     warnings,
   };
+}
+
+/**
+ * Write the accumulated half of the index to a text file.
+ *
+ * This is the command that makes `rm -rf .ori/` safe. Without it the binary
+ * index is the only copy of six months of retrieval history and learned
+ * Q-values, which is why that directory ended up committed to git as a
+ * 243 MB blob across 76 commits — the wrong fix for a real problem.
+ */
+export async function runIndexExportLearned(
+  cwd: string,
+  outPath?: string,
+): Promise<{ success: boolean; data: Record<string, unknown>; warnings: string[] }> {
+  const vaultRoot = await findVaultRoot(cwd);
+  if (!vaultRoot) throw new Error("Not inside an Ori vault");
+  // loadConfig takes the config FILE, not the vault directory. Passing the
+  // directory throws EISDIR with no indication of which argument was wrong.
+  const config = await loadConfig(getVaultPaths(vaultRoot).config);
+  const dbPath = path.resolve(vaultRoot, config.engine.db_path);
+
+  const db = initDB(dbPath);
+  let ndjson: string;
+  let stats;
+  try {
+    ({ ndjson, stats } = exportLearned(db));
+  } finally {
+    db.close();
+  }
+
+  const out = path.resolve(vaultRoot, outPath ?? "ops/ori-learned.ndjson");
+  await fs.mkdir(path.dirname(out), { recursive: true });
+  await fs.writeFile(out, ndjson, "utf8");
+
+  return {
+    success: true,
+    data: { path: out, bytes: Buffer.byteLength(ndjson, "utf8"), ...stats },
+    warnings: stats.total === 0 ? ["nothing accumulated yet — index has no learning to export"] : [],
+  };
+}
+
+/** Restore accumulated state after a rebuild. Idempotent. */
+export async function runIndexImportLearned(
+  cwd: string,
+  inPath?: string,
+): Promise<{ success: boolean; data: Record<string, unknown>; warnings: string[] }> {
+  const vaultRoot = await findVaultRoot(cwd);
+  if (!vaultRoot) throw new Error("Not inside an Ori vault");
+  // loadConfig takes the config FILE, not the vault directory. Passing the
+  // directory throws EISDIR with no indication of which argument was wrong.
+  const config = await loadConfig(getVaultPaths(vaultRoot).config);
+  const dbPath = path.resolve(vaultRoot, config.engine.db_path);
+
+  const src = path.resolve(vaultRoot, inPath ?? "ops/ori-learned.ndjson");
+  const ndjson = await fs.readFile(src, "utf8");
+
+  const db = initDB(dbPath);
+  let stats;
+  try {
+    stats = importLearned(db, ndjson);
+  } finally {
+    db.close();
+  }
+
+  const warnings: string[] = [];
+  if (stats.skippedUnknownTable > 0) {
+    warnings.push(
+      `${stats.skippedUnknownTable} rows targeted tables this index does not have — ` +
+        "run `ori index build` first so the schema exists",
+    );
+  }
+  return { success: true, data: { path: src, ...stats }, warnings };
 }

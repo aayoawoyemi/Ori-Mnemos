@@ -25,6 +25,20 @@ export async function isVaultRoot(dir: string): Promise<boolean> {
   }
 }
 
+/**
+ * A vault whose derived index has been deleted still has its config. This is
+ * what distinguishes "the user removed .ori/ on purpose" from "this directory
+ * has nothing to do with Ori".
+ */
+export async function hasVaultConfig(dir: string): Promise<boolean> {
+  try {
+    await fs.access(path.join(dir, "ori.config.yaml"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type VaultRootResult = {
   path: string;
   source: "project" | "global";
@@ -58,9 +72,18 @@ export async function findVaultRootWithSource(
   }
 
   // 2. Walk up from startDir looking for .ori
+  //
+  // A directory holding ori.config.yaml is a vault root even when .ori/ is
+  // absent, and the walk MUST stop there. Before this, `rm -rf .ori/ && ori
+  // index build` — the recovery procedure the README documents — walked past
+  // the vault it was run in, found the next .ori up the tree (a
+  // home-directory vault, in the case that surfaced this), and rebuilt THAT
+  // one while reporting {"success":true}. Wrong vault, plausible output, no
+  // error. An index deleted on purpose must not silently promote its parent.
   let current = path.resolve(startDir ?? process.cwd());
   while (true) {
     if (await isVaultRoot(current)) return { path: current, source: "project" };
+    if (await hasVaultConfig(current)) return { path: current, source: "project" };
     const parent = path.dirname(current);
     if (parent === current) break; // reached filesystem root
     current = parent;
