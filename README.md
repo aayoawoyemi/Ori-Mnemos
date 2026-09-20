@@ -39,7 +39,12 @@ const hits = await searchComposite(idx, "what did we decide about caching?");
 
 The export surface is deliberately small and is a semver contract; the rest of
 `src/core` is internal. Versions before 0.7.1 shipped no `main` and no
-`exports`, so a bare import threw — the library path did not exist.
+`exports`, so a bare import threw and the library path did not exist — but the
+CLI and MCP paths always worked, and existing users were unaffected.
+
+`ori-memory/cli` resolves to the CLI entry, for callers that need to locate
+the binary and spawn it rather than link against it. `require.resolve` on it
+is the intended use; importing it runs the CLI.
 
 ## Benchmarks
 

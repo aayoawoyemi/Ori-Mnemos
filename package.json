@@ -53,6 +53,8 @@
       "types": "./dist/lib.d.ts",
       "import": "./dist/lib.js"
     },
+    "./cli": "./dist/index.js",
+    "./dist/index.js": "./dist/index.js",
     "./package.json": "./package.json"
   },
   "files": [

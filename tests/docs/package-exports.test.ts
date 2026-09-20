@@ -47,4 +47,24 @@ describe("package entry points", () => {
     // If this fails, decide whether the new export is really public.
     expect(Object.keys(lib).length).toBeLessThanOrEqual(20);
   });
+
+  // @orimnemos/cli (aries-cli, the agentic harness that depends on
+  // ori-memory ^0.5.5) calls require.resolve("ori-memory/dist/index.js") in
+  // src/memory/vault.ts to locate the binary it spawns. Before 0.7.1 there
+  // was no exports field at all, so legacy resolution allowed any subpath and
+  // that call worked by accident.
+  //
+  // Adding exports made it throw ERR_PACKAGE_PATH_NOT_EXPORTED, which does
+  // not surface as an error: vault.ts catches it and silently falls back to a
+  // global `ori-memory` shim that may not be installed. A real consumer
+  // degrading quietly is a failure mode this package already has too much of.
+  //
+  // Delete this only after that consumer moves to the "./cli" subpath.
+  it("keeps the deep CLI path that @orimnemos/cli resolves", () => {
+    expect(pkg.exports["./dist/index.js"]).toBe("./dist/index.js");
+  });
+
+  it("offers ./cli as the non-deprecated way to locate the binary", () => {
+    expect(pkg.exports["./cli"]).toBe("./dist/index.js");
+  });
 });
