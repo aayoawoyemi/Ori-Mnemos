@@ -57,13 +57,30 @@ reports only hit@k will look perfect while getting the answer wrong.
 
 k = 10, 100 questions per row, no reader.
 
+All 8 rows, 455 to 18,332 facts — a 40x range.
+
 ```
-variant     facts  sup%  hit@10  head@1  stale@10 (chance)  stale@1 (chance)
-sh_6k         455   33%   100.0    47.0   98.0     98.2      50.0    33.2
-sh_32k       2310   34%   100.0    52.0  100.0     98.5      46.0    34.4
-mh_6k         455   33%    26.0     0.0  100.0     98.2      41.0    33.2
-mh_32k       2310   34%    15.0     0.0  100.0     98.5      40.0    34.4
+variant     facts  sup%  hit@10  head@1  stale@1 (chance)  excess   s/query
+sh_6k         455   33%   100.0    47.0    50.0    33.2     +16.8     0.31
+sh_32k       2310   34%   100.0    52.0    46.0    34.4     +11.6     1.28
+sh_64k       4580   35%    99.0    48.0    51.0    35.3     +15.7     1.88
+sh_262k     18332   39%    99.0    38.0    56.0    38.6     +17.4    10.42
+mh_6k         455   33%    26.0     0.0    41.0    33.2      +7.8     0.37
+mh_32k       2310   34%    15.0     0.0    40.0    34.4      +5.6     1.32
+mh_64k       4580   35%    12.0     1.0    50.0    35.3     +14.7     1.83
+mh_262k     18332   39%    11.0     0.0    51.0    38.6     +12.4     7.83
 ```
+
+- **Recall is scale-invariant.** hit@10 holds at 99-100% on single-hop
+  across 40x the corpus. Retrieval is not where this breaks.
+- **head@1 decays with scale**, 47 -> 52 -> 48 -> 38. Ranking precision at
+  the head is what erodes, not membership in the top 10.
+- **The stale bias is structural, not a small-corpus artifact.** The excess
+  over chance is 16.8, 11.6, 15.7, 17.4 — flat at roughly +15 points across
+  the whole range, exactly as the counterfactual mechanism predicts.
+- **multi-hop retrieval-only is useless** (26 -> 11%) and degrades with
+  distractors. Expected: "the country of citizenship of the spouse of the
+  author of Our Mutual Friend" is not one hop. mh needs the reader.
 
 - **hit@10 = 100% on single-hop** at both sizes. The gold fact is always
   retrieved. Recall is not the problem.
@@ -83,6 +100,38 @@ with probability 1 − (1 − 0.33)^10 ≈ 98%. The measured 98–100% is
 **indistinguishable from chance** and means nothing. Only `stale@1` (floor
 33%) discriminates. Same lesson as the ForgetEval vacuous floor: publish the
 null baseline beside the metric or the metric is decoration.
+
+## 2b. Latency: the 10.4 s/query headline was an averaging artifact
+
+`bench/recall-latency.mjs`. The query column above is total wall time over
+100 questions divided by 100, and the first `recall()` builds the index, so
+that number is an upper bound. Measured per query instead:
+
+```
+facts   build+q1   steady-state median   ratio
+  455     10.76s          0.13s          84.7x
+ 2310     45.65s          0.51s          89.5x
+ 4580     90.27s          0.98s          92.4x
+```
+
+Reproduced on a second independent run (43.98s/0.50s, 92.08s/1.07s).
+
+Steady state fits `t(n) = 0.034s + 0.2274ms x n`, so **0.98 s/query at 4,580
+notes** and a projected **4.2 s/query at 18,332**. The real vault, at 1,550
+notes, sits near 0.38 s.
+
+The build, not the query, is the scaling limit:
+
+```
+implied one-time build at 18,332 notes:  622s
+linear extrapolation from small sizes:   375s
+                                         1.7x SUPERLINEAR
+```
+
+This is the quantitative version of the earlier `.ori/` finding. The README
+once described it as a disposable cache. At 18k notes, deleting it costs an
+11-minute rebuild — on top of the 56,850 learned rows already shown to be
+unrecoverable from the notes alone.
 
 ## 3. Can Ori detect the conflicts itself?
 
