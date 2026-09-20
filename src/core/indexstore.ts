@@ -41,6 +41,7 @@ import { resolveLinkTarget, stripCodeFences } from "./graph.js";
 import { parseFrontmatter, readFrontmatterFile, writeFrontmatterFile } from "./frontmatter.js";
 import { slugify } from "./slug.js";
 import { tokenize } from "./bm25.js";
+import { isForgotten } from "./status.js";
 
 type DB = InstanceType<typeof Database>;
 
@@ -501,7 +502,7 @@ export async function syncIndex(db: DB, notesDir: string): Promise<SyncResult> {
       delDang.run(id);
       // graph.ts skips archived notes as link SOURCES; mirror that exactly so
       // the SQL graph and the in-memory graph cannot disagree.
-      if (str(p.data, "status") === "archived") continue;
+      if (isForgotten(str(p.data, "status"))) continue;
       for (const target of p.links) {
         const dst = idOf.get(target);
         if (dst === undefined) insDang.run(id, target);
@@ -614,7 +615,7 @@ export function loadLinkGraph(db: DB): LinkGraph {
   const outgoing = new Map<string, Set<string>>();
   const incoming = new Map<string, Set<string>>();
   for (const row of rows<{ slug: string; status: string }>(db, "SELECT slug, status FROM note")) {
-    if (row.status !== "archived") outgoing.set(row.slug, new Set());
+    if (!isForgotten(row.status)) outgoing.set(row.slug, new Set());
   }
   const link = (src: string, dst: string) => {
     if (!outgoing.has(src)) outgoing.set(src, new Set());

@@ -44,8 +44,12 @@ describe("package entry points", () => {
   it("does not re-export all of core, which would freeze internals", async () => {
     const lib = await import("../../src/lib.js");
     // The surface is a semver contract. Anything reachable here is pinned.
-    // If this fails, decide whether the new export is really public.
-    expect(Object.keys(lib).length).toBeLessThanOrEqual(20);
+    // If this fails, decide whether the new export is really public
+    // rather than raising the number reflexively. It was raised from 20
+    // to 24 once, deliberately, when forget.ts added supersede/release/
+    // purge/matchForForget and explore's wired entry was exported as
+    // `recall` -- all of which callers genuinely need.
+    expect(Object.keys(lib).length).toBeLessThanOrEqual(24);
   });
 
   // @orimnemos/cli (aries-cli, the agentic harness that depends on

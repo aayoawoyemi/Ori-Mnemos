@@ -17,6 +17,7 @@ import { buildGraph } from "./graph.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import type { GraphMetrics } from "./importance.js";
 import { computeGraphMetrics } from "./importance.js";
+import { isForgotten } from "./status.js";
 
 // ---------------------------------------------------------------------------
 // Exported interfaces
@@ -530,7 +531,12 @@ export async function buildIndex(
     const { data: frontmatter, body } = parseFrontmatter(content);
     const fm = frontmatter ?? {};
 
-    if (fm.status === "archived") {
+    // Forgotten notes get no embedding or boost row. This is storage
+    // hygiene only -- coverage is measured against the `note` table,
+    // which still carries them, so skipping here cannot make
+    // openSyncedIndex report a partial index. Visibility is decided
+    // at retrieval, by the filter after explore expansion.
+    if (isForgotten(fm.status)) {
       continue;
     }
 

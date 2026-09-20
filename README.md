@@ -28,15 +28,19 @@ npx ori sql "…"       # read-only SQL over the index
 **MCP server** — `ori serve`, registered in a client config. This is how an
 agent uses it.
 
-**Library** — `searchComposite` is the same entry the MCP `ori_recall` tool
-calls, so the programmatic path and the agent path cannot drift.
+**Library** — `recall` is the same wired entry the CLI and the MCP
+`ori_recall` tool both go through, so the programmatic path and the agent
+path cannot drift.
 
 ```ts
-import { openSyncedIndex, searchComposite, runReadOnlySql } from "ori-memory";
+import { recall } from "ori-memory";
 
-const idx = await openSyncedIndex({ vault: "./vault" });
-const hits = await searchComposite(idx, "what did we decide about caching?");
+const res = await recall("./vault", "what did we decide about caching?", { limit: 5 });
+for (const hit of res.data.results) console.log(hit.title, hit.score);
 ```
+
+`searchComposite` is also exported for callers that have already assembled
+vectors, graph metrics and a config; `recall` does that assembly for you.
 
 The export surface is deliberately small and is a semver contract; the rest of
 `src/core` is internal. Versions before 0.7.1 shipped no `main` and no
@@ -48,6 +52,66 @@ the binary and spawn it rather than link against it. `require.resolve` on it
 is the intended use; importing it runs the CLI.
 
 ## Benchmarks
+
+### ForgetEval — Can It Forget On Command?
+
+[deeplethe/lethe](https://github.com/deeplethe/lethe), `bench/forgeteval/`,
+MIT. **No API key, no network, no LLM judge.** The scorer is a ~20-line
+deterministic substring check in `GeneratedCase.run()`: it calls
+`recall_texts(query, k=10)` itself, joins the top 10, and tests
+`must_contain` / `must_not_contain`. Generation is `random.Random(42)` over
+templates. The optional LLM hook is `llm=None` by default and was not used.
+
+| family | Ori | what it requires |
+|---|:---:|---|
+| supersession | **200 / 200** | replace a fact, old value must not surface |
+| decay | **200 / 200** | `release(query)` — soft-evict on demand |
+| amnesia | **198 / 200** | evict one subject, keep the bystanders |
+| purge | **182 / 200** | hard-delete, verbatim secret must be gone |
+| drift | **198 / 200** | two supersessions in sequence, only the last survives |
+| **overall** | **978 / 1000 (97.8%)** | 1,000 generated cases, seed 42 |
+
+| System | template | adversarial |
+|---|:---:|:---:|
+| LangMem | 99.5 | — |
+| Lethe v1 | 99.3 | 63.4 |
+| **Ori Mnemos** | **97.8** | **65.7** |
+| Mem0 | 88.8 | 68.3 |
+| MemPalace | 0 | — |
+
+**Ori scored 0/1000 on this benchmark earlier the same day.** Not a low
+score — a structural zero. ForgetEval's adapter protocol has three optional
+operations, `supersede`, `release` and `purge`, and Ori had none of them:
+zero source hits across `src/`. Every case was N/A. The ACT-R decay and
+Ebbinghaus curves Ori already had are ranking-time priors, and no benchmark
+measures those; ForgetEval's "decay" family means an explicit `release(query)`
+call. `src/core/forget.ts` is what closed the gap.
+
+**Read the adversarial column with a specific caveat.** ForgetEval is
+authored by the team that ships Lethe, a competing system. It survives
+scrutiny better than most vendor benchmarks — deterministic scoring, no
+judge, MIT, runnable — but **253 of its 385 adversarial cases were admitted
+only if the vendor's own system passed them**, annotated in
+`adversarial.py` as "Oracle-validated (Lethe / Lethe+LLM passes the case)".
+The authors' own blind 77-case external subset drops the whole field from
+the 63–68% band to 28–33%, which says the in-house suite is materially
+easier. A benchmark whose admission filter is "the measurer's system solves
+it" cannot rank the measurer. The template suite has no such filter and is
+the number to trust.
+
+Reproduce:
+
+```bash
+git clone https://github.com/deeplethe/lethe && cd lethe
+cp <ori>/bench/forgeteval_ori_adapter.py bench/forgeteval/ori_adapter.py
+export ORI_BRIDGE=<ori>/bench/forgeteval-bridge.mjs
+python -m bench.forgeteval.run --adapter ori --suite template --scale 200 --seed 42
+```
+
+Four minutes, 1,000 cases, $0.00. The adapter talks NDJSON to a resident Node
+process because the harness makes ~10 calls per case and a CLI subprocess per
+call would spend hours on interpreter startup.
+
 
 ### HotpotQA — Multi-Hop Retrieval
 
@@ -67,6 +131,21 @@ same documents and answered the same questions in the same run.
 one. Raw output: [`bench/results/`](./bench/results/), reproduce with
 [`bench/hotpotqa-eval.ts`](./bench/hotpotqa-eval.ts) and
 [`bench/mem0-hotpotqa.py`](./bench/mem0-hotpotqa.py).
+
+**These are not HotpotQA's official metrics and must not be compared to the
+HotpotQA leaderboard.** The official scorer, `hotpot_evaluate_v1.py`, reports
+answer EM/F1 under its own `normalize_answer`, plus supporting-fact F1 over
+`(title, sentence_id)` pairs, plus joint EM/F1. The table above is a
+title-level retrieval metric defined in `bench/hotpotqa-eval.ts`, and
+"answer proxy" is not a HotpotQA metric at all — it is token recall of the
+gold answer against retrieved text. The comparison is valid in one direction
+only: Ori and Mem0 went through the *same* harness on the *same* questions,
+so the ratio between the two columns means something. The absolute numbers
+do not transfer anywhere.
+
+At `n = 50` the Wilson 95% intervals are Ori `[0.75, 0.94]` and Mem0
+`[0.18, 0.43]` on Recall@5. They do not overlap, so the gap is real, but the
+two-decimal precision in the table is not: read 0.87 as "high 0.80s".
 
 Latency is not reported here. The evaluation harness does not record it, so any
 number would be recalled rather than measured. What is measured is that Ori answers

@@ -40,6 +40,7 @@ import { createProvider, NullProvider } from "../core/llm.js";
 import { getDecayedQ, initQValueTables } from "../core/qvalue.js";
 import type { LlmProvider } from "../core/llm.js";
 import { isExploreAuditEnabled, logExploreAudit, type ExploreAuditEvent, type ExploreAuditNote } from "../core/explore-audit.js";
+import { isForgotten } from "../core/status.js";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -241,13 +242,19 @@ export async function runExplore(
   }
   flatResults = applyResolutionBoost(flatResults, noteTypes);
 
-  // 10. Filter archived
+  // 10. Drop forgotten notes from the seed set.
+  //
+  // This alone is not sufficient and never was: step 14 expands the seeds by
+  // personalised PageRank over the link graph, so a note removed here can
+  // walk straight back in as a `ppr` discovery. The authoritative filter is
+  // applied to `output.results` after that expansion. Both exist because
+  // filtering the seeds also keeps forgotten notes from steering the walk.
+  const forgottenTitles = new Set<string>();
+  for (const [title, fm] of noteIndex.frontmatter) {
+    if (isForgotten(fm.status)) forgottenTitles.add(title);
+  }
   if (options.excludeArchived !== false) {
-    const archivedSet = new Set<string>();
-    for (const [title, fm] of noteIndex.frontmatter) {
-      if (fm.status === "archived") archivedSet.add(title);
-    }
-    flatResults = flatResults.filter((r) => !archivedSet.has(r.title));
+    flatResults = flatResults.filter((r) => !forgottenTitles.has(r.title));
   }
 
   // 11. Exploration injection
@@ -298,6 +305,17 @@ export async function runExplore(
       warmthSignals, flatResults, config: exploreConfig, qValueLookup,
       graphMetrics: { communities: graphMetrics.communities },
     });
+  }
+
+  // 14b. The authoritative forgotten-note filter, AFTER expansion.
+  //
+  // Measured before this existed: a two-note vault with one note marked
+  // `status: archived` returned the archived note and nothing else, on every
+  // call. The seed filter above had removed it, and personalised PageRank put
+  // it back as a seed of the expanded set. An archived note was not merely
+  // still findable — it was the only thing findable.
+  if (options.excludeArchived !== false && forgottenTitles.size > 0) {
+    output.results = output.results.filter((r) => !forgottenTitles.has(r.title));
   }
 
   // 11. Spreading activation for top-3 results
