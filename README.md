@@ -75,6 +75,17 @@ Not fitted to the suite: unseen seeds give **97.2%** (seed 7) and **98.0%**
 (seed 123). The fixes were structural bugs in the matcher, not case-specific
 patches.
 
+**Quote these against a 35% floor, not against zero.** The oracle is
+`must_contain` AND `must_not_contain` over the top 10, and when
+`must_contain` is empty — every `decay` case and 150 of 200 `purge` cases,
+350 of 1,000 — a system that returns *nothing* passes vacuously. A null
+adapter that accepts writes and never returns anything scores **350/1000 =
+35%, including 100% on the whole decay family**. On the 650 cases that
+actually discriminate, Ori is **628/650 = 96.6%** and its purge drops from
+91% to **64%**, which is its real weak spot. The published LangMem 99.5 /
+Lethe 99.3 / Mem0 88.8 are full-suite and carry the same floor.
+See [`docs/falsification/forgeteval-validity.md`](./docs/falsification/forgeteval-validity.md).
+
 | System | template | adversarial |
 |---|:---:|:---:|
 | LangMem | 99.5 | — |
