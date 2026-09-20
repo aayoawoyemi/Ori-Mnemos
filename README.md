@@ -10,6 +10,37 @@ Persistent memory across sessions, clients, and machines. Zero-infrastructure re
 
 ---
 
+## Use
+
+Ori is three surfaces over one index. The markdown is the truth; the index is
+derived and disposable (`rm -rf .ori/ && ori index build` rebuilds it).
+
+**CLI**
+
+```bash
+npx ori init          # scaffold a vault
+npx ori index build   # derive the index
+npx ori explore "…"   # navigated retrieval
+npx ori sql "…"       # read-only SQL over the index
+```
+
+**MCP server** — `ori serve`, registered in a client config. This is how an
+agent uses it.
+
+**Library** — `searchComposite` is the same entry the MCP `ori_recall` tool
+calls, so the programmatic path and the agent path cannot drift.
+
+```ts
+import { openSyncedIndex, searchComposite, runReadOnlySql } from "ori-memory";
+
+const idx = await openSyncedIndex({ vault: "./vault" });
+const hits = await searchComposite(idx, "what did we decide about caching?");
+```
+
+The export surface is deliberately small and is a semver contract; the rest of
+`src/core` is internal. Versions before 0.7.1 shipped no `main` and no
+`exports`, so a bare import threw — the library path did not exist.
+
 ## Benchmarks
 
 ### HotpotQA — Multi-Hop Retrieval
