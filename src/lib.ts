@@ -39,7 +39,8 @@ export { runReadOnlySql, validateReadOnlySql, describeSchema } from "./core/sqlq
 
 // Query-addressed forgetting. Ori scored 0/1000 on ForgetEval without
 // these: every case N/A because the three operations did not exist.
-export { supersede, release, purge, matchForForget, FORGOTTEN_STATUSES } from "./core/forget.js";
+export { supersede, release, purge, matchForForget, FORGOTTEN_STATUSES, ForgetBlastRadiusError } from "./core/forget.js";
+export type { ForgetOptions, ForgetMatch, ForgetResult } from "./core/forget.js";
 
 // Configuration.
 export { loadConfig } from "./core/config.js";

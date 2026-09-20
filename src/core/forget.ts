@@ -242,13 +242,57 @@ async function setStatus(file: string, status: string, extra: Record<string, unk
   await writeFrontmatterFile(file, { ...(parsed.data ?? {}), ...extra, status }, parsed.body);
 }
 
+/**
+ * Options guarding the blast radius of a forget call.
+ *
+ * Measured on a real 1,550-note vault: `release("Ori positioning strategy")`
+ * addresses **159 notes**; "CourtShare engagement mechanics" 53; "Kashi token
+ * incentives" 41. ForgetEval scores this same matcher at 97.8%, because its
+ * cases hold eight facts and four distractors. Raise that to 200 distractors
+ * — a flag the harness already has and nobody sets — and the amnesia family
+ * falls from 100% to 65%. Selectivity degrades with corpus size, and the
+ * benchmark's default configuration cannot see it.
+ *
+ * So destructive calls are capped and previewable. Supermemory has shipped
+ * `dryRun`, `threshold` and `maxForget` on `POST /v4/memories/forget-matching`
+ * for a while; this is the same idea, arrived at from the other direction.
+ */
+export interface ForgetOptions {
+  /** Match and report, change nothing. */
+  dryRun?: boolean;
+  /**
+   * Refuse the call if it would touch more than this many notes. Default 10.
+   * `Infinity` disables the guard, and the caller has to type that.
+   */
+  maxForget?: number;
+}
+
+export class ForgetBlastRadiusError extends Error {
+  constructor(readonly query: string, readonly matched: ForgetMatch[], readonly cap: number) {
+    super(
+      `"${query}" addresses ${matched.length} notes, over the maxForget cap of ${cap}. ` +
+        `Re-run with dryRun to inspect, narrow the query, or pass an explicit cap. ` +
+        `First matches: ${matched.slice(0, 3).map((m) => m.slug).join(", ")}`,
+    );
+    this.name = "ForgetBlastRadiusError";
+  }
+}
+
+function guardBlastRadius(query: string, matched: ForgetMatch[], opts: ForgetOptions): void {
+  const cap = opts.maxForget ?? 10;
+  if (matched.length > cap) throw new ForgetBlastRadiusError(query, matched, cap);
+}
+
 /** Soft-evict every note the query addresses. The files remain on disk. */
 export async function release(
   notesDir: string,
   query: string,
   config: EngineConfig,
+  opts: ForgetOptions = {},
 ): Promise<ForgetResult> {
   const matched = await matchForForget(notesDir, query, config);
+  guardBlastRadius(query, matched, opts);
+  if (opts.dryRun) return { matched, count: 0 };
   for (const m of matched) {
     await setStatus(m.file, "released", { released_by: query, released: new Date().toISOString().slice(0, 10) });
   }
@@ -260,8 +304,11 @@ export async function purge(
   notesDir: string,
   query: string,
   config: EngineConfig,
+  opts: ForgetOptions = {},
 ): Promise<ForgetResult> {
   const matched = await matchForForget(notesDir, query, config);
+  guardBlastRadius(query, matched, opts);
+  if (opts.dryRun) return { matched, count: 0 };
   for (const m of matched) {
     await fs.rm(m.file, { force: true });
   }

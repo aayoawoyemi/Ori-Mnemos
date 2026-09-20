@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { matchForForget, release, purge } from "../../src/core/forget.js";
+import { matchForForget, release, purge, ForgetBlastRadiusError } from "../../src/core/forget.js";
 import { isForgotten, FORGOTTEN_STATUSES } from "../../src/core/status.js";
 import type { EngineConfig } from "../../src/core/config.js";
 
@@ -109,5 +109,44 @@ describe("release and purge", () => {
     expect(r.count).toBe(1);
     expect(existsSync(join(notes, "key.md"))).toBe(false);
     expect(existsSync(join(notes, "bike.md"))).toBe(true);
+  });
+});
+
+describe("blast radius", () => {
+  // On the real 1,550-note vault, release("Ori positioning strategy") matches
+  // 159 notes. ForgetEval rates the same matcher 97.8% because its cases hold
+  // eight facts. Destructive calls are capped so the gap between those two
+  // numbers cannot become data loss.
+  function manyMatching() {
+    for (let i = 0; i < 25; i++) note(`grace-${i}`, `Grace likes paella variant ${i}.`);
+  }
+
+  it("refuses a release wider than maxForget instead of doing it", async () => {
+    manyMatching();
+    await expect(release(notes, "Grace paella preferences", config)).rejects.toThrow(
+      /addresses \d+ notes, over the maxForget cap of 10/,
+    );
+    // Nothing was written before the throw.
+    expect(readFileSync(join(notes, "grace-0.md"), "utf8")).not.toContain("status:");
+  });
+
+  it("refuses a purge the same way, and deletes nothing", async () => {
+    manyMatching();
+    await expect(purge(notes, "Grace paella preferences", config)).rejects.toThrow(ForgetBlastRadiusError);
+    expect(existsSync(join(notes, "grace-0.md"))).toBe(true);
+  });
+
+  it("dryRun reports matches and changes nothing", async () => {
+    note("otp", "Session OTP for Bob: 211755.");
+    const r = await release(notes, "OTP login session code 211755", config, { dryRun: true });
+    expect(r.matched).toHaveLength(1);
+    expect(r.count).toBe(0);
+    expect(readFileSync(join(notes, "otp.md"), "utf8")).not.toContain("status: released");
+  });
+
+  it("an explicit cap lets a wide call through — the caller has to say so", async () => {
+    manyMatching();
+    const r = await release(notes, "Grace paella preferences", config, { maxForget: Infinity });
+    expect(r.count).toBeGreaterThan(10);
   });
 });
