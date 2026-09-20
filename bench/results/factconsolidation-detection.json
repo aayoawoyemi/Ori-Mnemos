@@ -1,0 +1,2735 @@
+{
+  "trace": [
+    {
+      "idx": 0,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 1,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 2,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 3,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 4,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 5,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 6,
+      "expected": null,
+      "foundSlug": "f000003-hines-ward-plays-the-position-of-wide-receiver",
+      "sim": 0.3371905337455069
+    },
+    {
+      "idx": 7,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 8,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 9,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 10,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 11,
+      "expected": null,
+      "foundSlug": "f000008-victoria-beckham-is-married-to-david-beckham",
+      "sim": 0.41110847253858696
+    },
+    {
+      "idx": 12,
+      "expected": null,
+      "foundSlug": "f000009-the-headquarters-of-university-of-minnesota-is-located-i",
+      "sim": 0.5092652787118261
+    },
+    {
+      "idx": 13,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 14,
+      "expected": null,
+      "foundSlug": "f000003-hines-ward-plays-the-position-of-wide-receiver",
+      "sim": 0.3392428087947881
+    },
+    {
+      "idx": 15,
+      "expected": null,
+      "foundSlug": "f000012-the-headquarters-of-university-of-california-berkeley-is",
+      "sim": 0.25579723255443937
+    },
+    {
+      "idx": 16,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 17,
+      "expected": null,
+      "foundSlug": "f000016-chanel-was-founded-by-coco-chanel",
+      "sim": 0.06864753110683158
+    },
+    {
+      "idx": 18,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 19,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.4774179197775246
+    },
+    {
+      "idx": 20,
+      "expected": null,
+      "foundSlug": "f000010-the-author-of-a-wizard-of-earthsea-is-ursula-k-le-guin",
+      "sim": 0.20658011662950085
+    },
+    {
+      "idx": 21,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 22,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 23,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.3584014705310625
+    },
+    {
+      "idx": 24,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.4224668544875716
+    },
+    {
+      "idx": 25,
+      "expected": null,
+      "foundSlug": "f000008-victoria-beckham-is-married-to-david-beckham",
+      "sim": 0.1760754185249628
+    },
+    {
+      "idx": 26,
+      "expected": null,
+      "foundSlug": "f000024-ferdinand-von-richthofen-is-a-citizen-of-germany",
+      "sim": 0.3914244028782412
+    },
+    {
+      "idx": 27,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.6499674045006569
+    },
+    {
+      "idx": 28,
+      "expected": null,
+      "foundSlug": "f000000-thomas-kyd-was-born-in-the-city-of-london",
+      "sim": 0.24492070265170365
+    },
+    {
+      "idx": 29,
+      "expected": null,
+      "foundSlug": "f000024-ferdinand-von-richthofen-is-a-citizen-of-germany",
+      "sim": 0.3574411238344487
+    },
+    {
+      "idx": 30,
+      "expected": null,
+      "foundSlug": "f000017-church-of-scotland-was-founded-by-john-knox",
+      "sim": 0.21650202011756878
+    },
+    {
+      "idx": 31,
+      "expected": null,
+      "foundSlug": "f000019-alta-if-is-associated-with-the-sport-of-association-foot",
+      "sim": 0.44972790643717425
+    },
+    {
+      "idx": 32,
+      "expected": null,
+      "foundSlug": "f000010-the-author-of-a-wizard-of-earthsea-is-ursula-k-le-guin",
+      "sim": 0.4667548224836338
+    },
+    {
+      "idx": 33,
+      "expected": null,
+      "foundSlug": "f000000-thomas-kyd-was-born-in-the-city-of-london",
+      "sim": 0.4153171944971699
+    },
+    {
+      "idx": 34,
+      "expected": 16,
+      "foundSlug": "f000016-chanel-was-founded-by-coco-chanel",
+      "sim": 0.6932151011606387
+    },
+    {
+      "idx": 35,
+      "expected": null,
+      "foundSlug": "f000031-quarterback-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.3854609995928073
+    },
+    {
+      "idx": 36,
+      "expected": 3,
+      "foundSlug": "f000003-hines-ward-plays-the-position-of-wide-receiver",
+      "sim": 0.9127724457577079
+    },
+    {
+      "idx": 37,
+      "expected": null,
+      "foundSlug": "f000002-amy-winehouse-died-in-the-city-of-camden-town",
+      "sim": 0.41786377946377173
+    },
+    {
+      "idx": 38,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 39,
+      "expected": null,
+      "foundSlug": "f000029-madame-du-barry-is-a-citizen-of-france",
+      "sim": 0.6211750975391042
+    },
+    {
+      "idx": 40,
+      "expected": null,
+      "foundSlug": "f000030-pakistan-international-airlines-was-founded-in-the-city-",
+      "sim": 0.2604743558755599
+    },
+    {
+      "idx": 41,
+      "expected": null,
+      "foundSlug": "f000004-bengaluru-is-located-in-the-continent-of-asia",
+      "sim": 0.3628829673588595
+    },
+    {
+      "idx": 42,
+      "expected": null,
+      "foundSlug": "f000039-henri-gr-goire-is-a-citizen-of-france",
+      "sim": 0.2539231714446435
+    },
+    {
+      "idx": 43,
+      "expected": 40,
+      "foundSlug": "f000040-christianity-was-founded-in-the-city-of-jerusalem",
+      "sim": 0.6367743672841171
+    },
+    {
+      "idx": 44,
+      "expected": null,
+      "foundSlug": "f000020-shingon-buddhism-was-founded-by-k-kai",
+      "sim": 0.5308149201168723
+    },
+    {
+      "idx": 45,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 46,
+      "expected": null,
+      "foundSlug": "f000031-quarterback-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.7003693946516298
+    },
+    {
+      "idx": 47,
+      "expected": null,
+      "foundSlug": "f000038-dave-filoni-is-employed-by-lucasfilm",
+      "sim": 0.4275564143192511
+    },
+    {
+      "idx": 48,
+      "expected": null,
+      "foundSlug": "f000008-victoria-beckham-is-married-to-david-beckham",
+      "sim": 0.12404406551950488
+    },
+    {
+      "idx": 49,
+      "expected": null,
+      "foundSlug": "f000048-israel-was-founded-by-david-ben-gurion",
+      "sim": 0.6115835337380422
+    },
+    {
+      "idx": 50,
+      "expected": 31,
+      "foundSlug": "f000031-quarterback-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.6180711583479849
+    },
+    {
+      "idx": 51,
+      "expected": 37,
+      "foundSlug": "f000037-frank-zappa-died-in-the-city-of-los-angeles",
+      "sim": 0.8755212772392322
+    },
+    {
+      "idx": 52,
+      "expected": null,
+      "foundSlug": "f000025-aladdin-sane-was-performed-by-david-bowie",
+      "sim": 0.3267635746554161
+    },
+    {
+      "idx": 53,
+      "expected": null,
+      "foundSlug": "f000010-the-author-of-a-wizard-of-earthsea-is-ursula-k-le-guin",
+      "sim": 0.49761118242940416
+    },
+    {
+      "idx": 54,
+      "expected": null,
+      "foundSlug": "f000001-the-chairperson-of-fatah-is-mahmoud-abbas",
+      "sim": 0.3279851451959684
+    },
+    {
+      "idx": 55,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.2894751255931871
+    },
+    {
+      "idx": 56,
+      "expected": null,
+      "foundSlug": "f000041-germany-is-located-in-the-continent-of-europe",
+      "sim": 0.45061389603962204
+    },
+    {
+      "idx": 57,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 58,
+      "expected": null,
+      "foundSlug": "f000011-ferdinand-marcos-is-married-to-imelda-marcos",
+      "sim": 0.3090281130636498
+    },
+    {
+      "idx": 59,
+      "expected": null,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.22090767922386365
+    },
+    {
+      "idx": 60,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.5285385933330685
+    },
+    {
+      "idx": 61,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 62,
+      "expected": null,
+      "foundSlug": "f000058-nicolae-ceau-escu-is-married-to-elena-ceau-escu",
+      "sim": 0.3969409387444316
+    },
+    {
+      "idx": 63,
+      "expected": null,
+      "foundSlug": "f000015-the-univeristy-where-galileo-galilei-was-educated-is-uni",
+      "sim": 0.48113747088304987
+    },
+    {
+      "idx": 64,
+      "expected": null,
+      "foundSlug": "f000007-the-director-of-british-broadcasting-corporation-is-tony",
+      "sim": 0.5025183719931308
+    },
+    {
+      "idx": 65,
+      "expected": null,
+      "foundSlug": "f000025-aladdin-sane-was-performed-by-david-bowie",
+      "sim": 0.3173146899758744
+    },
+    {
+      "idx": 66,
+      "expected": null,
+      "foundSlug": "f000027-the-author-of-starship-troopers-is-robert-a-heinlein",
+      "sim": 0.2506351621405062
+    },
+    {
+      "idx": 67,
+      "expected": null,
+      "foundSlug": "f000020-shingon-buddhism-was-founded-by-k-kai",
+      "sim": 0.6493876206088186
+    },
+    {
+      "idx": 68,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 69,
+      "expected": null,
+      "foundSlug": "f000046-wide-receiver-is-associated-with-the-sport-of-american-f",
+      "sim": 0.3332438039690606
+    },
+    {
+      "idx": 70,
+      "expected": null,
+      "foundSlug": "f000068-natalie-portman-is-affiliated-with-the-religion-of-judai",
+      "sim": 0.2368742010042599
+    },
+    {
+      "idx": 71,
+      "expected": null,
+      "foundSlug": "f000017-church-of-scotland-was-founded-by-john-knox",
+      "sim": 0.09238620472705997
+    },
+    {
+      "idx": 72,
+      "expected": null,
+      "foundSlug": "f000045-friedrich-nietzsche-is-famous-for-thus-spoke-zarathustra",
+      "sim": 0.13325688037464445
+    },
+    {
+      "idx": 73,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.42196357043801136
+    },
+    {
+      "idx": 74,
+      "expected": null,
+      "foundSlug": "f000013-the-chief-executive-officer-of-apple-inc-is-tim-cook",
+      "sim": 0.44202501305188796
+    },
+    {
+      "idx": 75,
+      "expected": null,
+      "foundSlug": "f000056-canada-is-located-in-the-continent-of-north-america",
+      "sim": 0.4995542011316793
+    },
+    {
+      "idx": 76,
+      "expected": null,
+      "foundSlug": "f000045-friedrich-nietzsche-is-famous-for-thus-spoke-zarathustra",
+      "sim": 0.5779811556937499
+    },
+    {
+      "idx": 77,
+      "expected": 76,
+      "foundSlug": "f000076-the-author-of-the-birth-of-tragedy-is-friedrich-nietzsch",
+      "sim": 0.7215808292820018
+    },
+    {
+      "idx": 78,
+      "expected": null,
+      "foundSlug": "f000031-quarterback-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.5556879508229469
+    },
+    {
+      "idx": 79,
+      "expected": null,
+      "foundSlug": "f000055-colin-irwin-is-a-citizen-of-united-kingdom",
+      "sim": 0.28405172725917516
+    },
+    {
+      "idx": 80,
+      "expected": null,
+      "foundSlug": "f000065-born-in-the-u-s-a-was-performed-by-bruce-springsteen",
+      "sim": 0.10956878223951487
+    },
+    {
+      "idx": 81,
+      "expected": null,
+      "foundSlug": "f000035-steve-sax-is-associated-with-the-sport-of-baseball",
+      "sim": 0.5926335036023375
+    },
+    {
+      "idx": 82,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 83,
+      "expected": null,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.0416247117342631
+    },
+    {
+      "idx": 84,
+      "expected": null,
+      "foundSlug": "f000008-victoria-beckham-is-married-to-david-beckham",
+      "sim": 0.6401602556818968
+    },
+    {
+      "idx": 85,
+      "expected": null,
+      "foundSlug": "f000013-the-chief-executive-officer-of-apple-inc-is-tim-cook",
+      "sim": 0.4255048552109938
+    },
+    {
+      "idx": 86,
+      "expected": null,
+      "foundSlug": "f000045-friedrich-nietzsche-is-famous-for-thus-spoke-zarathustra",
+      "sim": 0.39170691929137774
+    },
+    {
+      "idx": 87,
+      "expected": null,
+      "foundSlug": "f000055-colin-irwin-is-a-citizen-of-united-kingdom",
+      "sim": 0.42642149869778695
+    },
+    {
+      "idx": 88,
+      "expected": null,
+      "foundSlug": "f000032-the-author-of-the-witcher-is-andrzej-sapkowski",
+      "sim": 0.4627740144806031
+    },
+    {
+      "idx": 89,
+      "expected": null,
+      "foundSlug": "f000088-andrzej-sapkowski-speaks-the-language-of-polish",
+      "sim": 0.44686290560130587
+    },
+    {
+      "idx": 90,
+      "expected": null,
+      "foundSlug": "f000083-the-type-of-music-that-dale-evans-plays-is-country-music",
+      "sim": 0.44045475960660335
+    },
+    {
+      "idx": 91,
+      "expected": null,
+      "foundSlug": "f000086-ferdowsi-is-famous-for-shahnameh",
+      "sim": 0.36905534949609026
+    },
+    {
+      "idx": 92,
+      "expected": null,
+      "foundSlug": "f000064-the-director-of-american-broadcasting-company-is-bob-ige",
+      "sim": 0.14025691526014908
+    },
+    {
+      "idx": 93,
+      "expected": null,
+      "foundSlug": "f000023-galwegians-rfc-is-associated-with-the-sport-of-rugby-uni",
+      "sim": 0.8123303744254117
+    },
+    {
+      "idx": 94,
+      "expected": null,
+      "foundSlug": "f000070-kingdom-of-ireland-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.3998085776742238
+    },
+    {
+      "idx": 95,
+      "expected": null,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.36403701221814483
+    },
+    {
+      "idx": 96,
+      "expected": null,
+      "foundSlug": "f000025-aladdin-sane-was-performed-by-david-bowie",
+      "sim": 0.3273319525800461
+    },
+    {
+      "idx": 97,
+      "expected": null,
+      "foundSlug": "f000063-the-univeristy-where-joan-didion-was-educated-is-univers",
+      "sim": 0.4240516234201421
+    },
+    {
+      "idx": 98,
+      "expected": null,
+      "foundSlug": "f000004-bengaluru-is-located-in-the-continent-of-asia",
+      "sim": 0.4162412271505106
+    },
+    {
+      "idx": 99,
+      "expected": null,
+      "foundSlug": "f000089-the-official-language-of-moscow-is-russian",
+      "sim": 0.3119472220994287
+    },
+    {
+      "idx": 100,
+      "expected": null,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.5957293088168668
+    },
+    {
+      "idx": 101,
+      "expected": null,
+      "foundSlug": "f000012-the-headquarters-of-university-of-california-berkeley-is",
+      "sim": 0.48008534251189805
+    },
+    {
+      "idx": 102,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.2754860215034773
+    },
+    {
+      "idx": 103,
+      "expected": null,
+      "foundSlug": "f000095-sumo-was-created-in-the-country-of-japan",
+      "sim": 0.49735441895137694
+    },
+    {
+      "idx": 104,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.5354267677448293
+    },
+    {
+      "idx": 105,
+      "expected": null,
+      "foundSlug": "f000041-germany-is-located-in-the-continent-of-europe",
+      "sim": 0.635699862590303
+    },
+    {
+      "idx": 106,
+      "expected": null,
+      "foundSlug": "f000047-ron-dennis-is-employed-by-mclaren-automotive",
+      "sim": 0.19284839373447862
+    },
+    {
+      "idx": 107,
+      "expected": null,
+      "foundSlug": "f000087-catherine-dickens-is-a-citizen-of-united-kingdom",
+      "sim": 0.5005773020371681
+    },
+    {
+      "idx": 108,
+      "expected": null,
+      "foundSlug": "f000017-church-of-scotland-was-founded-by-john-knox",
+      "sim": 0.35003006697975414
+    },
+    {
+      "idx": 109,
+      "expected": null,
+      "foundSlug": "f000074-the-chief-executive-officer-of-valve-corporation-is-gabe",
+      "sim": 0.48697727137141705
+    },
+    {
+      "idx": 110,
+      "expected": null,
+      "foundSlug": "f000069-point-guard-is-associated-with-the-sport-of-basketball",
+      "sim": 0.6781031588086704
+    },
+    {
+      "idx": 111,
+      "expected": null,
+      "foundSlug": "f000040-christianity-was-founded-in-the-city-of-jerusalem",
+      "sim": 0.27267120391438476
+    },
+    {
+      "idx": 112,
+      "expected": null,
+      "foundSlug": "f000072-stephen-crane-is-famous-for-the-red-badge-of-courage",
+      "sim": 0.2327803045904369
+    },
+    {
+      "idx": 113,
+      "expected": null,
+      "foundSlug": "f000105-united-kingdom-is-located-in-the-continent-of-europe",
+      "sim": 0.7926510997607453
+    },
+    {
+      "idx": 114,
+      "expected": 12,
+      "foundSlug": "f000012-the-headquarters-of-university-of-california-berkeley-is",
+      "sim": 0.8674165164813668
+    },
+    {
+      "idx": 115,
+      "expected": null,
+      "foundSlug": "f000079-the-name-of-the-current-head-of-state-in-united-kingdom-",
+      "sim": 0.38318339325727685
+    },
+    {
+      "idx": 116,
+      "expected": null,
+      "foundSlug": "f000099-the-official-language-of-england-is-english",
+      "sim": 0.5962734949690167
+    },
+    {
+      "idx": 117,
+      "expected": null,
+      "foundSlug": "f000053-ursula-k-le-guin-died-in-the-city-of-portland",
+      "sim": 0.3215746651908057
+    },
+    {
+      "idx": 118,
+      "expected": null,
+      "foundSlug": "f000060-leo-stein-is-a-citizen-of-united-states-of-america",
+      "sim": 0.48972675623296563
+    },
+    {
+      "idx": 119,
+      "expected": null,
+      "foundSlug": "f000068-natalie-portman-is-affiliated-with-the-religion-of-judai",
+      "sim": 0.3511700517432343
+    },
+    {
+      "idx": 120,
+      "expected": null,
+      "foundSlug": "f000011-ferdinand-marcos-is-married-to-imelda-marcos",
+      "sim": 0.48283066326368346
+    },
+    {
+      "idx": 121,
+      "expected": null,
+      "foundSlug": "f000101-the-headquarters-of-fordham-university-is-located-in-the",
+      "sim": 0.1962182747706721
+    },
+    {
+      "idx": 122,
+      "expected": null,
+      "foundSlug": "f000116-the-official-language-of-australia-is-english",
+      "sim": 0.4507064268993931
+    },
+    {
+      "idx": 123,
+      "expected": 29,
+      "foundSlug": "f000029-madame-du-barry-is-a-citizen-of-france",
+      "sim": 0.8881332475221708
+    },
+    {
+      "idx": 124,
+      "expected": null,
+      "foundSlug": "f000015-the-univeristy-where-galileo-galilei-was-educated-is-uni",
+      "sim": 0.5782185970611188
+    },
+    {
+      "idx": 125,
+      "expected": null,
+      "foundSlug": "f000053-ursula-k-le-guin-died-in-the-city-of-portland",
+      "sim": 0.49059968702915596
+    },
+    {
+      "idx": 126,
+      "expected": 115,
+      "foundSlug": "f000115-the-name-of-the-current-head-of-state-in-united-states-o",
+      "sim": 0.6335156716897312
+    },
+    {
+      "idx": 127,
+      "expected": 98,
+      "foundSlug": "f000056-canada-is-located-in-the-continent-of-north-america",
+      "sim": 0.6256496764260382
+    },
+    {
+      "idx": 128,
+      "expected": null,
+      "foundSlug": "f000002-amy-winehouse-died-in-the-city-of-camden-town",
+      "sim": 0.5060322568399127
+    },
+    {
+      "idx": 129,
+      "expected": null,
+      "foundSlug": "f000116-the-official-language-of-australia-is-english",
+      "sim": 0.4122530572078294
+    },
+    {
+      "idx": 130,
+      "expected": null,
+      "foundSlug": "f000012-the-headquarters-of-university-of-california-berkeley-is",
+      "sim": 0.3693134072290647
+    },
+    {
+      "idx": 131,
+      "expected": null,
+      "foundSlug": "f000087-catherine-dickens-is-a-citizen-of-united-kingdom",
+      "sim": 0.698480541798066
+    },
+    {
+      "idx": 132,
+      "expected": null,
+      "foundSlug": "f000064-the-director-of-american-broadcasting-company-is-bob-ige",
+      "sim": 0.13453312453284397
+    },
+    {
+      "idx": 133,
+      "expected": 104,
+      "foundSlug": "f000104-fc-vorskla-poltava-is-associated-with-the-sport-of-assoc",
+      "sim": 0.910097801007642
+    },
+    {
+      "idx": 134,
+      "expected": null,
+      "foundSlug": null,
+      "sim": 0
+    },
+    {
+      "idx": 135,
+      "expected": 84,
+      "foundSlug": "f000094-princess-alice-duchess-of-gloucester-is-affiliated-with-",
+      "sim": 0.5246190901145014
+    },
+    {
+      "idx": 136,
+      "expected": null,
+      "foundSlug": "f000109-the-chief-executive-officer-of-twitter-is-jack-dorsey",
+      "sim": 0.49740402311369114
+    },
+    {
+      "idx": 137,
+      "expected": null,
+      "foundSlug": "f000019-alta-if-is-associated-with-the-sport-of-association-foot",
+      "sim": 0.40642030410486246
+    },
+    {
+      "idx": 138,
+      "expected": null,
+      "foundSlug": "f000025-aladdin-sane-was-performed-by-david-bowie",
+      "sim": 0.42612628148700415
+    },
+    {
+      "idx": 139,
+      "expected": 120,
+      "foundSlug": "f000120-elvis-presley-is-married-to-priscilla-presley",
+      "sim": 0.7670679758650364
+    },
+    {
+      "idx": 140,
+      "expected": null,
+      "foundSlug": "f000115-the-name-of-the-current-head-of-state-in-united-states-o",
+      "sim": 0.44508296902533667
+    },
+    {
+      "idx": 141,
+      "expected": null,
+      "foundSlug": "f000007-the-director-of-british-broadcasting-corporation-is-tony",
+      "sim": 0.2785491363567804
+    },
+    {
+      "idx": 142,
+      "expected": 121,
+      "foundSlug": "f000121-andy-warhol-died-in-the-city-of-new-york-city",
+      "sim": 0.8725212543685484
+    },
+    {
+      "idx": 143,
+      "expected": null,
+      "foundSlug": "f000047-ron-dennis-is-employed-by-mclaren-automotive",
+      "sim": 0.34799228270763416
+    },
+    {
+      "idx": 144,
+      "expected": null,
+      "foundSlug": "f000097-the-univeristy-where-samuel-beckett-was-educated-is-trin",
+      "sim": 0.4444156935762944
+    },
+    {
+      "idx": 145,
+      "expected": null,
+      "foundSlug": "f000112-mario-puzo-is-famous-for-the-godfather",
+      "sim": 0.24624022547288976
+    },
+    {
+      "idx": 146,
+      "expected": null,
+      "foundSlug": "f000107-the-author-of-our-mutual-friend-is-charles-dickens",
+      "sim": 0.6976900267206755
+    },
+    {
+      "idx": 147,
+      "expected": null,
+      "foundSlug": "f000128-oscar-wilde-died-in-the-city-of-paris",
+      "sim": 0.46852865962536394
+    },
+    {
+      "idx": 148,
+      "expected": null,
+      "foundSlug": "f000063-the-univeristy-where-joan-didion-was-educated-is-univers",
+      "sim": 0.44675084025417
+    },
+    {
+      "idx": 149,
+      "expected": null,
+      "foundSlug": "f000104-fc-vorskla-poltava-is-associated-with-the-sport-of-assoc",
+      "sim": 0.4879964678308546
+    },
+    {
+      "idx": 150,
+      "expected": 57,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.8575338221441035
+    },
+    {
+      "idx": 151,
+      "expected": 116,
+      "foundSlug": "f000116-the-official-language-of-australia-is-english",
+      "sim": 0.8328481123936645
+    },
+    {
+      "idx": 152,
+      "expected": null,
+      "foundSlug": "f000134-moshe-kahlon-works-in-the-field-of-politician",
+      "sim": 0.6198446147149196
+    },
+    {
+      "idx": 153,
+      "expected": null,
+      "foundSlug": "f000070-kingdom-of-ireland-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.5000315901416884
+    },
+    {
+      "idx": 154,
+      "expected": null,
+      "foundSlug": "f000067-buddhism-was-founded-by-gautama-buddha",
+      "sim": 0.4506591482636141
+    },
+    {
+      "idx": 155,
+      "expected": null,
+      "foundSlug": "f000057-cricket-was-created-in-the-country-of-england",
+      "sim": 0.2851793386981412
+    },
+    {
+      "idx": 156,
+      "expected": null,
+      "foundSlug": "f000089-the-official-language-of-moscow-is-russian",
+      "sim": 0.7040499978753656
+    },
+    {
+      "idx": 157,
+      "expected": 122,
+      "foundSlug": "f000122-kylie-minogue-speaks-the-language-of-english",
+      "sim": 0.8707970144190441
+    },
+    {
+      "idx": 158,
+      "expected": null,
+      "foundSlug": "f000042-vijay-mallya-is-a-citizen-of-india",
+      "sim": 0.3375985569397697
+    },
+    {
+      "idx": 159,
+      "expected": null,
+      "foundSlug": "f000115-the-name-of-the-current-head-of-state-in-united-states-o",
+      "sim": 0.54452989841657
+    },
+    {
+      "idx": 160,
+      "expected": null,
+      "foundSlug": "f000102-club-nouveau-was-created-in-the-country-of-united-states",
+      "sim": 0.4207885281354874
+    },
+    {
+      "idx": 161,
+      "expected": null,
+      "foundSlug": "f000160-baseball-was-created-in-the-country-of-united-states-of-",
+      "sim": 0.32587540009993216
+    },
+    {
+      "idx": 162,
+      "expected": null,
+      "foundSlug": "f000160-baseball-was-created-in-the-country-of-united-states-of-",
+      "sim": 0.5244545257616897
+    },
+    {
+      "idx": 163,
+      "expected": null,
+      "foundSlug": "f000128-oscar-wilde-died-in-the-city-of-paris",
+      "sim": 0.39436872103061743
+    },
+    {
+      "idx": 164,
+      "expected": null,
+      "foundSlug": "f000146-the-author-of-our-mutual-friend-is-charles-darwin",
+      "sim": 0.6824637835868748
+    },
+    {
+      "idx": 165,
+      "expected": null,
+      "foundSlug": "f000118-jack-dorsey-is-a-citizen-of-united-states-of-america",
+      "sim": 0.5342512887595525
+    },
+    {
+      "idx": 166,
+      "expected": null,
+      "foundSlug": "f000082-the-prime-minister-of-sweden-is-stefan-l-fven",
+      "sim": 0.7330874597270824
+    },
+    {
+      "idx": 167,
+      "expected": null,
+      "foundSlug": "f000158-the-capital-of-india-is-new-delhi",
+      "sim": 0.4216532027173569
+    },
+    {
+      "idx": 168,
+      "expected": null,
+      "foundSlug": "f000069-point-guard-is-associated-with-the-sport-of-basketball",
+      "sim": 0.6577622180631532
+    },
+    {
+      "idx": 169,
+      "expected": 14,
+      "foundSlug": "f000014-lisa-leslie-plays-the-position-of-center",
+      "sim": 0.777788162110216
+    },
+    {
+      "idx": 170,
+      "expected": null,
+      "foundSlug": "f000121-andy-warhol-died-in-the-city-of-new-york-city",
+      "sim": 0.5905018607662466
+    },
+    {
+      "idx": 171,
+      "expected": 163,
+      "foundSlug": "f000163-the-capital-of-france-is-paris",
+      "sim": 0.747598940302831
+    },
+    {
+      "idx": 172,
+      "expected": null,
+      "foundSlug": "f000119-sarit-thanarat-is-affiliated-with-the-religion-of-buddhi",
+      "sim": 0.44017731155144807
+    },
+    {
+      "idx": 173,
+      "expected": null,
+      "foundSlug": "f000012-the-headquarters-of-university-of-california-berkeley-is",
+      "sim": 0.554248050246962
+    },
+    {
+      "idx": 174,
+      "expected": null,
+      "foundSlug": "f000035-steve-sax-is-associated-with-the-sport-of-baseball",
+      "sim": 0.46551259695487646
+    },
+    {
+      "idx": 175,
+      "expected": null,
+      "foundSlug": "f000125-olga-of-kiev-died-in-the-city-of-kyiv",
+      "sim": 0.6931454087331397
+    },
+    {
+      "idx": 176,
+      "expected": null,
+      "foundSlug": "f000042-vijay-mallya-is-a-citizen-of-india",
+      "sim": 0.5634425514567979
+    },
+    {
+      "idx": 177,
+      "expected": 21,
+      "foundSlug": "f000021-the-capital-of-tang-empire-is-chang-an",
+      "sim": 0.7267170154239943
+    },
+    {
+      "idx": 178,
+      "expected": null,
+      "foundSlug": "f000028-satya-nadella-was-born-in-the-city-of-hyderabad",
+      "sim": 0.3154778040810152
+    },
+    {
+      "idx": 179,
+      "expected": 156,
+      "foundSlug": "f000156-the-capital-of-soviet-union-is-moscow",
+      "sim": 0.716796659481509
+    },
+    {
+      "idx": 180,
+      "expected": null,
+      "foundSlug": "f000071-rocket-man-was-performed-by-elton-john",
+      "sim": 0.19083652300466303
+    },
+    {
+      "idx": 181,
+      "expected": 52,
+      "foundSlug": "f000052-blood-on-the-tracks-was-performed-by-bob-dylan",
+      "sim": 0.7494063712491874
+    },
+    {
+      "idx": 182,
+      "expected": null,
+      "foundSlug": "f000070-kingdom-of-ireland-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.45949123372913425
+    },
+    {
+      "idx": 183,
+      "expected": null,
+      "foundSlug": "f000087-catherine-dickens-is-a-citizen-of-united-kingdom",
+      "sim": 0.45655661748192133
+    },
+    {
+      "idx": 184,
+      "expected": null,
+      "foundSlug": "f000099-the-official-language-of-england-is-english",
+      "sim": 0.9167312999153303
+    },
+    {
+      "idx": 185,
+      "expected": null,
+      "foundSlug": "f000173-the-headquarters-of-university-of-bucharest-is-located-i",
+      "sim": 0.7163449139510562
+    },
+    {
+      "idx": 186,
+      "expected": 100,
+      "foundSlug": "f000100-rugby-union-was-created-in-the-country-of-england",
+      "sim": 0.8812800132858087
+    },
+    {
+      "idx": 187,
+      "expected": null,
+      "foundSlug": "f000098-israel-is-located-in-the-continent-of-asia",
+      "sim": 0.4853160641253333
+    },
+    {
+      "idx": 188,
+      "expected": 85,
+      "foundSlug": "f000085-the-chief-executive-officer-of-microsoft-is-satya-nadell",
+      "sim": 0.683490355000225
+    },
+    {
+      "idx": 189,
+      "expected": null,
+      "foundSlug": "f000145-hugh-hefner-is-famous-for-playboy",
+      "sim": 0.6622772390374375
+    },
+    {
+      "idx": 190,
+      "expected": null,
+      "foundSlug": "f000153-adalbert-of-prague-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.5542157463651266
+    },
+    {
+      "idx": 191,
+      "expected": null,
+      "foundSlug": "f000061-walter-chrysler-s-child-is-walter-percy-chrysler-jr",
+      "sim": 0.23688484240496516
+    },
+    {
+      "idx": 192,
+      "expected": null,
+      "foundSlug": "f000024-ferdinand-von-richthofen-is-a-citizen-of-germany",
+      "sim": 0.5617904981822978
+    },
+    {
+      "idx": 193,
+      "expected": null,
+      "foundSlug": "f000070-kingdom-of-ireland-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.5400087719547354
+    },
+    {
+      "idx": 194,
+      "expected": null,
+      "foundSlug": "f000069-point-guard-is-associated-with-the-sport-of-basketball",
+      "sim": 0.4845476263035511
+    },
+    {
+      "idx": 195,
+      "expected": null,
+      "foundSlug": "f000122-kylie-minogue-speaks-the-language-of-english",
+      "sim": 0.41311040966453433
+    },
+    {
+      "idx": 196,
+      "expected": null,
+      "foundSlug": "f000111-westinghouse-electric-was-founded-in-the-city-of-pittsbu",
+      "sim": 0.569589979367268
+    },
+    {
+      "idx": 197,
+      "expected": 195,
+      "foundSlug": "f000195-t-s-eliot-speaks-the-language-of-english",
+      "sim": 0.8413849240351304
+    },
+    {
+      "idx": 198,
+      "expected": null,
+      "foundSlug": "f000167-the-capital-of-italy-is-rome",
+      "sim": 0.7340581314592455
+    },
+    {
+      "idx": 199,
+      "expected": null,
+      "foundSlug": "f000195-t-s-eliot-speaks-the-language-of-english",
+      "sim": 0.3752535631405324
+    },
+    {
+      "idx": 200,
+      "expected": null,
+      "foundSlug": "f000191-aristotle-s-child-is-nicomachus",
+      "sim": 0.49425403606133944
+    },
+    {
+      "idx": 201,
+      "expected": 13,
+      "foundSlug": "f000013-the-chief-executive-officer-of-apple-inc-is-tim-cook",
+      "sim": 0.6612875306556725
+    },
+    {
+      "idx": 202,
+      "expected": null,
+      "foundSlug": "f000140-the-name-of-the-current-head-of-the-pittsburgh-governmen",
+      "sim": 0.26338259356151145
+    },
+    {
+      "idx": 203,
+      "expected": 192,
+      "foundSlug": "f000192-ernst-heinkel-is-a-citizen-of-germany",
+      "sim": 0.7419807891396032
+    },
+    {
+      "idx": 204,
+      "expected": null,
+      "foundSlug": "f000039-henri-gr-goire-is-a-citizen-of-france",
+      "sim": 0.5946881423474863
+    },
+    {
+      "idx": 205,
+      "expected": 30,
+      "foundSlug": "f000030-pakistan-international-airlines-was-founded-in-the-city-",
+      "sim": 0.8264565957066875
+    },
+    {
+      "idx": 206,
+      "expected": null,
+      "foundSlug": "f000180-the-author-of-endymion-is-john-keats",
+      "sim": 0.4621958972327911
+    },
+    {
+      "idx": 207,
+      "expected": null,
+      "foundSlug": "f000064-the-director-of-american-broadcasting-company-is-bob-ige",
+      "sim": 0.29655151813179276
+    },
+    {
+      "idx": 208,
+      "expected": 97,
+      "foundSlug": "f000097-the-univeristy-where-samuel-beckett-was-educated-is-trin",
+      "sim": 0.7193889173892619
+    },
+    {
+      "idx": 209,
+      "expected": 167,
+      "foundSlug": "f000167-the-capital-of-italy-is-rome",
+      "sim": 0.6194057683818065
+    },
+    {
+      "idx": 210,
+      "expected": null,
+      "foundSlug": "f000039-henri-gr-goire-is-a-citizen-of-france",
+      "sim": 0.5666742375005402
+    },
+    {
+      "idx": 211,
+      "expected": null,
+      "foundSlug": "f000105-united-kingdom-is-located-in-the-continent-of-europe",
+      "sim": 0.868989559277311
+    },
+    {
+      "idx": 212,
+      "expected": null,
+      "foundSlug": "f000162-country-music-was-created-in-the-country-of-united-state",
+      "sim": 0.7330378767692214
+    },
+    {
+      "idx": 213,
+      "expected": null,
+      "foundSlug": "f000035-steve-sax-is-associated-with-the-sport-of-baseball",
+      "sim": 0.5496844483889869
+    },
+    {
+      "idx": 214,
+      "expected": null,
+      "foundSlug": "f000195-t-s-eliot-speaks-the-language-of-english",
+      "sim": 0.5575825737488983
+    },
+    {
+      "idx": 215,
+      "expected": null,
+      "foundSlug": "f000035-steve-sax-is-associated-with-the-sport-of-baseball",
+      "sim": 0.5389230643056082
+    },
+    {
+      "idx": 216,
+      "expected": null,
+      "foundSlug": "f000160-baseball-was-created-in-the-country-of-united-states-of-",
+      "sim": 0.7484780846906003
+    },
+    {
+      "idx": 217,
+      "expected": 176,
+      "foundSlug": "f000176-narendra-modi-is-a-citizen-of-india",
+      "sim": 0.8653889101312583
+    },
+    {
+      "idx": 218,
+      "expected": null,
+      "foundSlug": "f000108-boston-was-founded-by-john-winthrop",
+      "sim": 0.4263423831128704
+    },
+    {
+      "idx": 219,
+      "expected": 69,
+      "foundSlug": "f000069-point-guard-is-associated-with-the-sport-of-basketball",
+      "sim": 0.7585184344312947
+    },
+    {
+      "idx": 220,
+      "expected": 75,
+      "foundSlug": "f000075-australia-is-located-in-the-continent-of-oceania",
+      "sim": 0.8361560317014353
+    },
+    {
+      "idx": 221,
+      "expected": null,
+      "foundSlug": "f000188-the-chief-executive-officer-of-microsoft-is-steve-jobs",
+      "sim": 0.44112375099291495
+    },
+    {
+      "idx": 222,
+      "expected": 80,
+      "foundSlug": "f000080-the-chairperson-of-harvard-university-is-lawrence-s-baco",
+      "sim": 0.7142086825844612
+    },
+    {
+      "idx": 223,
+      "expected": null,
+      "foundSlug": "f000129-joe-hockey-is-a-citizen-of-australia",
+      "sim": 0.6066351033281191
+    },
+    {
+      "idx": 224,
+      "expected": null,
+      "foundSlug": "f000203-ernst-heinkel-is-a-citizen-of-tang-empire",
+      "sim": 0.28219151528561726
+    },
+    {
+      "idx": 225,
+      "expected": 39,
+      "foundSlug": "f000039-henri-gr-goire-is-a-citizen-of-france",
+      "sim": 0.8800463763663483
+    },
+    {
+      "idx": 226,
+      "expected": 38,
+      "foundSlug": "f000038-dave-filoni-is-employed-by-lucasfilm",
+      "sim": 0.7680338561320168
+    },
+    {
+      "idx": 227,
+      "expected": null,
+      "foundSlug": "f000003-hines-ward-plays-the-position-of-wide-receiver",
+      "sim": 0.6166999689886472
+    },
+    {
+      "idx": 228,
+      "expected": null,
+      "foundSlug": "f000004-bengaluru-is-located-in-the-continent-of-asia",
+      "sim": 0.6923341842808902
+    },
+    {
+      "idx": 229,
+      "expected": 71,
+      "foundSlug": "f000071-rocket-man-was-performed-by-elton-john",
+      "sim": 0.6824900994097534
+    },
+    {
+      "idx": 230,
+      "expected": 132,
+      "foundSlug": "f000132-ford-motor-company-was-founded-by-henry-ford",
+      "sim": 0.7841828296444349
+    },
+    {
+      "idx": 231,
+      "expected": null,
+      "foundSlug": "f000061-walter-chrysler-s-child-is-walter-percy-chrysler-jr",
+      "sim": 0.696679481656276
+    },
+    {
+      "idx": 232,
+      "expected": 1,
+      "foundSlug": "f000134-moshe-kahlon-works-in-the-field-of-politician",
+      "sim": 0.5392020512549582
+    },
+    {
+      "idx": 233,
+      "expected": 62,
+      "foundSlug": "f000062-yves-montand-is-married-to-simone-signoret",
+      "sim": 0.8447028867261109
+    },
+    {
+      "idx": 234,
+      "expected": 4,
+      "foundSlug": "f000004-bengaluru-is-located-in-the-continent-of-asia",
+      "sim": 0.8937079823884386
+    },
+    {
+      "idx": 235,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.6172183184944108
+    },
+    {
+      "idx": 236,
+      "expected": null,
+      "foundSlug": "f000207-the-director-of-madonna-is-guy-oseary",
+      "sim": 0.4045459941021849
+    },
+    {
+      "idx": 237,
+      "expected": null,
+      "foundSlug": "f000040-christianity-was-founded-in-the-city-of-jerusalem",
+      "sim": 0.37159604589585715
+    },
+    {
+      "idx": 238,
+      "expected": null,
+      "foundSlug": "f000074-the-chief-executive-officer-of-valve-corporation-is-gabe",
+      "sim": 0.563602654435429
+    },
+    {
+      "idx": 239,
+      "expected": 210,
+      "foundSlug": "f000210-c-dric-klapisch-is-a-citizen-of-france",
+      "sim": 0.7191808440928128
+    },
+    {
+      "idx": 240,
+      "expected": null,
+      "foundSlug": "f000044-k-kai-speaks-the-language-of-japanese",
+      "sim": 0.7296440304411745
+    },
+    {
+      "idx": 241,
+      "expected": null,
+      "foundSlug": "f000013-the-chief-executive-officer-of-apple-inc-is-tim-cook",
+      "sim": 0.4035796144863707
+    },
+    {
+      "idx": 242,
+      "expected": null,
+      "foundSlug": "f000184-the-official-language-of-united-kingdom-is-english",
+      "sim": 0.718888396796018
+    },
+    {
+      "idx": 243,
+      "expected": null,
+      "foundSlug": "f000090-the-type-of-music-that-john-mcvie-plays-is-rock-music",
+      "sim": 0.40984206964224923
+    },
+    {
+      "idx": 244,
+      "expected": null,
+      "foundSlug": "f000060-leo-stein-is-a-citizen-of-united-states-of-america",
+      "sim": 0.3766010725038694
+    },
+    {
+      "idx": 245,
+      "expected": null,
+      "foundSlug": "f000236-the-director-of-the-beatles-is-brian-epstein",
+      "sim": 0.597763981405212
+    },
+    {
+      "idx": 246,
+      "expected": null,
+      "foundSlug": "f000199-the-wheel-of-time-was-written-in-the-language-of-english",
+      "sim": 0.44558243539873815
+    },
+    {
+      "idx": 247,
+      "expected": null,
+      "foundSlug": "f000005-pedro-pierluisi-worked-in-the-city-of-washington-d-c",
+      "sim": 0.39961791554463183
+    },
+    {
+      "idx": 248,
+      "expected": null,
+      "foundSlug": "f000011-ferdinand-marcos-is-married-to-imelda-marcos",
+      "sim": 0.705814592919943
+    },
+    {
+      "idx": 249,
+      "expected": 79,
+      "foundSlug": "f000079-the-name-of-the-current-head-of-state-in-united-kingdom-",
+      "sim": 0.5487977927189448
+    },
+    {
+      "idx": 250,
+      "expected": 165,
+      "foundSlug": "f000165-country-joe-mcdonald-is-a-citizen-of-united-states-of-am",
+      "sim": 0.8110204194672643
+    },
+    {
+      "idx": 251,
+      "expected": null,
+      "foundSlug": "f000236-the-director-of-the-beatles-is-brian-epstein",
+      "sim": 0.5310159154161321
+    },
+    {
+      "idx": 252,
+      "expected": 46,
+      "foundSlug": "f000046-wide-receiver-is-associated-with-the-sport-of-american-f",
+      "sim": 0.7986658759738111
+    },
+    {
+      "idx": 253,
+      "expected": null,
+      "foundSlug": "f000132-ford-motor-company-was-founded-by-henry-ford",
+      "sim": 0.62397465663402
+    },
+    {
+      "idx": 254,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.5098425000695853
+    },
+    {
+      "idx": 255,
+      "expected": null,
+      "foundSlug": "f000179-the-capital-of-soviet-union-is-russellville",
+      "sim": 0.44965357504448406
+    },
+    {
+      "idx": 256,
+      "expected": null,
+      "foundSlug": "f000112-mario-puzo-is-famous-for-the-godfather",
+      "sim": 0.7749936164214352
+    },
+    {
+      "idx": 257,
+      "expected": null,
+      "foundSlug": "f000155-charlie-hebdo-was-created-in-the-country-of-france",
+      "sim": 0.4889713093830375
+    },
+    {
+      "idx": 258,
+      "expected": null,
+      "foundSlug": "f000023-galwegians-rfc-is-associated-with-the-sport-of-rugby-uni",
+      "sim": 0.562690254040308
+    },
+    {
+      "idx": 259,
+      "expected": null,
+      "foundSlug": "f000091-nobuhiro-watsuki-is-famous-for-rurouni-kenshin",
+      "sim": 0.7120839690073285
+    },
+    {
+      "idx": 260,
+      "expected": 70,
+      "foundSlug": "f000070-kingdom-of-ireland-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.7291194820643395
+    },
+    {
+      "idx": 261,
+      "expected": 59,
+      "foundSlug": "f000059-pes-pallo-was-created-in-the-country-of-finland",
+      "sim": 0.7532412784651497
+    },
+    {
+      "idx": 262,
+      "expected": null,
+      "foundSlug": "f000134-moshe-kahlon-works-in-the-field-of-politician",
+      "sim": 0.6439605280500218
+    },
+    {
+      "idx": 263,
+      "expected": null,
+      "foundSlug": "f000084-laura-bush-is-married-to-george-w-bush",
+      "sim": 0.49000746204336626
+    },
+    {
+      "idx": 264,
+      "expected": 224,
+      "foundSlug": "f000224-sasanian-empire-was-founded-by-ardashir-i",
+      "sim": 0.7422721442101781
+    },
+    {
+      "idx": 265,
+      "expected": 237,
+      "foundSlug": "f000237-canadair-was-founded-in-the-city-of-montreal",
+      "sim": 0.7378717531716807
+    },
+    {
+      "idx": 266,
+      "expected": null,
+      "foundSlug": "f000153-adalbert-of-prague-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.45925349422741135
+    },
+    {
+      "idx": 267,
+      "expected": 161,
+      "foundSlug": "f000161-post-punk-was-created-in-the-country-of-united-kingdom",
+      "sim": 0.802189303584356
+    },
+    {
+      "idx": 268,
+      "expected": null,
+      "foundSlug": "f000096-meredith-grey-was-performed-by-ellen-pompeo",
+      "sim": 0.5226519207464505
+    },
+    {
+      "idx": 269,
+      "expected": null,
+      "foundSlug": "f000006-rog-rio-ceni-plays-the-position-of-goalkeeper",
+      "sim": 0.6113058841849571
+    },
+    {
+      "idx": 270,
+      "expected": 128,
+      "foundSlug": "f000128-oscar-wilde-died-in-the-city-of-paris",
+      "sim": 0.8389281970260971
+    },
+    {
+      "idx": 271,
+      "expected": null,
+      "foundSlug": "f000146-the-author-of-our-mutual-friend-is-charles-darwin",
+      "sim": 0.3800103382381513
+    },
+    {
+      "idx": 272,
+      "expected": null,
+      "foundSlug": "f000100-rugby-union-was-created-in-the-country-of-england",
+      "sim": 0.6299420546264567
+    },
+    {
+      "idx": 273,
+      "expected": null,
+      "foundSlug": "f000139-elvis-presley-is-married-to-charles-the-bold",
+      "sim": 0.4309457470893139
+    },
+    {
+      "idx": 274,
+      "expected": null,
+      "foundSlug": "f000241-applescript-was-developed-by-apple-inc",
+      "sim": 0.18285114840927807
+    },
+    {
+      "idx": 275,
+      "expected": 109,
+      "foundSlug": "f000109-the-chief-executive-officer-of-twitter-is-jack-dorsey",
+      "sim": 0.7225957733116544
+    },
+    {
+      "idx": 276,
+      "expected": 82,
+      "foundSlug": "f000082-the-prime-minister-of-sweden-is-stefan-l-fven",
+      "sim": 0.622514410533739
+    },
+    {
+      "idx": 277,
+      "expected": 238,
+      "foundSlug": "f000238-steamos-was-developed-by-valve-corporation",
+      "sim": 0.7760548655438158
+    },
+    {
+      "idx": 278,
+      "expected": null,
+      "foundSlug": "f000199-the-wheel-of-time-was-written-in-the-language-of-english",
+      "sim": 0.4652082874348056
+    },
+    {
+      "idx": 279,
+      "expected": 18,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.8301447494152253
+    },
+    {
+      "idx": 280,
+      "expected": 228,
+      "foundSlug": "f000228-india-is-located-in-the-continent-of-asia",
+      "sim": 0.9083750750410562
+    },
+    {
+      "idx": 281,
+      "expected": 243,
+      "foundSlug": "f000243-the-type-of-music-that-dana-international-plays-is-pop-m",
+      "sim": 0.8624350255396942
+    },
+    {
+      "idx": 282,
+      "expected": null,
+      "foundSlug": "f000266-karen-armstrong-is-affiliated-with-the-religion-of-catho",
+      "sim": 0.5750661373625807
+    },
+    {
+      "idx": 283,
+      "expected": 117,
+      "foundSlug": "f000117-pius-xii-died-in-the-city-of-castel-gandolfo",
+      "sim": 0.7796169033466782
+    },
+    {
+      "idx": 284,
+      "expected": null,
+      "foundSlug": "f000075-australia-is-located-in-the-continent-of-oceania",
+      "sim": 0.6028621871160627
+    },
+    {
+      "idx": 285,
+      "expected": 25,
+      "foundSlug": "f000025-aladdin-sane-was-performed-by-david-bowie",
+      "sim": 0.8322248531304429
+    },
+    {
+      "idx": 286,
+      "expected": null,
+      "foundSlug": "f000148-the-univeristy-where-bob-dylan-was-educated-is-universit",
+      "sim": 0.5441027780832163
+    },
+    {
+      "idx": 287,
+      "expected": 218,
+      "foundSlug": "f000218-methodism-was-founded-by-john-wesley",
+      "sim": 0.6585548720889643
+    },
+    {
+      "idx": 288,
+      "expected": null,
+      "foundSlug": "f000002-amy-winehouse-died-in-the-city-of-camden-town",
+      "sim": 0.4157519708236442
+    },
+    {
+      "idx": 289,
+      "expected": null,
+      "foundSlug": "f000090-the-type-of-music-that-john-mcvie-plays-is-rock-music",
+      "sim": 0.5337070748669803
+    },
+    {
+      "idx": 290,
+      "expected": null,
+      "foundSlug": "f000038-dave-filoni-is-employed-by-lucasfilm",
+      "sim": 0.6227756206365176
+    },
+    {
+      "idx": 291,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.4987973643422764
+    },
+    {
+      "idx": 292,
+      "expected": null,
+      "foundSlug": "f000125-olga-of-kiev-died-in-the-city-of-kyiv",
+      "sim": 0.6307245435789787
+    },
+    {
+      "idx": 293,
+      "expected": null,
+      "foundSlug": "f000229-rocket-man-was-performed-by-ayumi-hamasaki",
+      "sim": 0.5464190571001988
+    },
+    {
+      "idx": 294,
+      "expected": null,
+      "foundSlug": "f000176-narendra-modi-is-a-citizen-of-india",
+      "sim": 0.491818932426507
+    },
+    {
+      "idx": 295,
+      "expected": 242,
+      "foundSlug": "f000242-the-official-language-of-united-states-of-america-is-ame",
+      "sim": 0.8153170119165777
+    },
+    {
+      "idx": 296,
+      "expected": null,
+      "foundSlug": "f000018-slovakia-national-football-team-is-associated-with-the-s",
+      "sim": 0.580089029487442
+    },
+    {
+      "idx": 297,
+      "expected": null,
+      "foundSlug": "f000199-the-wheel-of-time-was-written-in-the-language-of-english",
+      "sim": 0.463099058682351
+    },
+    {
+      "idx": 298,
+      "expected": 289,
+      "foundSlug": "f000161-post-punk-was-created-in-the-country-of-united-kingdom",
+      "sim": 0.5104277352339526
+    },
+    {
+      "idx": 299,
+      "expected": null,
+      "foundSlug": "f000190-the-capital-of-czech-republic-is-prague",
+      "sim": 0.43915262171203945
+    },
+    {
+      "idx": 300,
+      "expected": null,
+      "foundSlug": "f000000-thomas-kyd-was-born-in-the-city-of-london",
+      "sim": 0.27075276059865705
+    },
+    {
+      "idx": 301,
+      "expected": 10,
+      "foundSlug": "f000010-the-author-of-a-wizard-of-earthsea-is-ursula-k-le-guin",
+      "sim": 0.7111620808784367
+    },
+    {
+      "idx": 302,
+      "expected": null,
+      "foundSlug": "f000292-gennady-rozhdestvensky-died-in-the-city-of-moscow",
+      "sim": 0.6820191283291509
+    },
+    {
+      "idx": 303,
+      "expected": 137,
+      "foundSlug": "f000137-david-beckham-is-associated-with-the-sport-of-associatio",
+      "sim": 0.8606520279339842
+    },
+    {
+      "idx": 304,
+      "expected": 20,
+      "foundSlug": "f000020-shingon-buddhism-was-founded-by-k-kai",
+      "sim": 0.7829399527091994
+    },
+    {
+      "idx": 305,
+      "expected": 32,
+      "foundSlug": "f000195-t-s-eliot-speaks-the-language-of-english",
+      "sim": 0.5185397448925493
+    },
+    {
+      "idx": 306,
+      "expected": 0,
+      "foundSlug": "f000000-thomas-kyd-was-born-in-the-city-of-london",
+      "sim": 0.878756884491303
+    },
+    {
+      "idx": 307,
+      "expected": null,
+      "foundSlug": "f000193-catholic-church-was-founded-by-jesus-christ",
+      "sim": 0.38829811069068243
+    },
+    {
+      "idx": 308,
+      "expected": null,
+      "foundSlug": "f000137-david-beckham-is-associated-with-the-sport-of-associatio",
+      "sim": 0.5168542118811171
+    },
+    {
+      "idx": 309,
+      "expected": 144,
+      "foundSlug": "f000144-the-univeristy-where-bill-frisell-was-educated-is-berkle",
+      "sim": 0.7793929681108915
+    },
+    {
+      "idx": 310,
+      "expected": 223,
+      "foundSlug": "f000059-pes-pallo-was-created-in-the-country-of-finland",
+      "sim": 0.6039756103928186
+    },
+    {
+      "idx": 311,
+      "expected": null,
+      "foundSlug": "f000022-robert-a-heinlein-is-a-citizen-of-united-states-of-ameri",
+      "sim": 0.5461522757822943
+    },
+    {
+      "idx": 312,
+      "expected": null,
+      "foundSlug": "f000017-church-of-scotland-was-founded-by-john-knox",
+      "sim": 0.7291662808746402
+    },
+    {
+      "idx": 313,
+      "expected": null,
+      "foundSlug": "f000048-israel-was-founded-by-david-ben-gurion",
+      "sim": 0.5472725948221216
+    },
+    {
+      "idx": 314,
+      "expected": null,
+      "foundSlug": "f000173-the-headquarters-of-university-of-bucharest-is-located-i",
+      "sim": 0.3341436654432551
+    },
+    {
+      "idx": 315,
+      "expected": 291,
+      "foundSlug": "f000291-surrey-senior-cup-is-associated-with-the-sport-of-associ",
+      "sim": 0.878794244204129
+    },
+    {
+      "idx": 316,
+      "expected": null,
+      "foundSlug": "f000271-the-author-of-the-marriage-of-figaro-is-pierre-beaumarch",
+      "sim": 0.550489862124557
+    },
+    {
+      "idx": 317,
+      "expected": null,
+      "foundSlug": "f000120-elvis-presley-is-married-to-priscilla-presley",
+      "sim": 0.6185183081342006
+    },
+    {
+      "idx": 318,
+      "expected": 288,
+      "foundSlug": "f000288-back-to-black-was-performed-by-amy-winehouse",
+      "sim": 0.7275992207194
+    },
+    {
+      "idx": 319,
+      "expected": null,
+      "foundSlug": "f000275-the-chief-executive-officer-of-twitter-is-bernard-arnaul",
+      "sim": 0.5216236202546606
+    },
+    {
+      "idx": 320,
+      "expected": 152,
+      "foundSlug": "f000152-stephen-mcneil-works-in-the-field-of-politician",
+      "sim": 0.8042788885892782
+    },
+    {
+      "idx": 321,
+      "expected": 78,
+      "foundSlug": "f000078-placekicker-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.8415323694159135
+    },
+    {
+      "idx": 322,
+      "expected": 294,
+      "foundSlug": "f000294-amala-paul-is-a-citizen-of-india",
+      "sim": 0.8423859347517665
+    },
+    {
+      "idx": 323,
+      "expected": null,
+      "foundSlug": "f000031-quarterback-is-associated-with-the-sport-of-american-foo",
+      "sim": 0.7965343968870285
+    },
+    {
+      "idx": 324,
+      "expected": null,
+      "foundSlug": "f000140-the-name-of-the-current-head-of-the-pittsburgh-governmen",
+      "sim": 0.3522754485066136
+    },
+    {
+      "idx": 325,
+      "expected": null,
+      "foundSlug": "f000137-david-beckham-is-associated-with-the-sport-of-associatio",
+      "sim": 0.655245282686081
+    },
+    {
+      "idx": 326,
+      "expected": 66,
+      "foundSlug": "f000066-rand-al-thor-was-created-by-robert-jordan",
+      "sim": 0.8131080818035558
+    },
+    {
+      "idx": 327,
+      "expected": null,
+      "foundSlug": "f000107-the-author-of-our-mutual-friend-is-charles-dickens",
+      "sim": 0.4826527462335219
+    },
+    {
+      "idx": 328,
+      "expected": 174,
+      "foundSlug": "f000174-split-finger-fastball-is-associated-with-the-sport-of-ba",
+      "sim": 0.8718232742625601
+    },
+    {
+      "idx": 329,
+      "expected": 42,
+      "foundSlug": "f000042-vijay-mallya-is-a-citizen-of-india",
+      "sim": 0.8177734285790023
+    },
+    {
+      "idx": 330,
+      "expected": null,
+      "foundSlug": "f000014-lisa-leslie-plays-the-position-of-center",
+      "sim": 0.5206026893996603
+    },
+    {
+      "idx": 331,
+      "expected": null,
+      "foundSlug": "f000154-transcendental-meditation-movement-was-founded-by-mahari",
+      "sim": 0.7181263893206663
+    },
+    {
+      "idx": 332,
+      "expected": 191,
+      "foundSlug": "f000191-aristotle-s-child-is-nicomachus",
+      "sim": 0.7082553659349823
+    },
+    {
+      "idx": 333,
+      "expected": null,
+      "foundSlug": "f000058-nicolae-ceau-escu-is-married-to-elena-ceau-escu",
+      "sim": 0.634396313061929
+    },
+    {
+      "idx": 334,
+      "expected": 330,
+      "foundSlug": "f000330-robert-parish-plays-the-position-of-center",
+      "sim": 0.7787099191267185
+    },
+    {
+      "idx": 335,
+      "expected": 164,
+      "foundSlug": "f000164-charles-darwin-is-married-to-emma-darwin",
+      "sim": 0.7709323048313433
+    },
+    {
+      "idx": 336,
+      "expected": 214,
+      "foundSlug": "f000214-william-waynflete-speaks-the-language-of-english",
+      "sim": 0.860046705578718
+    },
+    {
+      "idx": 337,
+      "expected": 65,
+      "foundSlug": "f000065-born-in-the-u-s-a-was-performed-by-bruce-springsteen",
+      "sim": 0.62392254838449
+    },
+    {
+      "idx": 338,
+      "expected": null,
+      "foundSlug": "f000254-henry-ford-is-a-citizen-of-united-states-of-america",
+      "sim": 0.5622984211629928
+    },
+    {
+      "idx": 339,
+      "expected": 153,
+      "foundSlug": "f000153-adalbert-of-prague-is-affiliated-with-the-religion-of-ca",
+      "sim": 0.8320611478201517
+    },
+    {
+      "idx": 340,
+      "expected": 215,
+      "foundSlug": "f000215-sandy-alderson-is-associated-with-the-sport-of-baseball",
+      "sim": 0.8477833545402006
+    },
+    {
+      "idx": 341,
+      "expected": 158,
+      "foundSlug": "f000158-the-capital-of-india-is-new-delhi",
+      "sim": 0.5376348259484407
+    },
+    {
+      "idx": 342,
+      "expected": null,
+      "foundSlug": "f000000-thomas-kyd-was-born-in-the-city-of-london",
+      "sim": 0.6345199683077126
+    },
+    {
+      "idx": 343,
+      "expected": 204,
+      "foundSlug": "f000204-charles-messier-is-a-citizen-of-france",
+      "sim": 0.7732420849618749
+    },
+    {
+      "idx": 344,
+      "expected": 27,
+      "foundSlug": "f000183-daphne-du-maurier-is-a-citizen-of-united-kingdom",
+      "sim": 0.6336012021108705
+    },
+    {
+      "idx": 345,
+      "expected": null,
+      "foundSlug": "f000045-friedrich-nietzsche-is-famous-for-thus-spoke-zarathustra",
+      "sim": 0.7304271995239017
+    },
+    {
+      "idx": 346,
+      "expected": 194,
+      "foundSlug": "f000194-bo-ryan-is-associated-with-the-sport-of-basketball",
+      "sim": 0.8233286288874281
+    },
+    {
+      "idx": 347,
+      "expected": null,
+      "foundSlug": "f000136-the-chief-executive-officer-of-boeing-is-dennis-muilenbu",
+      "sim": 0.42928341564246286
+    },
+    {
+      "idx": 348,
+      "expected": 216,
+      "foundSlug": "f000216-basketball-was-created-in-the-country-of-united-states-o",
+      "sim": 0.7681607831849497
+    },
+    {
+      "idx": 349,
+      "expected": null,
+      "foundSlug": "f000063-the-univeristy-where-joan-didion-was-educated-is-univers",
+      "sim": 0.5305703490572127
+    },
+    {
+      "idx": 350,
+      "expected": null,
+      "foundSlug": "f000251-past-masters-was-performed-by-the-beatles",
+      "sim": 0.4804494643561432
+    },
+    {
+      "idx": 351,
+      "expected": 324,
+      "foundSlug": "f000324-the-name-of-the-current-head-of-the-council-of-people-s-",
+      "sim": 0.722259378604209
+    },
+    {
+      "idx": 352,
+      "expected": null,
+      "foundSlug": "f000016-chanel-was-founded-by-coco-chanel",
+      "sim": 0.6665937306238734
+    },
+    {
+      "idx": 353,
+      "expected": 102,
+      "foundSlug": "f000102-club-nouveau-was-created-in-the-country-of-united-states",
+      "sim": 0.8686733105395349
+    },
+    {
+      "idx": 354,
+      "expected": 207,
+      "foundSlug": "f000176-narendra-modi-is-a-citizen-of-india",
+      "sim": 0.5044845579625541
+    },
+    {
+      "idx": 355,
+      "expected": null,
+      "foundSlug": "f000090-the-type-of-music-that-john-mcvie-plays-is-rock-music",
+      "sim": 0.642174385682762
+    },
+    {
+      "idx": 356,
+      "expected": 196,
+      "foundSlug": "f000196-the-company-that-produced-ap1000-is-westinghouse-electri",
+      "sim": 0.6620928062582092
+    },
+    {
+      "idx": 357,
+      "expected": null,
+      "foundSlug": "f000248-imelda-marcos-is-affiliated-with-the-religion-of-catholi",
+      "sim": 0.5477397639720782
+    },
+    {
+      "idx": 358,
+      "expected": 155,
+      "foundSlug": "f000155-charlie-hebdo-was-created-in-the-country-of-france",
+      "sim": 0.8750160645759164
+    },
+    {
+      "idx": 359,
+      "expected": null,
+      "foundSlug": "f000162-country-music-was-created-in-the-country-of-united-state",
+      "sim": 0.6866583536247893
+    },
+    {
+      "idx": 360,
+      "expected": 154,
+      "foundSlug": "f000154-transcendental-meditation-movement-was-founded-by-mahari",
+      "sim": 0.6008325222151885
+    },
+    {
+      "idx": 361,
+      "expected": 282,
+      "foundSlug": "f000282-john-walsh-is-affiliated-with-the-religion-of-catholic-c",
+      "sim": 0.824533037613746
+    },
+    {
+      "idx": 362,
+      "expected": 323,
+      "foundSlug": "f000323-cornerback-is-associated-with-the-sport-of-american-foot",
+      "sim": 0.8142925268149008
+    },
+    {
+      "idx": 363,
+      "expected": null,
+      "foundSlug": "f000064-the-director-of-american-broadcasting-company-is-bob-ige",
+      "sim": 0.3843810759160806
+    },
+    {
+      "idx": 364,
+      "expected": 251,
+      "foundSlug": "f000251-past-masters-was-performed-by-the-beatles",
+      "sim": 0.797102259964917
+    },
+    {
+      "idx": 365,
+      "expected": 159,
+      "foundSlug": "f000079-the-name-of-the-current-head-of-state-in-united-kingdom-",
+      "sim": 0.6697111855800993
+    },
+    {
+      "idx": 366,
+      "expected": 342,
+      "foundSlug": "f000342-thomas-arne-was-born-in-the-city-of-london",
+      "sim": 0.7827988221355304
+    },
+    {
+      "idx": 367,
+      "expected": null,
+      "foundSlug": "f000338-andrew-carnegie-is-a-citizen-of-united-states-of-america",
+      "sim": 0.9204868723985641
+    },
+    {
+      "idx": 368,
+      "expected": 134,
+      "foundSlug": "f000134-moshe-kahlon-works-in-the-field-of-politician",
+      "sim": 0.6489971295836789
+    },
+    {
+      "idx": 369,
+      "expected": 58,
+      "foundSlug": "f000058-nicolae-ceau-escu-is-married-to-elena-ceau-escu",
+      "sim": 0.8686583908314548
+    },
+    {
+      "idx": 370,
+      "expected": null,
+      "foundSlug": "f000067-buddhism-was-founded-by-gautama-buddha",
+      "sim": 0.685786279416829
+    },
+    {
+      "idx": 371,
+      "expected": null,
+      "foundSlug": "f000204-charles-messier-is-a-citizen-of-france",
+      "sim": 0.6637270634540154
+    },
+    {
+      "idx": 372,
+      "expected": 206,
+      "foundSlug": "f000206-john-keats-died-in-the-city-of-rome",
+      "sim": 0.7931437296465277
+    },
+    {
+      "idx": 373,
+      "expected": null,
+      "foundSlug": "f000228-india-is-located-in-the-continent-of-asia",
+      "sim": 0.6197134159547824
+    },
+    {
+      "idx": 374,
+      "expected": 248,
+      "foundSlug": "f000248-imelda-marcos-is-affiliated-with-the-religion-of-catholi",
+      "sim": 0.8781895368205036
+    },
+    {
+      "idx": 375,
+      "expected": null,
+      "foundSlug": "f000140-the-name-of-the-current-head-of-the-pittsburgh-governmen",
+      "sim": 0.4283778853286843
+    },
+    {
+      "idx": 376,
+      "expected": 296,
+      "foundSlug": "f000296-new-firm-is-associated-with-the-sport-of-association-foo",
+      "sim": 0.7141775911897715
+    },
+    {
+      "idx": 377,
+      "expected": null,
+      "foundSlug": "f000033-the-capital-of-great-britain-is-london",
+      "sim": 0.849759754323824
+    },
+    {
+      "idx": 378,
+      "expected": null,
+      "foundSlug": "f000377-the-capital-of-united-kingdom-is-london",
+      "sim": 0.9030725257433706
+    },
+    {
+      "idx": 379,
+      "expected": null,
+      "foundSlug": "f000136-the-chief-executive-officer-of-boeing-is-dennis-muilenbu",
+      "sim": 0.5286992871906135
+    },
+    {
+      "idx": 380,
+      "expected": null,
+      "foundSlug": "f000144-the-univeristy-where-bill-frisell-was-educated-is-berkle",
+      "sim": 0.6630872545505655
+    },
+    {
+      "idx": 381,
+      "expected": null,
+      "foundSlug": "f000071-rocket-man-was-performed-by-elton-john",
+      "sim": 0.5651947061036079
+    },
+    {
+      "idx": 382,
+      "expected": 160,
+      "foundSlug": "f000095-sumo-was-created-in-the-country-of-japan",
+      "sim": 0.6582025912030339
+    },
+    {
+      "idx": 383,
+      "expected": 89,
+      "foundSlug": "f000295-the-official-language-of-united-states-of-america-is-ger",
+      "sim": 0.6009229495401467
+    },
+    {
+      "idx": 384,
+      "expected": 274,
+      "foundSlug": "f000274-f-22-raptor-was-developed-by-lockheed-martin",
+      "sim": 0.909637034981676
+    },
+    {
+      "idx": 385,
+      "expected": null,
+      "foundSlug": "f000047-ron-dennis-is-employed-by-mclaren-automotive",
+      "sim": 0.6381196954529341
+    },
+    {
+      "idx": 386,
+      "expected": 24,
+      "foundSlug": "f000024-ferdinand-von-richthofen-is-a-citizen-of-germany",
+      "sim": 0.8163709881186321
+    },
+    {
+      "idx": 387,
+      "expected": null,
+      "foundSlug": "f000173-the-headquarters-of-university-of-bucharest-is-located-i",
+      "sim": 0.5411035284867377
+    },
+    {
+      "idx": 388,
+      "expected": 284,
+      "foundSlug": "f000284-the-capital-of-australia-is-canberra",
+      "sim": 0.6693369847905417
+    },
+    {
+      "idx": 389,
+      "expected": 272,
+      "foundSlug": "f000272-association-football-was-created-in-the-country-of-engla",
+      "sim": 0.8050422954150244
+    },
+    {
+      "idx": 390,
+      "expected": 256,
+      "foundSlug": "f000256-vito-corleone-was-created-by-mario-puzo",
+      "sim": 0.7739837757696181
+    },
+    {
+      "idx": 391,
+      "expected": null,
+      "foundSlug": "f000278-the-vampyre-was-written-in-the-language-of-english",
+      "sim": 0.37652340491271435
+    },
+    {
+      "idx": 392,
+      "expected": 64,
+      "foundSlug": "f000064-the-director-of-american-broadcasting-company-is-bob-ige",
+      "sim": 0.6911950367506019
+    },
+    {
+      "idx": 393,
+      "expected": 136,
+      "foundSlug": "f000136-the-chief-executive-officer-of-boeing-is-dennis-muilenbu",
+      "sim": 0.7271803233573277
+    },
+    {
+      "idx": 394,
+      "expected": 170,
+      "foundSlug": "f000170-alan-jay-lerner-died-in-the-city-of-new-york-city",
+      "sim": 0.8034053779252759
+    },
+    {
+      "idx": 395,
+      "expected": null,
+      "foundSlug": "f000287-methodism-was-founded-by-joseph-goebbels",
+      "sim": 0.5744340152400165
+    },
+    {
+      "idx": 396,
+      "expected": 247,
+      "foundSlug": "f000247-the-capital-of-united-states-of-america-is-washington-d-",
+      "sim": 0.6533136387152612
+    },
+    {
+      "idx": 397,
+      "expected": null,
+      "foundSlug": "f000127-israel-is-located-in-the-continent-of-north-america",
+      "sim": 0.5345885240961356
+    },
+    {
+      "idx": 398,
+      "expected": 271,
+      "foundSlug": "f000271-the-author-of-the-marriage-of-figaro-is-pierre-beaumarch",
+      "sim": 0.6930994157455358
+    },
+    {
+      "idx": 399,
+      "expected": 286,
+      "foundSlug": "f000286-the-univeristy-where-lou-reed-was-educated-is-syracuse-u",
+      "sim": 0.919373085934177
+    },
+    {
+      "idx": 400,
+      "expected": null,
+      "foundSlug": "f000253-the-company-that-produced-ford-transit-connect-is-ford-m",
+      "sim": 0.6652204385760412
+    },
+    {
+      "idx": 401,
+      "expected": 124,
+      "foundSlug": "f000124-the-author-of-sidereus-nuncius-is-galileo-galilei",
+      "sim": 0.7111273277998985
+    },
+    {
+      "idx": 402,
+      "expected": null,
+      "foundSlug": "f000122-kylie-minogue-speaks-the-language-of-english",
+      "sim": 0.5852580079430897
+    },
+    {
+      "idx": 403,
+      "expected": 359,
+      "foundSlug": "f000359-rap-rock-was-created-in-the-country-of-united-states-of-",
+      "sim": 0.7519629450120725
+    },
+    {
+      "idx": 404,
+      "expected": null,
+      "foundSlug": "f000363-the-origianl-broadcaster-of-666-park-avenue-is-american-",
+      "sim": 0.48179395933629016
+    },
+    {
+      "idx": 405,
+      "expected": 81,
+      "foundSlug": "f000081-carlos-g-mez-is-associated-with-the-sport-of-baseball",
+      "sim": 0.8741662808925332
+    },
+    {
+      "idx": 406,
+      "expected": null,
+      "foundSlug": "f000054-the-chairperson-of-congolese-party-of-labour-is-denis-sa",
+      "sim": 0.706529149194333
+    },
+    {
+      "idx": 407,
+      "expected": null,
+      "foundSlug": "f000164-charles-darwin-is-married-to-emma-darwin",
+      "sim": 0.4303622144919885
+    },
+    {
+      "idx": 408,
+      "expected": 347,
+      "foundSlug": "f000347-the-chief-executive-officer-of-abb-group-is-ulrich-spies",
+      "sim": 0.6653374263461633
+    },
+    {
+      "idx": 409,
+      "expected": 173,
+      "foundSlug": "f000173-the-headquarters-of-university-of-bucharest-is-located-i",
+      "sim": 0.9379870193092615
+    },
+    {
+      "idx": 410,
+      "expected": 68,
+      "foundSlug": "f000068-natalie-portman-is-affiliated-with-the-religion-of-judai",
+      "sim": 0.8609542464728588
+    },
+    {
+      "idx": 411,
+      "expected": null,
+      "foundSlug": "f000224-sasanian-empire-was-founded-by-ardashir-i",
+      "sim": 0.3664470974441351
+    },
+    {
+      "idx": 412,
+      "expected": 266,
+      "foundSlug": "f000266-karen-armstrong-is-affiliated-with-the-religion-of-catho",
+      "sim": 0.8683999149767728
+    },
+    {
+      "idx": 413,
+      "expected": null,
+      "foundSlug": "f000402-emma-watson-speaks-the-language-of-english",
+      "sim": 0.5329007481106343
+    },
+    {
+      "idx": 414,
+      "expected": null,
+      "foundSlug": "f000096-meredith-grey-was-performed-by-ellen-pompeo",
+      "sim": 0.5205826643329733
+    },
+    {
+      "idx": 415,
+      "expected": 90,
+      "foundSlug": "f000090-the-type-of-music-that-john-mcvie-plays-is-rock-music",
+      "sim": 0.9263701997980517
+    },
+    {
+      "idx": 416,
+      "expected": 325,
+      "foundSlug": "f000325-midfielder-is-associated-with-the-sport-of-association-f",
+      "sim": 0.72322032572517
+    },
+    {
+      "idx": 417,
+      "expected": 35,
+      "foundSlug": "f000035-steve-sax-is-associated-with-the-sport-of-baseball",
+      "sim": 0.8905092986846024
+    },
+    {
+      "idx": 418,
+      "expected": 235,
+      "foundSlug": "f000235-tunisia-national-football-team-is-associated-with-the-sp",
+      "sim": 0.8834996883905508
+    },
+    {
+      "idx": 419,
+      "expected": null,
+      "foundSlug": "f000269-daniele-de-rossi-plays-the-position-of-midfielder",
+      "sim": 0.4757766402091568
+    },
+    {
+      "idx": 420,
+      "expected": 407,
+      "foundSlug": "f000407-sophia-hawthorne-is-married-to-nathaniel-hawthorne",
+      "sim": 0.827807424068661
+    },
+    {
+      "idx": 421,
+      "expected": null,
+      "foundSlug": "f000304-shingon-buddhism-was-founded-by-william-waynflete",
+      "sim": 0.22854334551820488
+    },
+    {
+      "idx": 422,
+      "expected": null,
+      "foundSlug": "f000302-nadezhda-krupskaya-died-in-the-city-of-moscow",
+      "sim": 0.61988389772148
+    },
+    {
+      "idx": 423,
+      "expected": null,
+      "foundSlug": "f000072-stephen-crane-is-famous-for-the-red-badge-of-courage",
+      "sim": 0.651274022443017
+    },
+    {
+      "idx": 424,
+      "expected": 141,
+      "foundSlug": "f000170-alan-jay-lerner-died-in-the-city-of-new-york-city",
+      "sim": 0.5051281628273195
+    },
+    {
+      "idx": 425,
+      "expected": 413,
+      "foundSlug": "f000413-hermione-granger-was-performed-by-emma-watson",
+      "sim": 0.7081888646955522
+    },
+    {
+      "idx": 426,
+      "expected": 278,
+      "foundSlug": "f000278-the-vampyre-was-written-in-the-language-of-english",
+      "sim": 0.9258999741189743
+    },
+    {
+      "idx": 427,
+      "expected": 129,
+      "foundSlug": "f000129-joe-hockey-is-a-citizen-of-australia",
+      "sim": 0.7934380903502017
+    },
+    {
+      "idx": 428,
+      "expected": 7,
+      "foundSlug": "f000007-the-director-of-british-broadcasting-corporation-is-tony",
+      "sim": 0.572887261293579
+    },
+    {
+      "idx": 429,
+      "expected": null,
+      "foundSlug": "f000041-germany-is-located-in-the-continent-of-europe",
+      "sim": 0.6761837065286941
+    },
+    {
+      "idx": 430,
+      "expected": 327,
+      "foundSlug": "f000327-the-author-of-sketches-by-boz-is-charles-dickens",
+      "sim": 0.7436548606329975
+    },
+    {
+      "idx": 431,
+      "expected": null,
+      "foundSlug": "f000080-the-chairperson-of-harvard-university-is-lawrence-s-baco",
+      "sim": 0.5695985965068875
+    },
+    {
+      "idx": 432,
+      "expected": null,
+      "foundSlug": "f000115-the-name-of-the-current-head-of-state-in-united-states-o",
+      "sim": 0.9048020024131592
+    },
+    {
+      "idx": 433,
+      "expected": null,
+      "foundSlug": "f000074-the-chief-executive-officer-of-valve-corporation-is-gabe",
+      "sim": 0.605000878250645
+    },
+    {
+      "idx": 434,
+      "expected": 6,
+      "foundSlug": "f000006-rog-rio-ceni-plays-the-position-of-goalkeeper",
+      "sim": 0.826568463407779
+    },
+    {
+      "idx": 435,
+      "expected": 41,
+      "foundSlug": "f000280-india-is-located-in-the-continent-of-africa",
+      "sim": 0.6074185897304928
+    },
+    {
+      "idx": 436,
+      "expected": 257,
+      "foundSlug": "f000257-le-petit-parisien-was-created-in-the-country-of-france",
+      "sim": 0.9445442509774242
+    },
+    {
+      "idx": 437,
+      "expected": null,
+      "foundSlug": "f000325-midfielder-is-associated-with-the-sport-of-association-f",
+      "sim": 0.6795041734659577
+    },
+    {
+      "idx": 438,
+      "expected": null,
+      "foundSlug": "f000144-the-univeristy-where-bill-frisell-was-educated-is-berkle",
+      "sim": 0.4830879069128459
+    },
+    {
+      "idx": 439,
+      "expected": 240,
+      "foundSlug": "f000240-the-official-language-of-japan-is-japanese",
+      "sim": 0.829196724235718
+    },
+    {
+      "idx": 440,
+      "expected": 56,
+      "foundSlug": "f000056-canada-is-located-in-the-continent-of-north-america",
+      "sim": 0.8911956146143117
+    },
+    {
+      "idx": 441,
+      "expected": 55,
+      "foundSlug": "f000055-colin-irwin-is-a-citizen-of-united-kingdom",
+      "sim": 0.8183328695953117
+    },
+    {
+      "idx": 442,
+      "expected": 373,
+      "foundSlug": "f000373-malaysia-is-located-in-the-continent-of-asia",
+      "sim": 0.8783885226694409
+    },
+    {
+      "idx": 443,
+      "expected": 236,
+      "foundSlug": "f000129-joe-hockey-is-a-citizen-of-australia",
+      "sim": 0.48216714406823075
+    },
+    {
+      "idx": 444,
+      "expected": null,
+      "foundSlug": "f000013-the-chief-executive-officer-of-apple-inc-is-tim-cook",
+      "sim": 0.6555969526813414
+    },
+    {
+      "idx": 445,
+      "expected": 54,
+      "foundSlug": "f000054-the-chairperson-of-congolese-party-of-labour-is-denis-sa",
+      "sim": 0.672920084695542
+    },
+    {
+      "idx": 446,
+      "expected": 19,
+      "foundSlug": "f000019-alta-if-is-associated-with-the-sport-of-association-foot",
+      "sim": 0.8696347748606873
+    },
+    {
+      "idx": 447,
+      "expected": null,
+      "foundSlug": "f000083-the-type-of-music-that-dale-evans-plays-is-country-music",
+      "sim": 0.4109142880085216
+    },
+    {
+      "idx": 448,
+      "expected": null,
+      "foundSlug": "f000131-charles-dickens-is-married-to-catherine-dickens",
+      "sim": 0.5574658195074904
+    },
+    {
+      "idx": 449,
+      "expected": 185,
+      "foundSlug": "f000185-the-capital-of-romania-is-bucharest",
+      "sim": 0.7713879598321209
+    },
+    {
+      "idx": 450,
+      "expected": 125,
+      "foundSlug": "f000125-olga-of-kiev-died-in-the-city-of-kyiv",
+      "sim": 0.8201006061935294
+    },
+    {
+      "idx": 451,
+      "expected": 292,
+      "foundSlug": "f000292-gennady-rozhdestvensky-died-in-the-city-of-moscow",
+      "sim": 0.8926267216348639
+    },
+    {
+      "idx": 452,
+      "expected": 447,
+      "foundSlug": "f000447-roy-rogers-is-married-to-dale-evans",
+      "sim": 0.8186645140851657
+    },
+    {
+      "idx": 453,
+      "expected": 349,
+      "foundSlug": "f000349-the-univeristy-where-wilhelm-ii-was-educated-is-universi",
+      "sim": 0.7475419982361472
+    },
+    {
+      "idx": 454,
+      "expected": null,
+      "foundSlug": "f000432-the-name-of-the-current-head-of-the-united-states-of-ame",
+      "sim": 0.46593829309222917
+    }
+  ],
+  "truePartner": 151
+}

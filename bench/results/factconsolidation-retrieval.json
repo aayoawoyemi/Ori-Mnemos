@@ -1,0 +1,62 @@
+[
+  {
+    "source": "factconsolidation_mh_6k",
+    "facts": 455,
+    "superseded": 151,
+    "n": 100,
+    "hit": 26,
+    "head": 0,
+    "stale": 100,
+    "stale1": 41,
+    "clean": 0,
+    "randK": 98.22735459388188,
+    "rand1": 33.18681318681318,
+    "ingestMs": 264,
+    "queryMs": 36797
+  },
+  {
+    "source": "factconsolidation_mh_32k",
+    "facts": 2310,
+    "superseded": 794,
+    "n": 100,
+    "hit": 15,
+    "head": 0,
+    "stale": 100,
+    "stale1": 40,
+    "clean": 0,
+    "randK": 98.51791806391422,
+    "rand1": 34.37229437229437,
+    "ingestMs": 1606,
+    "queryMs": 131607
+  },
+  {
+    "source": "factconsolidation_sh_6k",
+    "facts": 455,
+    "superseded": 151,
+    "n": 100,
+    "hit": 100,
+    "head": 47,
+    "stale": 98,
+    "stale1": 50,
+    "clean": 2,
+    "randK": 98.22735459388188,
+    "rand1": 33.18681318681318,
+    "ingestMs": 284,
+    "queryMs": 31037
+  },
+  {
+    "source": "factconsolidation_sh_32k",
+    "facts": 2310,
+    "superseded": 794,
+    "n": 100,
+    "hit": 100,
+    "head": 52,
+    "stale": 100,
+    "stale1": 46,
+    "clean": 0,
+    "randK": 98.51791806391422,
+    "rand1": 34.37229437229437,
+    "ingestMs": 1582,
+    "queryMs": 128008
+  }
+]
